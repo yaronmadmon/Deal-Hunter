@@ -42,9 +42,9 @@ export const OpportunitySection = ({ opportunity }: Props) => {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-sm text-foreground">Strategic Angle</h3>
+            <h3 className="font-semibold text-sm text-foreground">Recommended Positioning</h3>
           </div>
-          <p className="text-sm text-muted-foreground">{opportunity.strategicAngle}</p>
+          <p className="text-sm text-muted-foreground">{opportunity.positioning}</p>
         </div>
       </div>
     </div>

@@ -1,7 +1,29 @@
+export interface SignalMetric {
+  label: string;
+  value: string;
+}
+
+export interface CompetitorEntry {
+  name: string;
+  rating: string;
+  reviews: string;
+  downloads: string;
+  weakness: string;
+}
+
+export interface SentimentData {
+  complaints: string[];
+  loves: string[];
+  emotion: string;
+}
+
 export interface SignalCardData {
   title: string;
   source: string;
-  metrics: { label: string; value: string }[];
+  type: "metrics" | "competitors" | "sentiment";
+  metrics?: SignalMetric[];
+  competitors?: CompetitorEntry[];
+  sentiment?: SentimentData;
   evidence: string[];
   verdict: string;
 }
@@ -9,7 +31,7 @@ export interface SignalCardData {
 export interface OpportunityData {
   featureGaps: string[];
   underservedUsers: string[];
-  strategicAngle: string;
+  positioning: string;
 }
 
 export interface ScoreBreakdownItem {
@@ -31,11 +53,13 @@ export const mockReport: MockReportData = {
   idea: "AI Note Taking App for Students",
   overallScore: 71,
   verdict: "PIVOT",
-  verdictExplanation: "There is demand but competition is moderate. Success requires strong differentiation.",
+  verdictExplanation:
+    "There is demand but competition is moderate. Success requires strong differentiation.",
   signalCards: [
     {
       title: "Trend Momentum",
       source: "Social Media + Search Trends",
+      type: "metrics",
       metrics: [
         { label: "Interest Change (90d)", value: "+34%" },
         { label: "Top Platforms", value: "Reddit, TikTok, X" },
@@ -50,6 +74,7 @@ export const mockReport: MockReportData = {
     {
       title: "Market Saturation",
       source: "App Store + Google Play",
+      type: "metrics",
       metrics: [
         { label: "Total Competitors", value: "140" },
         { label: "Average Rating", value: "3.7 ★" },
@@ -65,25 +90,52 @@ export const mockReport: MockReportData = {
     {
       title: "Competitor Snapshot",
       source: "App Stores",
-      metrics: [
-        { label: "NoteAI", value: "3.1 ★ • 18k reviews • 210k downloads" },
-        { label: "StudyBuddy", value: "4.0 ★ • 8k reviews • 95k downloads" },
-        { label: "LectureSnap", value: "3.5 ★ • 3k reviews • 40k downloads" },
+      type: "competitors",
+      competitors: [
+        {
+          name: "NoteAI",
+          rating: "3.1 ★",
+          reviews: "18k",
+          downloads: "210k",
+          weakness: "Complex UI that confuses new users",
+        },
+        {
+          name: "StudyBuddy",
+          rating: "4.0 ★",
+          reviews: "8k",
+          downloads: "95k",
+          weakness: "No offline mode",
+        },
+        {
+          name: "LectureSnap",
+          rating: "3.5 ★",
+          reviews: "3k",
+          downloads: "40k",
+          weakness: "Limited language support",
+        },
       ],
       evidence: [
-        "NoteAI weakness: complex UI that confuses new users.",
-        "StudyBuddy weakness: no offline mode.",
+        "NoteAI has strong downloads but weak retention due to UX issues.",
+        "StudyBuddy is the highest-rated but lacks key features.",
       ],
       verdict: "Top competitor has weak reviews despite strong downloads.",
     },
     {
-      title: "User Sentiment",
+      title: "Sentiment & Pain Points",
       source: "App Reviews + Social Discussions",
-      metrics: [
-        { label: "Top Complaints", value: "Confusing onboarding, no offline, subscription pricing" },
-        { label: "User Loves", value: "Accurate summaries, fast transcription" },
-        { label: "Emotional Tone", value: "Frustrated but hopeful" },
-      ],
+      type: "sentiment",
+      sentiment: {
+        complaints: [
+          "Confusing onboarding flow",
+          "No offline mode",
+          "Aggressive subscription pricing",
+        ],
+        loves: [
+          "Accurate AI summaries",
+          "Fast transcription speed",
+        ],
+        emotion: "Frustrated but hopeful",
+      },
       evidence: [
         '"The AI is amazing but the app crashes every 10 minutes" — App Store review',
         '"Why do all note apps require a subscription?" — r/students',
@@ -93,6 +145,7 @@ export const mockReport: MockReportData = {
     {
       title: "Growth Signals",
       source: "Search Trends + Market Activity",
+      type: "metrics",
       metrics: [
         { label: "Search Growth (90d)", value: "+61%" },
         { label: "Builder Activity", value: "Increasing" },
@@ -106,9 +159,17 @@ export const mockReport: MockReportData = {
     },
   ],
   opportunity: {
-    featureGaps: ["Offline mode missing in top apps", "Simpler onboarding needed", "No freemium tier in most competitors"],
-    underservedUsers: ["Non-technical professionals", "Older users", "Students in developing countries"],
-    strategicAngle: "Offline-first, ultra-simple UX with a generous free tier.",
+    featureGaps: [
+      "Offline mode missing in top apps",
+      "Simpler onboarding needed",
+      "No freemium tier in most competitors",
+    ],
+    underservedUsers: [
+      "Non-technical professionals",
+      "Older users",
+      "Students in developing countries",
+    ],
+    positioning: "Offline-first, ultra-simple UX with a generous free tier.",
   },
   scoreBreakdown: [
     { label: "Trend Momentum", value: 17 },
