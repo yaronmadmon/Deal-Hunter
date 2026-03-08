@@ -87,7 +87,35 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           </div>
         )}
 
-        {/* Donut for Saturation */}
+        {/* Google Trends Sparkline */}
+        {card.googleTrendsSparkline && card.googleTrendsSparkline.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Google Trends</div>
+              <DataSourceBadge dataSource="serper" compact />
+            </div>
+            <div className="h-20 -mx-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={card.googleTrendsSparkline}>
+                  <defs>
+                    <linearGradient id="googleTrendsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(142 71% 45%)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(142 71% 45%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(220 9% 46%)' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(220 13% 91%)', background: 'hsl(0 0% 100%)' }}
+                    labelFormatter={(label) => `${label}`}
+                    formatter={(value: number) => [`${value}`, 'Search Interest']}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="hsl(142 71% 45%)" fill="url(#googleTrendsGrad)" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
         {card.donut && (
           <div className="h-20 flex items-center justify-center">
             <ResponsiveContainer width={80} height={80}>

@@ -57,6 +57,7 @@ export interface SignalCardData {
   evidence: string[];
   insight: string;
   sparkline?: ChartPoint[];
+  googleTrendsSparkline?: ChartPoint[];
   donut?: DonutSegment[];
   lineChart?: ChartPoint[];
 }
