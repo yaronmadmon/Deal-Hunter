@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, PieChart, Users, MessageCircle, Zap } from "lucide-react";
+import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink } from "lucide-react";
 import {
   AreaChart, Area, PieChart as RePieChart, Pie, Cell,
   LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
-import type { SignalCardData } from "@/data/mockReport";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { SignalCardData, ProductHuntLaunch } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 
 interface SignalCardProps {
@@ -21,6 +22,23 @@ const confidenceBadge = (c: string) => {
   if (c === "High") return "go" as const;
   if (c === "Medium") return "pivot" as const;
   return "nogo" as const;
+};
+
+const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => {
+  const maxUpvotes = Math.max(...launches.map(l => l.upvotes));
+  const now = new Date();
+  const recentLaunches = launches.filter(l => {
+    const diff = now.getTime() - new Date(l.launchDate).getTime();
+    return diff < 180 * 24 * 60 * 60 * 1000; // 6 months
+  });
+
+  if (maxUpvotes >= 500) {
+    return <p className="text-xs font-medium text-primary bg-primary/10 rounded-md px-3 py-2">🔥 Proven demand in this space — top launches have {maxUpvotes.toLocaleString()}+ upvotes</p>;
+  }
+  if (recentLaunches.length >= 2) {
+    return <p className="text-xs font-medium text-warning bg-warning/10 rounded-md px-3 py-2">📈 Active and growing category — {recentLaunches.length} launches in the last 6 months</p>;
+  }
+  return <p className="text-xs text-muted-foreground px-3 py-2">Some related products exist but with moderate traction.</p>;
 };
 
 export const SignalCard = ({ card }: SignalCardProps) => {
@@ -101,6 +119,52 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                 <XAxis dataKey="name" hide />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Product Hunt Launches Table */}
+        {card.productHuntLaunches && card.productHuntLaunches.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Product Hunt Launches</div>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-secondary/30">
+                    <TableHead className="h-8 text-[11px]">Product</TableHead>
+                    <TableHead className="h-8 text-[11px]">Tagline</TableHead>
+                    <TableHead className="h-8 text-[11px] text-right">Upvotes</TableHead>
+                    <TableHead className="h-8 text-[11px] text-right">Launch Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {card.productHuntLaunches.map((launch) => (
+                    <TableRow key={launch.name + launch.launchDate}>
+                      <TableCell className="py-2 text-xs font-medium">
+                        {launch.url ? (
+                          <a href={launch.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {launch.name}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : launch.name}
+                      </TableCell>
+                      <TableCell className="py-2 text-xs text-muted-foreground max-w-[180px] truncate">{launch.tagline}</TableCell>
+                      <TableCell className="py-2 text-xs text-right font-medium">{launch.upvotes.toLocaleString()}</TableCell>
+                      <TableCell className="py-2 text-xs text-right text-muted-foreground">{launch.launchDate}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ProductHuntInsight launches={card.productHuntLaunches} />
+          </div>
+        )}
+
+        {card.productHuntLaunches && card.productHuntLaunches.length === 0 && (
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Product Hunt Launches</div>
+            <p className="text-xs text-success font-medium bg-success/10 rounded-md px-3 py-2">
+              🟢 No similar launches found — blue ocean opportunity
+            </p>
           </div>
         )}
 
