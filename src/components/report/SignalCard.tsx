@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
 import type { SignalCardData } from "@/data/mockReport";
+import { DataSourceBadge } from "./DataSourceBadge";
 
 interface SignalCardProps {
   card: SignalCardData;
