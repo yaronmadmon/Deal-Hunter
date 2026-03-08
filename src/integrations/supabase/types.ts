@@ -88,6 +88,44 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          user_id: string
+          watchlist_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          user_id: string
+          watchlist_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+          watchlist_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_watchlist_id_fkey"
+            columns: ["watchlist_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -114,6 +152,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      watchlist: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          current_score: number | null
+          id: string
+          idea: string
+          last_analyzed_at: string | null
+          notes: string | null
+          previous_score: number | null
+          score_change: number | null
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          current_score?: number | null
+          id?: string
+          idea: string
+          last_analyzed_at?: string | null
+          notes?: string | null
+          previous_score?: number | null
+          score_change?: number | null
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          current_score?: number | null
+          id?: string
+          idea?: string
+          last_analyzed_at?: string | null
+          notes?: string | null
+          previous_score?: number | null
+          score_change?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
