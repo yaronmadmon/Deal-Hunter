@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, PieChart, Users, MessageCircle, Zap } from "lucide-react";
+import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink } from "lucide-react";
 import {
   AreaChart, Area, PieChart as RePieChart, Pie, Cell,
   LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
-import type { SignalCardData } from "@/data/mockReport";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { SignalCardData, ProductHuntLaunch } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 
 interface SignalCardProps {

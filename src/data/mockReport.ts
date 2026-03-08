@@ -33,6 +33,14 @@ export interface DonutSegment {
   value: number;
 }
 
+export interface ProductHuntLaunch {
+  name: string;
+  tagline: string;
+  upvotes: number;
+  launchDate: string;
+  url?: string;
+}
+
 export interface SignalCardData {
   title: string;
   source: string;
@@ -45,6 +53,7 @@ export interface SignalCardData {
   metrics?: SignalMetric[];
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
+  productHuntLaunches?: ProductHuntLaunch[];
   evidence: string[];
   insight: string;
   sparkline?: ChartPoint[];
