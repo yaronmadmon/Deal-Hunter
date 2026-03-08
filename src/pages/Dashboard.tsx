@@ -1,42 +1,115 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Coins } from "lucide-react";
+import { ArrowRight, Coins, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { toast } from "sonner";
 
-const mockHistory = [
-  { id: "1", idea: "AI Note Taking App for Students", status: "complete", verdict: "PIVOT", score: 71, created_at: "2026-03-06" },
-  { id: "2", idea: "Meal Prep Subscription for Busy Parents", status: "complete", verdict: "GO", score: 82, created_at: "2026-03-04" },
-];
+interface AnalysisRow {
+  id: string;
+  idea: string;
+  status: string;
+  overall_score: number | null;
+  signal_strength: string | null;
+  created_at: string;
+}
 
 const Dashboard = () => {
   const [idea, setIdea] = useState("");
+  const [credits, setCredits] = useState<number>(2);
+  const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { user, loading, signOut } = useAuth();
 
-  const handleSubmit = () => {
-    if (idea.length < 20) return;
-    // TODO: create analysis row and call pipeline
-    navigate("/processing/demo");
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Fetch profile credits
+    supabase.from("profiles").select("credits").eq("id", user.id).single()
+      .then(({ data }) => { if (data) setCredits(data.credits); });
+
+    // Fetch analyses
+    supabase.from("analyses").select("id, idea, status, overall_score, signal_strength, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { if (data) setAnalyses(data); });
+  }, [user]);
+
+  const handleSubmit = async () => {
+    if (idea.length < 20 || !user) return;
+    if (credits <= 0) {
+      toast.error("No credits remaining. Buy more to continue.");
+      navigate("/buy-credits");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Insert analysis
+      const { data, error } = await supabase.from("analyses")
+        .insert({ user_id: user.id, idea, status: "pending" })
+        .select("id")
+        .single();
+
+      if (error || !data) {
+        toast.error("Failed to start analysis");
+        return;
+      }
+
+      // Deduct credit
+      await supabase.from("profiles")
+        .update({ credits: credits - 1 })
+        .eq("id", user.id);
+
+      // Log credit usage
+      await supabase.from("credits_log")
+        .insert({ user_id: user.id, amount: -1, reason: "analysis", analysis_id: data.id });
+
+      // Kick off pipeline
+      supabase.functions.invoke("run-pipeline", {
+        body: { analysisId: data.id, idea },
+      });
+
+      navigate(`/processing/${data.id}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const verdictVariant = (v: string) => {
-    if (v === "GO") return "go" as const;
-    if (v === "PIVOT") return "pivot" as const;
+  const strengthVariant = (s: string | null) => {
+    if (s === "Strong") return "go" as const;
+    if (s === "Moderate") return "pivot" as const;
     return "nogo" as const;
   };
 
+  if (loading) return null;
+
   return (
     <div className="min-h-screen bg-background">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto">
+      <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50">
         <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-card border rounded-full px-3 py-1.5 text-sm">
             <Coins className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-foreground">2</span>
+            <span className="font-semibold text-foreground">{credits}</span>
             <span className="text-muted-foreground">credits</span>
           </div>
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/"); }}>
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
       </nav>
 
@@ -55,32 +128,38 @@ const Dashboard = () => {
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{idea.length}/500</span>
-              <Button variant="hero" onClick={handleSubmit} disabled={idea.length < 20}>
-                Validate Idea
+              <Button variant="default" onClick={handleSubmit} disabled={idea.length < 20 || submitting}>
+                {submitting ? "Starting…" : "Validate Idea"}
                 <ArrowRight className="ml-1" />
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {mockHistory.length > 0 && (
+        {analyses.length > 0 && (
           <>
             <h2 className="font-heading text-xl font-semibold text-foreground mb-4">Previous Analyses</h2>
             <div className="space-y-3">
-              {mockHistory.map((item) => (
+              {analyses.map((item) => (
                 <Card
                   key={item.id}
                   className="cursor-pointer hover:border-primary/40 transition-colors"
-                  onClick={() => navigate(`/report/${item.id}`)}
+                  onClick={() => item.status === "complete" ? navigate(`/report/${item.id}`) : item.status !== "failed" ? navigate(`/processing/${item.id}`) : null}
                 >
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-foreground text-sm">{item.idea}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{item.created_at}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-heading text-lg font-bold text-foreground">{item.score}</span>
-                      <Badge variant={verdictVariant(item.verdict)}>{item.verdict}</Badge>
+                      {item.status === "complete" && item.overall_score !== null ? (
+                        <>
+                          <span className="font-heading text-lg font-bold text-foreground">{item.overall_score}</span>
+                          <Badge variant={strengthVariant(item.signal_strength)}>{item.signal_strength}</Badge>
+                        </>
+                      ) : (
+                        <Badge variant="secondary">{item.status}</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

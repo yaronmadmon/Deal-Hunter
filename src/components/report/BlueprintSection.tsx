@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
   blueprint: BlueprintData;
+  analysisId?: string;
 }
 
 const sections = [
@@ -17,24 +20,37 @@ const sections = [
   { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
 ] as const;
 
-export const BlueprintSection = ({ blueprint }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
-    // Simulate AI generation delay — will be replaced with real AI call
-    setTimeout(() => {
-      setIsGenerating(false);
+    try {
+      if (analysisId) {
+        const { data, error } = await supabase.functions.invoke("generate-blueprint", {
+          body: { analysisId },
+        });
+        if (error) throw error;
+        if (data?.blueprint) {
+          setBlueprint(data.blueprint);
+        }
+      }
       setIsVisible(true);
-    }, 2000);
+    } catch (err) {
+      toast.error("Failed to generate blueprint. Using template.");
+      setIsVisible(true);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (!isVisible) {
     return (
       <div className="text-center py-10">
         <Button
-          variant="hero"
+          variant="default"
           size="lg"
           onClick={handleGenerate}
           disabled={isGenerating}
