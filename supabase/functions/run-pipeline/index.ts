@@ -321,7 +321,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises]);
+    // Run Product Hunt search
+    const productHuntPromises: Promise<void>[] = [];
+
+    if (productHuntKey) {
+      // Extract a short keyword from the idea for PH search
+      const phKeyword = idea.split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+      productHuntPromises.push(
+        productHuntSearch(productHuntKey, phKeyword, 10)
+          .then(r => {
+            rawData.productHunt = r;
+            rawData.sources.push(...r.products.map((p: any) => ({ url: p.url, type: "producthunt" })));
+          })
+          .catch(e => console.error("Product Hunt error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
