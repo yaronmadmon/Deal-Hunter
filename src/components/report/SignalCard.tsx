@@ -231,6 +231,10 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   <span>{c.downloads} dl</span>
                 </div>
                 <div className="text-[11px] text-destructive/80">⚠ {c.weakness}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <EvidenceLink href={c.sourceUrl} label="View App Store" />
+                  {c.websiteUrl && <EvidenceLink href={c.websiteUrl} label="View Website" />}
+                </div>
               </div>
             ))}
           </div>
