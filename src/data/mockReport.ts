@@ -103,6 +103,7 @@ export interface MethodologyInfo {
   totalSources: number;
   perplexityQueries: number;
   firecrawlScrapes: number;
+  serperSearches?: number;
   dataPoints: number;
   analysisDate: string;
   confidenceNote: string;
