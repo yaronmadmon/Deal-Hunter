@@ -20,6 +20,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     icon: Globe,
     className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
   },
+  serper: {
+    label: "Serper — Google Search",
+    icon: Search,
+    className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  },
   ai_estimated: {
     label: "AI Estimated",
     icon: Bot,
