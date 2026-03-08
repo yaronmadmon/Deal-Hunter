@@ -71,6 +71,45 @@ async function firecrawlSearch(
   return { results: data.data || [] };
 }
 
+// ── Serper helper ──────────────────────────────────────────────────
+async function serperSearch(
+  apiKey: string,
+  query: string,
+  type: "search" | "news" = "search",
+  num = 10
+): Promise<{ organic: any[]; searchParameters?: any; knowledgeGraph?: any }> {
+  const res = await fetch(`https://google.serper.dev/${type}`, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query, num }),
+  });
+  const data = await res.json();
+  return {
+    organic: data.organic || [],
+    searchParameters: data.searchParameters || {},
+    knowledgeGraph: data.knowledgeGraph || null,
+  };
+}
+
+async function serperAutoComplete(
+  apiKey: string,
+  query: string
+): Promise<{ suggestions: string[] }> {
+  const res = await fetch("https://google.serper.dev/autocomplete", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query }),
+  });
+  const data = await res.json();
+  return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
+}
+
 // ── Main pipeline ──────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
