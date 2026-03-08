@@ -68,7 +68,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
   }
 
   return (
-    <div className="mt-10">
+    <div id="blueprint-content" className="mt-10">
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-bold text-foreground">Startup Blueprint</h2>
         <p className="text-sm text-muted-foreground mt-1">Generated from your market analysis report.</p>
