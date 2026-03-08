@@ -88,6 +88,27 @@ export type Database = {
           },
         ]
       }
+      live_feed_snapshots: {
+        Row: {
+          created_at: string
+          data_payload: Json
+          id: string
+          section_name: string
+        }
+        Insert: {
+          created_at?: string
+          data_payload?: Json
+          id?: string
+          section_name: string
+        }
+        Update: {
+          created_at?: string
+          data_payload?: Json
+          id?: string
+          section_name?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
