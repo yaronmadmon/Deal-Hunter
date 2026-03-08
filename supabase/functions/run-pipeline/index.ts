@@ -291,10 +291,11 @@ ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.li
             content: `You are a market analysis AI for Gold Rush, a startup idea validation tool.
 
 CRITICAL RULES:
-1. You have been given REAL market data collected from Perplexity Sonar (grounded web search) and Firecrawl (web scraping). USE THIS DATA. Do NOT invent numbers.
+1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), and Serper.dev (real Google search results, autocomplete suggestions, and site:reddit.com searches). USE THIS DATA. Do NOT invent numbers.
 2. Every data point MUST include a "dataSource" field with one of these values:
    - "perplexity" — if the data came from Perplexity search results
-   - "firecrawl" — if the data came from Firecrawl web scraping  
+   - "firecrawl" — if the data came from Firecrawl web scraping
+   - "serper" — if the data came from Serper.dev Google search results or autocomplete
    - "ai_estimated" — ONLY if the real data sources didn't cover this specific point
 3. Every data point MUST include a "sourceUrl" field with the actual citation URL, or null if ai_estimated.
 4. Extract REAL numbers from the data provided. If the data says "+34% growth", use that exact number. If the data mentions "500k downloads", use that.
