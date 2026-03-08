@@ -10,6 +10,7 @@ import type { BlueprintData } from "@/data/mockReport";
 interface Props {
   blueprint: BlueprintData;
   analysisId?: string;
+  idea?: string;
 }
 
 const sections = [
