@@ -21,7 +21,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="flex items-start gap-2">
           <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
