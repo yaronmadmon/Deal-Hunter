@@ -84,6 +84,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <span className="text-muted-foreground">
               Market trends, competitor data, and VC activity are sourced via Perplexity Sonar (AI-powered live web search with citations).
               Google search volume, trending keywords, and autocomplete data are pulled from Serper.dev (real Google results).
+              Product launch data, upvote counts, and market validation signals come from the Product Hunt API.
               App Store listings, Reddit discussions, and user reviews are scraped directly via Firecrawl.
             </span>
           </div>
