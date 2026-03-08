@@ -201,24 +201,37 @@ export const SignalCard = ({ card }: SignalCardProps) => {
         )}
 
         {/* Metrics */}
-        {card.type === "metrics" && card.metrics && (
-          <div className="space-y-2">
-            {card.metrics.map((m) => (
-              <div key={m.label} className="flex justify-between text-sm items-start gap-2">
-                <span className="text-muted-foreground">{m.label}</span>
-                <div className="text-right flex flex-col items-end gap-0.5">
-                  <span className="font-medium text-foreground">{m.value}</span>
-                  {m.dataSource && (
-                    <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
-                  )}
-                  {m.sourceUrl && (
-                    <EvidenceLink href={m.sourceUrl} label="View Source" />
-                  )}
+        {card.type === "metrics" && card.metrics && (() => {
+          const isPHZero = (m: typeof card.metrics[0]) =>
+            (m.label.includes("PH Similar Launches") || m.label.includes("Top PH Upvotes")) &&
+            (m.value === "0" || m.value === "0 upvotes" || m.value === "None");
+          const visibleMetrics = card.metrics.filter(m => !isPHZero(m));
+          const hasHiddenPH = visibleMetrics.length < card.metrics.length;
+
+          return (
+            <div className="space-y-2">
+              {visibleMetrics.map((m) => (
+                <div key={m.label} className="flex justify-between text-sm items-start gap-2">
+                  <span className="text-muted-foreground">{m.label}</span>
+                  <div className="text-right flex flex-col items-end gap-0.5">
+                    <span className="font-medium text-foreground">{m.value}</span>
+                    {m.dataSource && (
+                      <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
+                    )}
+                    {m.sourceUrl && (
+                      <EvidenceLink href={m.sourceUrl} label="View Source" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+              {hasHiddenPH && (
+                <p className="text-xs text-success font-medium bg-success/10 rounded-md px-3 py-2">
+                  🟢 No competing launches found on Product Hunt — this is a blue ocean signal for launch strategy.
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Competitors */}
         {card.type === "competitors" && card.competitors && (

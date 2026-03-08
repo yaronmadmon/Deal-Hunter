@@ -63,7 +63,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
-            <div className="text-lg font-bold text-foreground">{m?.analysisDate ?? new Date().toLocaleDateString()}</div>
+            <div className="text-lg font-bold text-foreground">{m?.analysisDate ? m.analysisDate : new Date().toISOString().split('T')[0]}</div>
             <div className="text-[11px] text-muted-foreground">Analysis Date</div>
           </div>
         </div>

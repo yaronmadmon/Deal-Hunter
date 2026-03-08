@@ -569,6 +569,10 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
         reportData = JSON.parse(jsonMatch[0]);
         // Inject the collected source URLs into the report
         reportData.dataSources = uniqueSources;
+        // Always set analysis date to actual current date
+        if (reportData.methodology) {
+          reportData.methodology.analysisDate = new Date().toISOString().split('T')[0];
+        }
         overallScore = reportData.overallScore || 65;
         signalStrength = reportData.signalStrength || "Moderate";
       }
