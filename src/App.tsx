@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Processing from "./pages/Processing";
 import Report from "./pages/Report";
 import BuyCredits from "./pages/BuyCredits";
+import Watchlist from "./pages/Watchlist";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/processing/:id" element={<Processing />} />
           <Route path="/report/:id" element={<Report />} />
           <Route path="/buy-credits" element={<BuyCredits />} />
+          <Route path="/watchlist" element={<Watchlist />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

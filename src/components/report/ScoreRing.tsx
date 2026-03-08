@@ -33,6 +33,9 @@ export const ScoreRing = ({ score, signalStrength }: Props) => {
       <div>
         <div className="text-sm text-muted-foreground mb-1.5">Signal Strength</div>
         <Badge variant={strengthVariant} className="text-sm px-4 py-1">{signalStrength}</Badge>
+        <p className="text-[10px] text-muted-foreground mt-3 max-w-sm leading-relaxed">
+          Gold Rush analyzes real market signals from search trends, competitors, and user discussions. It does not predict startup success. It provides structured insights to help founders make informed decisions.
+        </p>
       </div>
     </div>
   );

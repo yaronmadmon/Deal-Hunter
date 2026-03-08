@@ -9,6 +9,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SignalCardData, ProductHuntLaunch } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
+import { EvidenceLink } from "./EvidenceLink";
 
 interface SignalCardProps {
   card: SignalCardData;
@@ -113,6 +114,9 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-1">
+              <EvidenceLink href="https://trends.google.com" label="View Source" />
+            </div>
           </div>
         )}
 
@@ -202,12 +206,13 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             {card.metrics.map((m) => (
               <div key={m.label} className="flex justify-between text-sm items-start gap-2">
                 <span className="text-muted-foreground">{m.label}</span>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-0.5">
                   <span className="font-medium text-foreground">{m.value}</span>
                   {m.dataSource && (
-                    <div className="mt-0.5">
-                      <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
-                    </div>
+                    <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
+                  )}
+                  {m.sourceUrl && (
+                    <EvidenceLink href={m.sourceUrl} label="View Source" />
                   )}
                 </div>
               </div>
@@ -230,6 +235,10 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   <span>{c.downloads} dl</span>
                 </div>
                 <div className="text-[11px] text-destructive/80">⚠ {c.weakness}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <EvidenceLink href={c.sourceUrl} label="View App Store" />
+                  {c.websiteUrl && <EvidenceLink href={c.websiteUrl} label="View Website" />}
+                </div>
               </div>
             ))}
           </div>
@@ -262,6 +271,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   </li>
                 ))}
               </ul>
+              {card.sentiment.complaintsSourceUrl && (
+                <div className="mt-1.5">
+                  <EvidenceLink
+                    href={card.sentiment.complaintsSourceUrl}
+                    label={card.sentiment.complaintsSourceLabel || `View ${card.sentiment.complaintCount} reviews`}
+                  />
+                </div>
+              )}
             </div>
             <div>
               <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">What Users Love</div>
@@ -272,6 +289,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   </li>
                 ))}
               </ul>
+              {card.sentiment.lovesSourceUrl && (
+                <div className="mt-1.5">
+                  <EvidenceLink
+                    href={card.sentiment.lovesSourceUrl}
+                    label={card.sentiment.lovesSourceLabel || "View discussions"}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Dominant Emotion</span>
