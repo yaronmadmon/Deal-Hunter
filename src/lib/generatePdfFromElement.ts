@@ -10,9 +10,9 @@ export async function generatePdfFromElement(elementId: string, filename: string
   const opt = {
     margin: 0.5,
     filename,
-    image: { type: "jpeg", quality: 0.8 },
+    image: { type: "jpeg" as const, quality: 0.8 },
     html2canvas: { scale: 1.5, useCORS: true, logging: false },
-    jsPDF: { unit: "in", format: "letter", orientation: "portrait" as const },
+    jsPDF: { unit: "in" as const, format: "letter" as const, orientation: "portrait" as const },
   };
 
   await html2pdf().from(element).set(opt).save();
