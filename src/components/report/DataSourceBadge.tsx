@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Globe, Search, Bot } from "lucide-react";
+import { ExternalLink, Globe, Search, Bot, Rocket } from "lucide-react";
 import type { DataSourceType } from "@/data/mockReport";
 
 interface Props {
@@ -24,6 +24,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     label: "Serper — Google Search",
     icon: Search,
     className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  },
+  producthunt: {
+    label: "Product Hunt — launch data",
+    icon: Rocket,
+    className: "bg-[hsl(16,100%,50%)]/10 text-[hsl(16,100%,45%)] dark:text-[hsl(16,100%,60%)] border-[hsl(16,100%,50%)]/20",
   },
   ai_estimated: {
     label: "AI Estimated",
