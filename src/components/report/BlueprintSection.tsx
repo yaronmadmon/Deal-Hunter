@@ -104,7 +104,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
       </div>
 
       <div className="flex justify-center mt-8">
-        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea)}>
+        <Button variant="default" size="lg" onClick={() => generatePdfFromElement("blueprint-content", `GoldRush_Blueprint_${idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
           <Download className="mr-1" /> Download Blueprint PDF
         </Button>
       </div>

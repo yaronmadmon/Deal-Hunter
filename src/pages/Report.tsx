@@ -106,7 +106,7 @@ const Report = () => {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
-          <Button variant="default" size="lg" onClick={() => generateReportPdf(r)}>
+          <Button variant="default" size="lg" onClick={() => generatePdfFromElement("report-content", `GoldRush_Report_${r.idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
             <Download className="mr-1" /> Download Report PDF
           </Button>
           <Button variant="outline" size="lg" onClick={() => navigate("/dashboard")}>
