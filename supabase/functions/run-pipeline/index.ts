@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
 
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+    const serperKey = Deno.env.get("SERPER_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
     // ── Step 1: Fetching real market data ──
@@ -141,6 +142,9 @@ Deno.serve(async (req) => {
       perplexityRevenue: null,
       firecrawlAppStore: null,
       firecrawlReddit: null,
+      serperTrends: null,
+      serperReddit: null,
+      serperAutoComplete: null,
       sources: [],
     };
 
@@ -190,7 +194,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises]);
+    // Run Serper searches in parallel (Google Trends + Reddit fallback)
+    const serperPromises: Promise<void>[] = [];
+
+    if (serperKey) {
+      // Google search for trends & search volume data
+      serperPromises.push(
+        serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10)
+          .then(r => {
+            rawData.serperTrends = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper trends error:", e))
+      );
+
+      // Reddit fallback via Serper site:reddit.com search
+      serperPromises.push(
+        serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10)
+          .then(r => {
+            rawData.serperReddit = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper reddit error:", e))
+      );
+
+      // Autocomplete for trending keyword suggestions
+      serperPromises.push(
+        serperAutoComplete(serperKey, idea)
+          .then(r => { rawData.serperAutoComplete = r; })
+          .catch(e => console.error("Serper autocomplete error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
