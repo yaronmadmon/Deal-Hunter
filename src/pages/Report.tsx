@@ -179,16 +179,23 @@ const Report = () => {
         </div>
 
         {/* User Quotes */}
-        <UserQuotesSection quotes={r.userQuotes || [
-          ...r.signalCards.flatMap(c => c.evidence.filter(e => e.includes('"')).map(e => {
-            const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
-            return match ? {
-              text: match[1],
-              source: match[2],
-              platform: (match[2].toLowerCase().includes("reddit") ? "reddit" : match[2].toLowerCase().includes("app store") ? "app_store" : "other") as any,
-            } : null;
-          }).filter(Boolean)) as any[],
-        ]} />
+        <UserQuotesSection quotes={(() => {
+          if (r.userQuotes && r.userQuotes.length > 0) return r.userQuotes.slice(0, 5);
+          // Extract quotes from all signal card evidence
+          const extracted = r.signalCards.flatMap(c =>
+            c.evidence.map(e => {
+              const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
+              if (!match) return null;
+              const src = match[2];
+              return {
+                text: match[1],
+                source: src,
+                platform: (src.toLowerCase().includes("reddit") || src.toLowerCase().includes("r/") ? "reddit" : src.toLowerCase().includes("app store") ? "app_store" : "other") as any,
+              };
+            }).filter(Boolean)
+          ) as any[];
+          return extracted.slice(0, 5);
+        })()} />
 
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
