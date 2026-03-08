@@ -14,7 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          blueprint_data: Json | null
+          created_at: string
+          id: string
+          idea: string
+          overall_score: number | null
+          report_data: Json | null
+          signal_strength: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blueprint_data?: Json | null
+          created_at?: string
+          id?: string
+          idea: string
+          overall_score?: number | null
+          report_data?: Json | null
+          signal_strength?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blueprint_data?: Json | null
+          created_at?: string
+          id?: string
+          idea?: string
+          overall_score?: number | null
+          report_data?: Json | null
+          signal_strength?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credits_log: {
+        Row: {
+          amount: number
+          analysis_id: string | null
+          created_at: string
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          analysis_id?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          analysis_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credits_log_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          credits: number
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
