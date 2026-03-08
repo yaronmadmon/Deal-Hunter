@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
 import type { SignalCardData } from "@/data/mockReport";
+import { DataSourceBadge } from "./DataSourceBadge";
 
 interface SignalCardProps {
   card: SignalCardData;
@@ -39,13 +40,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           <Badge variant={confidenceBadge(card.confidence)} className="text-[10px] px-2 py-0.5">
             {card.confidence}
           </Badge>
           <span className="text-[11px] text-muted-foreground">
             {card.evidenceCount} signals analyzed
           </span>
+          <DataSourceBadge dataSource={card.dataSource} sourceUrls={card.sourceUrls} compact />
         </div>
       </CardHeader>
 
@@ -106,9 +108,16 @@ export const SignalCard = ({ card }: SignalCardProps) => {
         {card.type === "metrics" && card.metrics && (
           <div className="space-y-2">
             {card.metrics.map((m) => (
-              <div key={m.label} className="flex justify-between text-sm">
+              <div key={m.label} className="flex justify-between text-sm items-start gap-2">
                 <span className="text-muted-foreground">{m.label}</span>
-                <span className="font-medium text-foreground text-right max-w-[55%]">{m.value}</span>
+                <div className="text-right">
+                  <span className="font-medium text-foreground">{m.value}</span>
+                  {m.dataSource && (
+                    <div className="mt-0.5">
+                      <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -119,7 +128,10 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           <div className="space-y-2.5">
             {card.competitors.map((c) => (
               <div key={c.name} className="border rounded-lg p-3 space-y-1.5 bg-secondary/30">
-                <div className="font-medium text-sm text-foreground">{c.name}</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-sm text-foreground">{c.name}</div>
+                  <DataSourceBadge dataSource={c.dataSource} sourceUrl={c.sourceUrl} compact />
+                </div>
                 <div className="grid grid-cols-3 gap-1 text-[11px] text-muted-foreground">
                   <span>{c.rating}</span>
                   <span>{c.reviews} reviews</span>

@@ -76,7 +76,25 @@ const Report = () => {
         <div className="mb-12">
           <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">{r.idea}</h1>
           <ScoreRing score={r.overallScore} signalStrength={r.signalStrength} />
-          <p className="text-sm text-muted-foreground mt-4">Analysis based on Reddit, App Store, and Google Trends data.</p>
+          <p className="text-sm text-muted-foreground mt-4">
+            Analysis based on {r.dataSources?.length ? `${r.dataSources.length} verified sources` : "Reddit, App Store, and Google Trends data"}.
+          </p>
+          {r.dataSources && r.dataSources.length > 0 && (
+            <details className="mt-2">
+              <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
+                View {r.dataSources.length} source URLs
+              </summary>
+              <ul className="mt-1 space-y-0.5">
+                {r.dataSources.map((url: string, i: number) => (
+                  <li key={i}>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate block max-w-md">
+                      {url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <p className="text-[11px] text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
