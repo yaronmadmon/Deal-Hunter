@@ -206,12 +206,13 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             {card.metrics.map((m) => (
               <div key={m.label} className="flex justify-between text-sm items-start gap-2">
                 <span className="text-muted-foreground">{m.label}</span>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-0.5">
                   <span className="font-medium text-foreground">{m.value}</span>
                   {m.dataSource && (
-                    <div className="mt-0.5">
-                      <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
-                    </div>
+                    <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
+                  )}
+                  {m.sourceUrl && (
+                    <EvidenceLink href={m.sourceUrl} label="View Source" />
                   )}
                 </div>
               </div>
