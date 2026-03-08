@@ -29,6 +29,7 @@ const App = () => (
           <Route path="/report/:id" element={<Report />} />
           <Route path="/buy-credits" element={<BuyCredits />} />
           <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/live" element={<Live />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
