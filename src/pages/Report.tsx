@@ -4,14 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { Download, ArrowRight } from "lucide-react";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
+import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
+import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { mockReport } from "@/data/mockReport";
 
 const Report = () => {
   const navigate = useNavigate();
   const r = mockReport;
 
-  const verdictVariant = r.verdict === "GO" ? "go" as const : r.verdict === "PIVOT" ? "pivot" as const : "nogo" as const;
+  const strengthVariant = r.signalStrength === "Strong" ? "go" as const : r.signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,9 +33,10 @@ const Report = () => {
               <span className="font-heading text-5xl font-bold text-foreground">{r.overallScore}</span>
               <span className="text-muted-foreground text-sm">/100</span>
             </div>
-            <Badge variant={verdictVariant} className="text-sm px-4 py-1">{r.verdict}</Badge>
+            <Badge variant={strengthVariant} className="text-sm px-4 py-1">{r.signalStrength}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-3">Analysis based on Reddit, App Store, and Google Trends data</p>
+          <p className="text-sm text-muted-foreground mt-3">Analysis based on Reddit, App Store, and Google Trends data.</p>
+          <p className="text-xs text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
         {/* Signal Cards Grid */}
@@ -46,8 +49,19 @@ const Report = () => {
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
 
+        {/* Revenue Benchmark */}
+        <RevenueBenchmark benchmark={r.revenueBenchmark} />
+
         {/* Score Breakdown */}
-        <ScoreBreakdown breakdown={r.scoreBreakdown} total={r.overallScore} verdict={r.verdict} verdictExplanation={r.verdictExplanation} />
+        <ScoreBreakdown
+          breakdown={r.scoreBreakdown}
+          total={r.overallScore}
+          signalStrength={r.signalStrength}
+          explanation={r.scoreExplanation}
+        />
+
+        {/* Blueprint Generator */}
+        <BlueprintSection blueprint={r.blueprint} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
