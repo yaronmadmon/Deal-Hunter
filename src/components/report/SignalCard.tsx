@@ -267,6 +267,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   </li>
                 ))}
               </ul>
+              {card.sentiment.complaintsSourceUrl && (
+                <div className="mt-1.5">
+                  <EvidenceLink
+                    href={card.sentiment.complaintsSourceUrl}
+                    label={card.sentiment.complaintsSourceLabel || `View ${card.sentiment.complaintCount} reviews`}
+                  />
+                </div>
+              )}
             </div>
             <div>
               <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">What Users Love</div>
