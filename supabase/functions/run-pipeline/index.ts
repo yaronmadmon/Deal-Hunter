@@ -262,6 +262,16 @@ Citations: ${rawData.perplexityVC?.citations?.join(", ") || "none"}
 --- REVENUE BENCHMARK DATA (from Perplexity Sonar with citations) ---
 ${rawData.perplexityRevenue ? rawData.perplexityRevenue.content : "No revenue data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityRevenue?.citations?.join(", ") || "none"}
+
+--- GOOGLE SEARCH & TRENDS DATA (from Serper.dev — real Google results) ---
+${rawData.serperTrends?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper trends data available"}
+${rawData.serperTrends?.knowledgeGraph ? `Knowledge Graph: ${JSON.stringify(rawData.serperTrends.knowledgeGraph)}` : ""}
+
+--- GOOGLE AUTOCOMPLETE SUGGESTIONS (from Serper.dev) ---
+${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data available"}
+
+--- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
+${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
 `;
 
     // Unique source URLs for the report
