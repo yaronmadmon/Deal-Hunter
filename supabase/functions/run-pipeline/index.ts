@@ -223,6 +223,7 @@ Deno.serve(async (req) => {
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
+    const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
     // ── Step 1: Fetching real market data ──
@@ -238,6 +239,7 @@ Deno.serve(async (req) => {
       serperTrends: null,
       serperReddit: null,
       serperAutoComplete: null,
+      productHunt: null,
       sources: [],
     };
 
