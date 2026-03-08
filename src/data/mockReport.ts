@@ -94,6 +94,7 @@ export interface MockReportData {
   scoreBreakdown: ScoreBreakdownItem[];
   scoreExplanation: string;
   blueprint: BlueprintData;
+  dataSources?: string[];
 }
 
 export const mockReport: MockReportData = {
