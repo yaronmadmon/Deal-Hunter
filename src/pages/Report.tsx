@@ -106,8 +106,8 @@ const Report = () => {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
-          <Button variant="default" size="lg">
-            <Download className="mr-1" /> Download PDF
+          <Button variant="default" size="lg" onClick={() => generateReportPdf(r)}>
+            <Download className="mr-1" /> Download Report PDF
           </Button>
           <Button variant="outline" size="lg" onClick={() => navigate("/dashboard")}>
             Analyze Another Idea <ArrowRight className="ml-1" />

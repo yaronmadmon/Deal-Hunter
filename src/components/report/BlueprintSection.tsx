@@ -103,7 +103,13 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
         })}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-8 max-w-lg mx-auto">
+      <div className="flex justify-center mt-8">
+        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea)}>
+          <Download className="mr-1" /> Download Blueprint PDF
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center mt-4 max-w-lg mx-auto">
         This blueprint is generated from market signals and competitive analysis.
         It is intended to guide product development decisions.
       </p>
