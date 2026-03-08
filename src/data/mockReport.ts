@@ -1,6 +1,8 @@
 export interface SignalMetric {
   label: string;
   value: string;
+  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  sourceUrl?: string | null;
 }
 
 export interface CompetitorEntry {
@@ -9,6 +11,8 @@ export interface CompetitorEntry {
   reviews: string;
   downloads: string;
   weakness: string;
+  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  sourceUrl?: string | null;
 }
 
 export interface SentimentData {
@@ -36,6 +40,8 @@ export interface SignalCardData {
   type: "metrics" | "competitors" | "sentiment";
   confidence: "High" | "Medium" | "Low";
   evidenceCount: number;
+  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  sourceUrls?: string[];
   metrics?: SignalMetric[];
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
@@ -56,7 +62,11 @@ export interface RevenueBenchmarkData {
   summary: string;
   range: string;
   basis: string;
+  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  sourceUrls?: string[];
 }
+
+export type DataSourceType = "perplexity" | "firecrawl" | "ai_estimated";
 
 export interface ScoreBreakdownItem {
   label: string;
