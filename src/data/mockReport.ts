@@ -13,6 +13,7 @@ export interface CompetitorEntry {
   weakness: string;
   dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
   sourceUrl?: string | null;
+  websiteUrl?: string | null;
 }
 
 export interface SentimentData {
