@@ -145,7 +145,7 @@ const Report = () => {
             Analysis based on <span className="font-semibold text-foreground">{r.dataSources?.length || totalEvidence}</span> verified data points from {r.dataSources?.length ? `${r.dataSources.length} sources` : "Reddit, App Store, and Google Trends"}.
           </p>
           {r.dataSources && r.dataSources.length > 0 && (
-            <details className="mt-2">
+            <details className="mt-2 mb-6">
               <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
                 View {r.dataSources.length} source URLs
               </summary>
