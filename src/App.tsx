@@ -10,6 +10,7 @@ import Processing from "./pages/Processing";
 import Report from "./pages/Report";
 import BuyCredits from "./pages/BuyCredits";
 import Watchlist from "./pages/Watchlist";
+import Live from "./pages/Live";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
