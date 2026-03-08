@@ -304,30 +304,28 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     {"label": "Growth", "value": 0-20},
     {"label": "Opportunity", "value": 0-20}
    ],
-308:   "keyStats": [
-309:     {"value": "string (bold number)", "label": "short description", "change": "+X% or null", "sentiment": "positive" or "negative" or "neutral"},
-310:     ... 4 items: pick the most impactful numbers from the data (market size, growth %, competitor count, revenue range)
-311:   ],
-312:   "userQuotes": [
-313:     {"text": "REAL quote from a real user — use actual text from Reddit/App Store data", "source": "subreddit or 'App Store Review'", "sourceUrl": "actual URL or null", "upvotes": "1.2k or null", "platform": "reddit" or "app_store" or "twitter" or "other"},
-314:     ... 4-6 items: ONLY use quotes that actually appear in the scraped data
-315:   ],
-316:   "methodology": {
-317:     "totalSources": number of unique source URLs,
-318:     "perplexityQueries": 4,
-319:     "firecrawlScrapes": number of pages scraped,
-320:     "dataPoints": total evidence count across all cards,
-321:     "analysisDate": "today's date as YYYY-MM-DD",
-322:     "confidenceNote": "Brief note on overall data quality and coverage"
-323:   },
-324:   "blueprint": {
-325:     "productConcept": "string",
-326:     "strategicPositioning": "string",
-327:     "coreFeatures": ["strings 5-7 items"],
-328:     "targetUsers": ["strings 3-4 items"],
-329:     "monetization": ["strings 2-3 items"],
-330:     "mvpPlan": ["strings 5-6 items"]
-331:   }
+  "keyStats": [
+    {"value": "bold number", "label": "short description", "change": "+X% or null", "sentiment": "positive or negative or neutral"}
+  ],
+  "userQuotes": [
+    {"text": "REAL quote from a real user", "source": "subreddit or App Store Review", "sourceUrl": "actual URL or null", "upvotes": "1.2k or null", "platform": "reddit or app_store or twitter or other"}
+  ],
+  "methodology": {
+    "totalSources": 0,
+    "perplexityQueries": 4,
+    "firecrawlScrapes": 0,
+    "dataPoints": 0,
+    "analysisDate": "YYYY-MM-DD",
+    "confidenceNote": "Brief note on overall data quality and coverage"
+  },
+  "blueprint": {
+    "productConcept": "string",
+    "strategicPositioning": "string",
+    "coreFeatures": ["strings 5-7 items"],
+    "targetUsers": ["strings 3-4 items"],
+    "monetization": ["strings 2-3 items"],
+    "mvpPlan": ["strings 5-6 items"]
+  }
 }
 
 IMPORTANT: If real data is not available for a section, you MUST set dataSource to "ai_estimated" and sourceUrl to null. NEVER present estimated data as if it came from a real source. Be honest about what is real vs estimated.
