@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download } from "lucide-react";
+import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
@@ -14,9 +14,11 @@ interface Props {
 }
 
 const sections = [
+  { key: "reportSummary", title: "Report-Linked Summary", icon: FileText },
   { key: "productConcept", title: "Product Concept", icon: Package },
   { key: "strategicPositioning", title: "Strategic Positioning", icon: Target },
-  { key: "coreFeatures", title: "Core Features", icon: Lightbulb },
+  { key: "competitiveEdge", title: "Competitive Edge", icon: Shield },
+  { key: "coreFeatures", title: "Sentiment-Driven Features", icon: Lightbulb },
   { key: "targetUsers", title: "Target Users", icon: Users },
   { key: "monetization", title: "Monetization Strategy", icon: DollarSign },
   { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
@@ -71,14 +73,18 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
     <div id="blueprint-content" className="mt-10">
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-bold text-foreground">Startup Blueprint</h2>
-        <p className="text-sm text-muted-foreground mt-1">Generated from your market analysis report.</p>
+        <p className="text-sm text-muted-foreground mt-1">Dynamically generated from your market analysis report.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {sections.map(({ key, title, icon: Icon }) => {
-          const value = blueprint[key];
+          const value = (blueprint as any)[key];
+          if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+          const isFullWidth = key === "reportSummary" || key === "productConcept" || key === "strategicPositioning";
+
           return (
-            <Card key={key} className={key === "productConcept" || key === "strategicPositioning" ? "md:col-span-2" : ""}>
+            <Card key={key} className={isFullWidth ? "md:col-span-2" : ""}>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">

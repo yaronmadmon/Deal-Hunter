@@ -64,8 +64,10 @@ export interface ScoreBreakdownItem {
 }
 
 export interface BlueprintData {
+  reportSummary?: string;
   productConcept: string;
   strategicPositioning: string;
+  competitiveEdge?: string[];
   coreFeatures: string[];
   targetUsers: string[];
   monetization: string[];
@@ -265,36 +267,44 @@ export const mockReport: MockReportData = {
     { label: "Opportunity", value: 12 },
   ],
   blueprint: {
+    reportSummary:
+      "Based on a market score of 71/100 with moderate signal strength, a +34% interest surge in AI note-taking tools, and a clear gap in offline capability among the top 3 competitors, here is your build strategy.",
     productConcept:
-      "An AI-powered note-taking app designed for students that automatically summarizes lectures, supports offline usage, and provides a distraction-free, ultra-simple interface.",
+      "An AI-powered note-taking app that directly addresses the three biggest competitor weaknesses found in the analysis: NoteAI's confusing UX, StudyBuddy's lack of offline mode, and LectureSnap's limited language support. Built for students who need simple, reliable, offline-first lecture capture.",
     strategicPositioning:
-      "Differentiate by addressing the top three competitor weaknesses: complex UX, no offline mode, and aggressive pricing. Position as the 'simple, free-to-start' alternative that just works.",
+      "Position as the 'simple, offline-first' alternative to NoteAI (3.1★, 210k downloads but plagued by UX complaints) and StudyBuddy (no offline mode despite 4.0★ rating). The opportunity gaps show no competitor offers a generous free tier — this is the wedge.",
+    competitiveEdge: [
+      "NoteAI weakness: Complex UI that confuses new users. Your edge: One-tap onboarding with zero-account-required start, directly solving the #1 complaint in app reviews.",
+      "StudyBuddy weakness: No offline mode. Your edge: Full offline-first architecture with automatic sync — critical for the underserved student segment in developing countries with unreliable internet.",
+      "LectureSnap weakness: Limited language support. Your edge: Multi-language transcription targeting the non-native English speaker segment identified in the opportunity analysis.",
+    ],
     coreFeatures: [
-      "Real-time lecture transcription with AI summarization",
-      "Full offline mode with automatic sync",
-      "One-tap onboarding — no account required to start",
-      "Smart flashcard generation from notes",
-      "Collaborative study groups with shared notes",
-      "Multi-language support for international students",
-      "Export to PDF, Notion, and Google Docs",
+      "Real-time lecture transcription with AI summarization — addresses 'I wish there was an app that auto-summarizes my lectures' (1.2k upvotes on r/college)",
+      "Full offline mode with automatic sync — directly solves StudyBuddy's missing feature and the #2 user complaint",
+      "One-tap onboarding, no account required — tackles 'Confusing onboarding flow', the top sentiment complaint (312 negative mentions)",
+      "Smart flashcard generation from notes — fills the feature gap identified in the opportunity analysis",
+      "Multi-language transcription — addresses LectureSnap's weakness and serves international students",
+      "Generous free tier with no aggressive upsells — responds to 'Why do all note apps require a subscription?' (r/students)",
+      "Export to PDF, Notion, and Google Docs — no lock-in, addressing trust issues in the sentiment data",
     ],
     targetUsers: [
-      "College students taking lecture-heavy courses",
-      "Non-native English speakers studying abroad",
-      "Professionals attending frequent meetings",
-      "Students in developing countries with unreliable internet",
+      "College students in lecture-heavy courses — the primary audience driving the +34% interest trend on Reddit and TikTok",
+      "Non-native English speakers studying abroad — underserved by LectureSnap's limited language support",
+      "Students in developing countries — need offline-first due to unreliable internet, completely ignored by current competitors",
+      "Professionals in frequent meetings — adjacent segment validated by growth signals showing 'Builder Activity: Increasing'",
     ],
     monetization: [
-      "Freemium: Core features free, premium AI features at $4.99/mo",
-      "Student discount: 50% off with .edu email verification",
-      "Team plans for study groups at $2.99/user/mo",
+      "Freemium at $4.99/mo premium tier — positioned within the $4K–$12K/mo revenue benchmark for 10K+ download apps in education/productivity",
+      "Student discount: 50% off with .edu verification — targets the primary user segment at an accessible price point within benchmark range",
+      "Team plans at $2.99/user/mo for study groups — captures the collaborative use case identified in growth signals",
     ],
     mvpPlan: [
-      "Week 1–2: Build core note-taking editor with offline storage",
-      "Week 3: Integrate AI summarization API",
-      "Week 4: Add one-tap onboarding and basic export",
-      "Week 5: Beta launch on ProductHunt with 100 student testers",
-      "Week 6: Iterate based on feedback, add flashcard generation",
+      "Week 1–2: Build offline-first note editor with local storage — addresses the highest-signal opportunity (offline gap) and the strongest trend momentum (+34% interest)",
+      "Week 3: Integrate AI summarization and one-tap onboarding — solves the top 2 sentiment pain points (confusing onboarding, need for AI summaries)",
+      "Week 4: Add multi-language transcription and basic export — exploits LectureSnap's weakness, the least defended competitor position",
+      "Week 5: Beta launch targeting r/college and r/edtech communities — these are the exact platforms where demand signals were strongest (247 evidence points)",
+      "Week 6: Iterate on feedback, add flashcard generation — fills the remaining feature gap from opportunity analysis",
+      "Post-MVP: Financial modeling (TAM/SAM/SOM), team plans, and enterprise features — scope-managed to avoid MVP bloat",
     ],
   },
 };
