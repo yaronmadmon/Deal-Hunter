@@ -1,4 +1,4 @@
-import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck } from "lucide-react";
+import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck, Rocket } from "lucide-react";
 import type { MethodologyInfo } from "@/data/mockReport";
 
 interface Props {
