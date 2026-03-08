@@ -71,7 +71,7 @@ const Report = () => {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main id="report-content" className="max-w-6xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-12">
           <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">{r.idea}</h1>
