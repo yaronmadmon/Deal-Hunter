@@ -66,7 +66,7 @@ export interface RevenueBenchmarkData {
   sourceUrls?: string[];
 }
 
-export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "ai_estimated";
+export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthunt" | "ai_estimated";
 
 export interface ScoreBreakdownItem {
   label: string;
