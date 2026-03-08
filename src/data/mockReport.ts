@@ -84,6 +84,30 @@ export interface BlueprintData {
   mvpPlan: string[];
 }
 
+export interface KeyStat {
+  value: string;
+  label: string;
+  change?: string;
+  sentiment?: "positive" | "negative" | "neutral";
+}
+
+export interface UserQuote {
+  text: string;
+  source: string;
+  sourceUrl?: string;
+  upvotes?: string;
+  platform: "reddit" | "app_store" | "twitter" | "product_hunt" | "other";
+}
+
+export interface MethodologyInfo {
+  totalSources: number;
+  perplexityQueries: number;
+  firecrawlScrapes: number;
+  dataPoints: number;
+  analysisDate: string;
+  confidenceNote: string;
+}
+
 export interface MockReportData {
   idea: string;
   overallScore: number;
@@ -95,6 +119,9 @@ export interface MockReportData {
   scoreExplanation: string;
   blueprint: BlueprintData;
   dataSources?: string[];
+  keyStats?: KeyStat[];
+  userQuotes?: UserQuote[];
+  methodology?: MethodologyInfo;
 }
 
 export const mockReport: MockReportData = {
