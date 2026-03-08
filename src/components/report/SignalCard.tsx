@@ -24,6 +24,23 @@ const confidenceBadge = (c: string) => {
   return "nogo" as const;
 };
 
+const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => {
+  const maxUpvotes = Math.max(...launches.map(l => l.upvotes));
+  const now = new Date();
+  const recentLaunches = launches.filter(l => {
+    const diff = now.getTime() - new Date(l.launchDate).getTime();
+    return diff < 180 * 24 * 60 * 60 * 1000; // 6 months
+  });
+
+  if (maxUpvotes >= 500) {
+    return <p className="text-xs font-medium text-primary bg-primary/10 rounded-md px-3 py-2">🔥 Proven demand in this space — top launches have {maxUpvotes.toLocaleString()}+ upvotes</p>;
+  }
+  if (recentLaunches.length >= 2) {
+    return <p className="text-xs font-medium text-warning bg-warning/10 rounded-md px-3 py-2">📈 Active and growing category — {recentLaunches.length} launches in the last 6 months</p>;
+  }
+  return <p className="text-xs text-muted-foreground px-3 py-2">Some related products exist but with moderate traction.</p>;
+};
+
 export const SignalCard = ({ card }: SignalCardProps) => {
   const IconComp = iconMap[card.icon] || TrendingUp;
 
