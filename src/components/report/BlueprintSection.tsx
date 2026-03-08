@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb } from "lucide-react";
+import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateBlueprintPdf } from "@/lib/generateBlueprintPdf";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
   blueprint: BlueprintData;
   analysisId?: string;
+  idea?: string;
 }
 
 const sections = [
@@ -20,7 +22,7 @@ const sections = [
   { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea" }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
@@ -101,7 +103,13 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId }: Pr
         })}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-8 max-w-lg mx-auto">
+      <div className="flex justify-center mt-8">
+        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea)}>
+          <Download className="mr-1" /> Download Blueprint PDF
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center mt-4 max-w-lg mx-auto">
         This blueprint is generated from market signals and competitive analysis.
         It is intended to guide product development decisions.
       </p>
