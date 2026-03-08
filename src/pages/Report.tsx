@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Download, ArrowRight } from "lucide-react";
@@ -7,40 +6,37 @@ import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
+import { ScoreRing } from "@/components/report/ScoreRing";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { mockReport } from "@/data/mockReport";
 
 const Report = () => {
   const navigate = useNavigate();
   const r = mockReport;
 
-  const strengthVariant = r.signalStrength === "Strong" ? "go" as const : r.signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
-
   return (
     <div className="min-h-screen bg-background">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
+      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
         <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
-        <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
-          Dashboard
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
+            Dashboard
+          </Button>
+        </div>
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 py-10">
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-4">{r.idea}</h1>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-baseline gap-2">
-              <span className="font-heading text-5xl font-bold text-foreground">{r.overallScore}</span>
-              <span className="text-muted-foreground text-sm">/100</span>
-            </div>
-            <Badge variant={strengthVariant} className="text-sm px-4 py-1">{r.signalStrength}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mt-3">Analysis based on Reddit, App Store, and Google Trends data.</p>
-          <p className="text-xs text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
+        <div className="mb-12">
+          <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">{r.idea}</h1>
+          <ScoreRing score={r.overallScore} signalStrength={r.signalStrength} />
+          <p className="text-sm text-muted-foreground mt-4">Analysis based on Reddit, App Store, and Google Trends data.</p>
+          <p className="text-[11px] text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
         {/* Signal Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
           {r.signalCards.map((card) => (
             <SignalCard key={card.title} card={card} />
           ))}
@@ -65,7 +61,7 @@ const Report = () => {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
-          <Button variant="hero" size="lg">
+          <Button variant="default" size="lg">
             <Download className="mr-1" /> Download PDF
           </Button>
           <Button variant="outline" size="lg" onClick={() => navigate("/dashboard")}>
@@ -74,7 +70,7 @@ const Report = () => {
         </div>
       </main>
 
-      <footer className="text-center py-8 text-sm text-muted-foreground">
+      <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border/50">
         © 2026 Gold Rush
       </footer>
     </div>
