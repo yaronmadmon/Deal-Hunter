@@ -21,11 +21,13 @@ export interface SignalCardData {
   title: string;
   source: string;
   type: "metrics" | "competitors" | "sentiment";
+  confidence: "High" | "Medium" | "Low";
+  evidenceCount: number;
   metrics?: SignalMetric[];
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
   evidence: string[];
-  verdict: string;
+  insight: string;
 }
 
 export interface OpportunityData {
@@ -34,32 +36,51 @@ export interface OpportunityData {
   positioning: string;
 }
 
+export interface RevenueBenchmarkData {
+  summary: string;
+  range: string;
+  basis: string;
+}
+
 export interface ScoreBreakdownItem {
   label: string;
   value: number;
 }
 
+export interface BlueprintData {
+  productConcept: string;
+  strategicPositioning: string;
+  coreFeatures: string[];
+  targetUsers: string[];
+  monetization: string[];
+  mvpPlan: string[];
+}
+
 export interface MockReportData {
   idea: string;
   overallScore: number;
-  verdict: "GO" | "PIVOT" | "NO-GO";
-  verdictExplanation: string;
+  signalStrength: "Strong" | "Moderate" | "Weak";
   signalCards: SignalCardData[];
   opportunity: OpportunityData;
+  revenueBenchmark: RevenueBenchmarkData;
   scoreBreakdown: ScoreBreakdownItem[];
+  scoreExplanation: string;
+  blueprint: BlueprintData;
 }
 
 export const mockReport: MockReportData = {
   idea: "AI Note Taking App for Students",
   overallScore: 71,
-  verdict: "PIVOT",
-  verdictExplanation:
-    "There is demand but competition is moderate. Success requires strong differentiation.",
+  signalStrength: "Moderate",
+  scoreExplanation:
+    "Market signals indicate real demand and growing interest, but moderate competition means differentiation is critical. The opportunity exists in underserved segments with simpler UX.",
   signalCards: [
     {
       title: "Trend Momentum",
       source: "Social Media + Search Trends",
       type: "metrics",
+      confidence: "High",
+      evidenceCount: 247,
       metrics: [
         { label: "Interest Change (90d)", value: "+34%" },
         { label: "Top Platforms", value: "Reddit, TikTok, X" },
@@ -69,12 +90,14 @@ export const mockReport: MockReportData = {
         '"I wish there was an app that auto-summarizes my lectures" — r/college (1.2k upvotes)',
         '"AI note apps are blowing up on TikTok right now" — r/edtech',
       ],
-      verdict: "Interest around this concept is steadily growing.",
+      insight: "Interest around this concept is steadily growing.",
     },
     {
       title: "Market Saturation",
       source: "App Store + Google Play",
       type: "metrics",
+      confidence: "High",
+      evidenceCount: 162,
       metrics: [
         { label: "Total Competitors", value: "140" },
         { label: "Average Rating", value: "3.7 ★" },
@@ -85,12 +108,14 @@ export const mockReport: MockReportData = {
         "Top competitor Notion holds 30% of the market with a 4.2 rating.",
         "22 new note-taking apps launched in the last 6 months.",
       ],
-      verdict: "Market is moderately saturated but not dominated.",
+      insight: "Market is moderately saturated but not dominated.",
     },
     {
       title: "Competitor Snapshot",
       source: "App Stores",
       type: "competitors",
+      confidence: "High",
+      evidenceCount: 89,
       competitors: [
         {
           name: "NoteAI",
@@ -118,12 +143,14 @@ export const mockReport: MockReportData = {
         "NoteAI has strong downloads but weak retention due to UX issues.",
         "StudyBuddy is the highest-rated but lacks key features.",
       ],
-      verdict: "Top competitor has weak reviews despite strong downloads.",
+      insight: "Top competitor has weak reviews despite strong downloads.",
     },
     {
       title: "Sentiment & Pain Points",
       source: "App Reviews + Social Discussions",
       type: "sentiment",
+      confidence: "Medium",
+      evidenceCount: 534,
       sentiment: {
         complaints: [
           "Confusing onboarding flow",
@@ -140,12 +167,14 @@ export const mockReport: MockReportData = {
         '"The AI is amazing but the app crashes every 10 minutes" — App Store review',
         '"Why do all note apps require a subscription?" — r/students',
       ],
-      verdict: "Users clearly want better usability.",
+      insight: "Users clearly want better usability.",
     },
     {
       title: "Growth Signals",
       source: "Search Trends + Market Activity",
       type: "metrics",
+      confidence: "Medium",
+      evidenceCount: 118,
       metrics: [
         { label: "Search Growth (90d)", value: "+61%" },
         { label: "Builder Activity", value: "Increasing" },
@@ -155,7 +184,7 @@ export const mockReport: MockReportData = {
         "Google Trends shows consistent upward trajectory since Q4 2025.",
         "3 new YC-backed startups entered this space in 2026.",
       ],
-      verdict: "This category is expanding quickly.",
+      insight: "This category is expanding quickly.",
     },
   ],
   opportunity: {
@@ -171,6 +200,11 @@ export const mockReport: MockReportData = {
     ],
     positioning: "Offline-first, ultra-simple UX with a generous free tier.",
   },
+  revenueBenchmark: {
+    summary: "Apps with ~10K downloads in this category average $4K–$12K monthly revenue.",
+    range: "$4K–$12K/mo",
+    basis: "Based on comparable apps with 10K+ downloads in the education/productivity category.",
+  },
   scoreBreakdown: [
     { label: "Trend Momentum", value: 17 },
     { label: "Market Saturation", value: 14 },
@@ -178,4 +212,37 @@ export const mockReport: MockReportData = {
     { label: "Growth", value: 15 },
     { label: "Opportunity", value: 12 },
   ],
+  blueprint: {
+    productConcept:
+      "An AI-powered note-taking app designed for students that automatically summarizes lectures, supports offline usage, and provides a distraction-free, ultra-simple interface.",
+    strategicPositioning:
+      "Differentiate by addressing the top three competitor weaknesses: complex UX, no offline mode, and aggressive pricing. Position as the 'simple, free-to-start' alternative that just works.",
+    coreFeatures: [
+      "Real-time lecture transcription with AI summarization",
+      "Full offline mode with automatic sync",
+      "One-tap onboarding — no account required to start",
+      "Smart flashcard generation from notes",
+      "Collaborative study groups with shared notes",
+      "Multi-language support for international students",
+      "Export to PDF, Notion, and Google Docs",
+    ],
+    targetUsers: [
+      "College students taking lecture-heavy courses",
+      "Non-native English speakers studying abroad",
+      "Professionals attending frequent meetings",
+      "Students in developing countries with unreliable internet",
+    ],
+    monetization: [
+      "Freemium: Core features free, premium AI features at $4.99/mo",
+      "Student discount: 50% off with .edu email verification",
+      "Team plans for study groups at $2.99/user/mo",
+    ],
+    mvpPlan: [
+      "Week 1–2: Build core note-taking editor with offline storage",
+      "Week 3: Integrate AI summarization API",
+      "Week 4: Add one-tap onboarding and basic export",
+      "Week 5: Beta launch on ProductHunt with 100 student testers",
+      "Week 6: Iterate based on feedback, add flashcard generation",
+    ],
+  },
 };

@@ -1,15 +1,15 @@
-import { Badge } from "@/components/ui/badge";
 import type { ScoreBreakdownItem } from "@/data/mockReport";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   breakdown: ScoreBreakdownItem[];
   total: number;
-  verdict: "GO" | "PIVOT" | "NO-GO";
-  verdictExplanation: string;
+  signalStrength: "Strong" | "Moderate" | "Weak";
+  explanation: string;
 }
 
-export const ScoreBreakdown = ({ breakdown, total, verdict, verdictExplanation }: Props) => {
-  const verdictVariant = verdict === "GO" ? "go" as const : verdict === "PIVOT" ? "pivot" as const : "nogo" as const;
+export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }: Props) => {
+  const strengthVariant = signalStrength === "Strong" ? "go" as const : signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
 
   return (
     <div className="bg-card border rounded-2xl p-8">
@@ -34,13 +34,13 @@ export const ScoreBreakdown = ({ breakdown, total, verdict, verdictExplanation }
 
       <div className="border-t pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="text-sm text-muted-foreground mb-1">Total Score</div>
+          <div className="text-sm text-muted-foreground mb-1">Market Signal Score</div>
           <span className="font-heading text-4xl font-bold text-foreground">{total}</span>
           <span className="text-muted-foreground">/100</span>
         </div>
         <div className="text-right">
-          <Badge variant={verdictVariant} className="text-sm px-4 py-1 mb-2">{verdict}</Badge>
-          <p className="text-sm text-muted-foreground max-w-md">{verdictExplanation}</p>
+          <Badge variant={strengthVariant} className="text-sm px-4 py-1 mb-2">{signalStrength}</Badge>
+          <p className="text-sm text-muted-foreground max-w-md">{explanation}</p>
         </div>
       </div>
     </div>

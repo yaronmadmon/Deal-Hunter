@@ -1,16 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { SignalCardData } from "@/data/mockReport";
 
 interface SignalCardProps {
   card: SignalCardData;
 }
 
+const confidenceColor = (c: string) => {
+  if (c === "High") return "text-success";
+  if (c === "Medium") return "text-primary";
+  return "text-muted-foreground";
+};
+
 export const SignalCard = ({ card }: SignalCardProps) => {
   return (
     <Card className="flex flex-col">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-heading">{card.title}</CardTitle>
-        <span className="text-xs text-muted-foreground">{card.source}</span>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle className="text-base font-heading">{card.title}</CardTitle>
+            <span className="text-xs text-muted-foreground">{card.source}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <span className={`text-xs font-medium ${confidenceColor(card.confidence)}`}>
+            {card.confidence} confidence
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Evidence analyzed: {card.evidenceCount} signals
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 pt-0">
         {/* Metrics view */}
@@ -81,9 +100,9 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           ))}
         </div>
 
-        {/* Verdict */}
+        {/* Insight */}
         <p className="text-sm font-medium text-foreground mt-auto pt-2 border-t">
-          {card.verdict}
+          {card.insight}
         </p>
       </CardContent>
     </Card>
