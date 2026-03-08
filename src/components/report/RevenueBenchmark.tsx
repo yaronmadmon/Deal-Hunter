@@ -7,10 +7,10 @@ interface Props {
 
 export const RevenueBenchmark = ({ benchmark }: Props) => {
   return (
-    <div className="bg-card border rounded-2xl p-8 mb-10">
+    <div className="bg-card border rounded-2xl p-8 mb-12">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <DollarSign className="w-5 h-5 text-primary" />
+        <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+          <DollarSign className="w-4 h-4 text-accent" />
         </div>
         <h2 className="font-heading text-xl font-bold text-foreground">Revenue Benchmark</h2>
       </div>

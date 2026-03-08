@@ -15,11 +15,24 @@ export interface SentimentData {
   complaints: string[];
   loves: string[];
   emotion: string;
+  complaintCount: number;
+  positiveCount: number;
+}
+
+export interface ChartPoint {
+  name: string;
+  value: number;
+}
+
+export interface DonutSegment {
+  name: string;
+  value: number;
 }
 
 export interface SignalCardData {
   title: string;
   source: string;
+  icon: string;
   type: "metrics" | "competitors" | "sentiment";
   confidence: "High" | "Medium" | "Low";
   evidenceCount: number;
@@ -28,6 +41,9 @@ export interface SignalCardData {
   sentiment?: SentimentData;
   evidence: string[];
   insight: string;
+  sparkline?: ChartPoint[];
+  donut?: DonutSegment[];
+  lineChart?: ChartPoint[];
 }
 
 export interface OpportunityData {
@@ -78,6 +94,7 @@ export const mockReport: MockReportData = {
     {
       title: "Trend Momentum",
       source: "Social Media + Search Trends",
+      icon: "TrendingUp",
       type: "metrics",
       confidence: "High",
       evidenceCount: 247,
@@ -85,6 +102,20 @@ export const mockReport: MockReportData = {
         { label: "Interest Change (90d)", value: "+34%" },
         { label: "Top Platforms", value: "Reddit, TikTok, X" },
         { label: "Trending Keywords", value: "AI notes, lecture summary, study assistant" },
+      ],
+      sparkline: [
+        { name: "W1", value: 20 },
+        { name: "W2", value: 25 },
+        { name: "W3", value: 22 },
+        { name: "W4", value: 30 },
+        { name: "W5", value: 35 },
+        { name: "W6", value: 28 },
+        { name: "W7", value: 40 },
+        { name: "W8", value: 45 },
+        { name: "W9", value: 42 },
+        { name: "W10", value: 55 },
+        { name: "W11", value: 60 },
+        { name: "W12", value: 67 },
       ],
       evidence: [
         '"I wish there was an app that auto-summarizes my lectures" — r/college (1.2k upvotes)',
@@ -95,6 +126,7 @@ export const mockReport: MockReportData = {
     {
       title: "Market Saturation",
       source: "App Store + Google Play",
+      icon: "PieChart",
       type: "metrics",
       confidence: "High",
       evidenceCount: 162,
@@ -103,6 +135,10 @@ export const mockReport: MockReportData = {
         { label: "Average Rating", value: "3.7 ★" },
         { label: "Top 5 Download Share", value: "70%" },
         { label: "New Apps (6 months)", value: "22" },
+      ],
+      donut: [
+        { name: "Top 5", value: 70 },
+        { name: "Others", value: 30 },
       ],
       evidence: [
         "Top competitor Notion holds 30% of the market with a 4.2 rating.",
@@ -113,6 +149,7 @@ export const mockReport: MockReportData = {
     {
       title: "Competitor Snapshot",
       source: "App Stores",
+      icon: "Users",
       type: "competitors",
       confidence: "High",
       evidenceCount: 89,
@@ -148,6 +185,7 @@ export const mockReport: MockReportData = {
     {
       title: "Sentiment & Pain Points",
       source: "App Reviews + Social Discussions",
+      icon: "MessageCircle",
       type: "sentiment",
       confidence: "Medium",
       evidenceCount: 534,
@@ -162,6 +200,8 @@ export const mockReport: MockReportData = {
           "Fast transcription speed",
         ],
         emotion: "Frustrated but hopeful",
+        complaintCount: 312,
+        positiveCount: 222,
       },
       evidence: [
         '"The AI is amazing but the app crashes every 10 minutes" — App Store review',
@@ -172,6 +212,7 @@ export const mockReport: MockReportData = {
     {
       title: "Growth Signals",
       source: "Search Trends + Market Activity",
+      icon: "Zap",
       type: "metrics",
       confidence: "Medium",
       evidenceCount: 118,
@@ -179,6 +220,17 @@ export const mockReport: MockReportData = {
         { label: "Search Growth (90d)", value: "+61%" },
         { label: "Builder Activity", value: "Increasing" },
         { label: "Discussion Growth", value: "High" },
+      ],
+      lineChart: [
+        { name: "Jan", value: 10 },
+        { name: "Feb", value: 18 },
+        { name: "Mar", value: 15 },
+        { name: "Apr", value: 25 },
+        { name: "May", value: 32 },
+        { name: "Jun", value: 28 },
+        { name: "Jul", value: 38 },
+        { name: "Aug", value: 50 },
+        { name: "Sep", value: 61 },
       ],
       evidence: [
         "Google Trends shows consistent upward trajectory since Q4 2025.",
