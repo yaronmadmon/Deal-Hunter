@@ -285,6 +285,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   </li>
                 ))}
               </ul>
+              {card.sentiment.lovesSourceUrl && (
+                <div className="mt-1.5">
+                  <EvidenceLink
+                    href={card.sentiment.lovesSourceUrl}
+                    label={card.sentiment.lovesSourceLabel || "View discussions"}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Dominant Emotion</span>
