@@ -64,8 +64,10 @@ export interface ScoreBreakdownItem {
 }
 
 export interface BlueprintData {
+  reportSummary?: string;
   productConcept: string;
   strategicPositioning: string;
+  competitiveEdge?: string[];
   coreFeatures: string[];
   targetUsers: string[];
   monetization: string[];
