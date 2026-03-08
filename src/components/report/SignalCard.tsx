@@ -40,13 +40,14 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           <Badge variant={confidenceBadge(card.confidence)} className="text-[10px] px-2 py-0.5">
             {card.confidence}
           </Badge>
           <span className="text-[11px] text-muted-foreground">
             {card.evidenceCount} signals analyzed
           </span>
+          <DataSourceBadge dataSource={card.dataSource} sourceUrls={card.sourceUrls} compact />
         </div>
       </CardHeader>
 
