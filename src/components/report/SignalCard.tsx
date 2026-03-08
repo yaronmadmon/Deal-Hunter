@@ -105,6 +105,52 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           </div>
         )}
 
+        {/* Product Hunt Launches Table */}
+        {card.productHuntLaunches && card.productHuntLaunches.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Product Hunt Launches</div>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-secondary/30">
+                    <TableHead className="h-8 text-[11px]">Product</TableHead>
+                    <TableHead className="h-8 text-[11px]">Tagline</TableHead>
+                    <TableHead className="h-8 text-[11px] text-right">Upvotes</TableHead>
+                    <TableHead className="h-8 text-[11px] text-right">Launch Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {card.productHuntLaunches.map((launch) => (
+                    <TableRow key={launch.name + launch.launchDate}>
+                      <TableCell className="py-2 text-xs font-medium">
+                        {launch.url ? (
+                          <a href={launch.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {launch.name}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : launch.name}
+                      </TableCell>
+                      <TableCell className="py-2 text-xs text-muted-foreground max-w-[180px] truncate">{launch.tagline}</TableCell>
+                      <TableCell className="py-2 text-xs text-right font-medium">{launch.upvotes.toLocaleString()}</TableCell>
+                      <TableCell className="py-2 text-xs text-right text-muted-foreground">{launch.launchDate}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ProductHuntInsight launches={card.productHuntLaunches} />
+          </div>
+        )}
+
+        {card.productHuntLaunches && card.productHuntLaunches.length === 0 && (
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Product Hunt Launches</div>
+            <p className="text-xs text-success font-medium bg-success/10 rounded-md px-3 py-2">
+              🟢 No similar launches found — blue ocean opportunity
+            </p>
+          </div>
+        )}
+
         {/* Metrics */}
         {card.type === "metrics" && card.metrics && (
           <div className="space-y-2">
