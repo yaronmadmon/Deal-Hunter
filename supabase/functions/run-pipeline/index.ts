@@ -303,7 +303,21 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     {"label": "Sentiment", "value": 0-20},
     {"label": "Growth", "value": 0-20},
     {"label": "Opportunity", "value": 0-20}
+   ],
+  "keyStats": [
+    {"value": "bold number", "label": "short description", "change": "+X% or null", "sentiment": "positive or negative or neutral"}
   ],
+  "userQuotes": [
+    {"text": "REAL quote from a real user", "source": "subreddit or App Store Review", "sourceUrl": "actual URL or null", "upvotes": "1.2k or null", "platform": "reddit or app_store or twitter or other"}
+  ],
+  "methodology": {
+    "totalSources": 0,
+    "perplexityQueries": 4,
+    "firecrawlScrapes": 0,
+    "dataPoints": 0,
+    "analysisDate": "YYYY-MM-DD",
+    "confidenceNote": "Brief note on overall data quality and coverage"
+  },
   "blueprint": {
     "productConcept": "string",
     "strategicPositioning": "string",
