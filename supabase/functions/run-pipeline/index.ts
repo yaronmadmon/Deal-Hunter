@@ -486,17 +486,25 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Growth Signals",
-      "source": "Perplexity Sonar — Market Research",
-      "dataSource": "perplexity" or "ai_estimated",
-      "sourceUrls": ["citation URLs"],
+      "source": "Product Hunt + Perplexity Sonar — Market Research",
+      "dataSource": "producthunt" or "perplexity" or "ai_estimated",
+      "sourceUrls": ["citation URLs and PH URLs"],
       "icon": "Zap",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "string", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}],
+      "metrics": [
+        {"label": "PH Similar Launches", "value": "count of similar products found on Product Hunt", "dataSource": "producthunt", "sourceUrl": "url or null"},
+        {"label": "Top PH Upvotes", "value": "highest upvote count among similar PH products", "dataSource": "producthunt", "sourceUrl": "PH product url"},
+        {"label": "Search Growth (90d)", "value": "percentage", "dataSource": "perplexity" or "serper", "sourceUrl": "url or null"},
+        {"label": "Builder Activity", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}
+      ],
+      "productHuntLaunches": [
+        {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
+      ],
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["strings with citations"],
-      "insight": "one sentence"
+      "evidence": ["Include PH launch data: 'ProductName launched on PH with X upvotes' — URL. High upvotes = validated demand. Zero launches = blue ocean."],
+      "insight": "one sentence referencing PH data — e.g. 'X similar products launched on PH with avg Y upvotes, indicating validated demand' OR 'No similar PH launches found, suggesting blue ocean opportunity'"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
