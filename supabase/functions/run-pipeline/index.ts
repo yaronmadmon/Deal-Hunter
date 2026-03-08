@@ -71,6 +71,45 @@ async function firecrawlSearch(
   return { results: data.data || [] };
 }
 
+// ── Serper helper ──────────────────────────────────────────────────
+async function serperSearch(
+  apiKey: string,
+  query: string,
+  type: "search" | "news" = "search",
+  num = 10
+): Promise<{ organic: any[]; searchParameters?: any; knowledgeGraph?: any }> {
+  const res = await fetch(`https://google.serper.dev/${type}`, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query, num }),
+  });
+  const data = await res.json();
+  return {
+    organic: data.organic || [],
+    searchParameters: data.searchParameters || {},
+    knowledgeGraph: data.knowledgeGraph || null,
+  };
+}
+
+async function serperAutoComplete(
+  apiKey: string,
+  query: string
+): Promise<{ suggestions: string[] }> {
+  const res = await fetch("https://google.serper.dev/autocomplete", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query }),
+  });
+  const data = await res.json();
+  return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
+}
+
 // ── Main pipeline ──────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -90,6 +129,7 @@ Deno.serve(async (req) => {
 
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+    const serperKey = Deno.env.get("SERPER_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
     // ── Step 1: Fetching real market data ──
@@ -102,6 +142,9 @@ Deno.serve(async (req) => {
       perplexityRevenue: null,
       firecrawlAppStore: null,
       firecrawlReddit: null,
+      serperTrends: null,
+      serperReddit: null,
+      serperAutoComplete: null,
       sources: [],
     };
 
@@ -151,7 +194,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises]);
+    // Run Serper searches in parallel (Google Trends + Reddit fallback)
+    const serperPromises: Promise<void>[] = [];
+
+    if (serperKey) {
+      // Google search for trends & search volume data
+      serperPromises.push(
+        serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10)
+          .then(r => {
+            rawData.serperTrends = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper trends error:", e))
+      );
+
+      // Reddit fallback via Serper site:reddit.com search
+      serperPromises.push(
+        serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10)
+          .then(r => {
+            rawData.serperReddit = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper reddit error:", e))
+      );
+
+      // Autocomplete for trending keyword suggestions
+      serperPromises.push(
+        serperAutoComplete(serperKey, idea)
+          .then(r => { rawData.serperAutoComplete = r; })
+          .catch(e => console.error("Serper autocomplete error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
@@ -187,6 +262,16 @@ Citations: ${rawData.perplexityVC?.citations?.join(", ") || "none"}
 --- REVENUE BENCHMARK DATA (from Perplexity Sonar with citations) ---
 ${rawData.perplexityRevenue ? rawData.perplexityRevenue.content : "No revenue data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityRevenue?.citations?.join(", ") || "none"}
+
+--- GOOGLE SEARCH & TRENDS DATA (from Serper.dev — real Google results) ---
+${rawData.serperTrends?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper trends data available"}
+${rawData.serperTrends?.knowledgeGraph ? `Knowledge Graph: ${JSON.stringify(rawData.serperTrends.knowledgeGraph)}` : ""}
+
+--- GOOGLE AUTOCOMPLETE SUGGESTIONS (from Serper.dev) ---
+${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data available"}
+
+--- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
+${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
 `;
 
     // Unique source URLs for the report
@@ -206,10 +291,11 @@ Citations: ${rawData.perplexityRevenue?.citations?.join(", ") || "none"}
             content: `You are a market analysis AI for Gold Rush, a startup idea validation tool.
 
 CRITICAL RULES:
-1. You have been given REAL market data collected from Perplexity Sonar (grounded web search) and Firecrawl (web scraping). USE THIS DATA. Do NOT invent numbers.
+1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), and Serper.dev (real Google search results, autocomplete suggestions, and site:reddit.com searches). USE THIS DATA. Do NOT invent numbers.
 2. Every data point MUST include a "dataSource" field with one of these values:
    - "perplexity" — if the data came from Perplexity search results
-   - "firecrawl" — if the data came from Firecrawl web scraping  
+   - "firecrawl" — if the data came from Firecrawl web scraping
+   - "serper" — if the data came from Serper.dev Google search results or autocomplete
    - "ai_estimated" — ONLY if the real data sources didn't cover this specific point
 3. Every data point MUST include a "sourceUrl" field with the actual citation URL, or null if ai_estimated.
 4. Extract REAL numbers from the data provided. If the data says "+34% growth", use that exact number. If the data mentions "500k downloads", use that.
@@ -228,17 +314,17 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   "signalCards": [
     {
       "title": "Trend Momentum",
-      "source": "Perplexity Sonar — Web Search",
-      "dataSource": "perplexity" or "ai_estimated",
+      "source": "Serper.dev + Perplexity Sonar — Google Trends & Search Volume",
+      "dataSource": "serper" or "perplexity" or "ai_estimated",
       "sourceUrls": ["citation URLs"],
       "icon": "TrendingUp",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "string", "value": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrl": "url or null"}],
+      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}],
       "sparkline": [{"name": "W1", "value": number}, ...12 data points],
-      "evidence": ["real quotes with source URLs"],
-      "insight": "one sentence based on real data"
+      "evidence": ["real quotes with source URLs — prefer Serper Google results for trend data"],
+      "insight": "one sentence based on real Google search data"
     },
     {
       "title": "Market Saturation",
@@ -314,6 +400,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "totalSources": 0,
     "perplexityQueries": 4,
     "firecrawlScrapes": 0,
+    "serperSearches": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"

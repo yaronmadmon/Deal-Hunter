@@ -44,10 +44,27 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
           </div>
         </div>
         <div className="flex items-start gap-2">
+          <Search className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.serperSearches ?? 3}</div>
+            <div className="text-[11px] text-muted-foreground">Google Searches</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
+        <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.analysisDate ?? new Date().toLocaleDateString()}</div>
             <div className="text-[11px] text-muted-foreground">Analysis Date</div>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.dataPoints ?? "—"}</div>
+            <div className="text-[11px] text-muted-foreground">Data Points Analyzed</div>
           </div>
         </div>
       </div>
@@ -59,6 +76,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <span className="font-medium text-foreground">Data Collection: </span>
             <span className="text-muted-foreground">
               Market trends, competitor data, and VC activity are sourced via Perplexity Sonar (AI-powered live web search with citations).
+              Google search volume, trending keywords, and autocomplete data are pulled from Serper.dev (real Google results).
               App Store listings, Reddit discussions, and user reviews are scraped directly via Firecrawl.
             </span>
           </div>
@@ -70,6 +88,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <span className="text-muted-foreground">
               All collected data is synthesized by AI grounded in the real sources. Data points are tagged as
               <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">Live Search</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-[10px] font-medium">Google</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>, or
               <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-medium">AI Estimated</span>
               for full transparency.

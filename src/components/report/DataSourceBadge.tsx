@@ -20,6 +20,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     icon: Globe,
     className: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
   },
+  serper: {
+    label: "Serper — Google Search",
+    icon: Search,
+    className: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  },
   ai_estimated: {
     label: "AI Estimated",
     icon: Bot,
@@ -38,7 +43,7 @@ export const DataSourceBadge = ({ dataSource, sourceUrl, sourceUrls, compact }: 
     <div className="flex items-center gap-1.5 flex-wrap">
       <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-normal gap-1 ${config.className}`}>
         <Icon className="w-2.5 h-2.5" />
-        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : "Scraped") : config.label}
+        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : dataSource === "serper" ? "Google" : "Scraped") : config.label}
       </Badge>
       {!compact && urls.length > 0 && (
         <a
