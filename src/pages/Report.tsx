@@ -102,7 +102,7 @@ const Report = () => {
         />
 
         {/* Blueprint Generator */}
-        <BlueprintSection blueprint={r.blueprint} analysisId={id} />
+        <BlueprintSection blueprint={r.blueprint} analysisId={id} idea={r.idea} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
