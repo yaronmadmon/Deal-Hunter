@@ -400,6 +400,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "totalSources": 0,
     "perplexityQueries": 4,
     "firecrawlScrapes": 0,
+    "serperSearches": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"
