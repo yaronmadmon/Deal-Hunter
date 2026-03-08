@@ -211,14 +211,11 @@ const Report = () => {
           explanation={r.scoreExplanation}
         />
 
-        {/* Blueprint Generator */}
-        <BlueprintSection blueprint={r.blueprint} analysisId={id} idea={r.idea} />
-
         {/* Methodology */}
         <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
 
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
+        {/* Download & Track CTAs — right after report content */}
+        <div className="flex flex-col sm:flex-row gap-3 mt-10 mb-12 justify-center">
           <Button variant="default" size="lg" onClick={() => generatePdfFromElement("report-content", `GoldRush_Report_${r.idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
             <Download className="mr-1" /> Download Report PDF
           </Button>
@@ -234,6 +231,9 @@ const Report = () => {
             Analyze Another Idea <ArrowRight className="ml-1" />
           </Button>
         </div>
+
+        {/* Blueprint Generator — below the report */}
+        <BlueprintSection blueprint={r.blueprint} analysisId={id} idea={r.idea} />
       </main>
 
       <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border/50">
