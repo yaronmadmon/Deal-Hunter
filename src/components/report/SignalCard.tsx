@@ -128,7 +128,10 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           <div className="space-y-2.5">
             {card.competitors.map((c) => (
               <div key={c.name} className="border rounded-lg p-3 space-y-1.5 bg-secondary/30">
-                <div className="font-medium text-sm text-foreground">{c.name}</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-sm text-foreground">{c.name}</div>
+                  <DataSourceBadge dataSource={c.dataSource} sourceUrl={c.sourceUrl} compact />
+                </div>
                 <div className="grid grid-cols-3 gap-1 text-[11px] text-muted-foreground">
                   <span>{c.rating}</span>
                   <span>{c.reviews} reviews</span>
