@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generateBlueprintPdf } from "@/lib/generateBlueprintPdf";
+import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
@@ -68,7 +68,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
   }
 
   return (
-    <div className="mt-10">
+    <div id="blueprint-content" className="mt-10">
       <div className="mb-6">
         <h2 className="font-heading text-2xl font-bold text-foreground">Startup Blueprint</h2>
         <p className="text-sm text-muted-foreground mt-1">Generated from your market analysis report.</p>
@@ -104,7 +104,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
       </div>
 
       <div className="flex justify-center mt-8">
-        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea)}>
+        <Button variant="default" size="lg" onClick={() => generatePdfFromElement("blueprint-content", `GoldRush_Blueprint_${idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
           <Download className="mr-1" /> Download Blueprint PDF
         </Button>
       </div>

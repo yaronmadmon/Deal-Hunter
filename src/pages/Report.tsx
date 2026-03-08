@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { Download, ArrowRight } from "lucide-react";
-import { generateReportPdf } from "@/lib/generateReportPdf";
+import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
@@ -71,7 +71,7 @@ const Report = () => {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main id="report-content" className="max-w-6xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-12">
           <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">{r.idea}</h1>
@@ -106,7 +106,7 @@ const Report = () => {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
-          <Button variant="default" size="lg" onClick={() => generateReportPdf(r)}>
+          <Button variant="default" size="lg" onClick={() => generatePdfFromElement("report-content", `GoldRush_Report_${r.idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
             <Download className="mr-1" /> Download Report PDF
           </Button>
           <Button variant="outline" size="lg" onClick={() => navigate("/dashboard")}>
