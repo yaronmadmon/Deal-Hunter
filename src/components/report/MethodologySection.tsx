@@ -50,6 +50,13 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <div className="text-[11px] text-muted-foreground">Google Searches</div>
           </div>
         </div>
+        <div className="flex items-start gap-2">
+          <Rocket className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.productHuntQueries ?? 1}</div>
+            <div className="text-[11px] text-muted-foreground">PH Searches</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
