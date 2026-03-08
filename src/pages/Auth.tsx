@@ -3,17 +3,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { signIn, signUp, user } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  if (user) {
+    navigate("/dashboard", { replace: true });
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate Supabase auth
-    navigate("/dashboard");
+    setSubmitting(true);
+    try {
+      if (isLogin) {
+        const { error } = await signIn(email, password);
+        if (error) { toast.error(error.message); return; }
+      } else {
+        const { error } = await signUp(email, password);
+        if (error) { toast.error(error.message); return; }
+        toast.success("Account created! You're signed in.");
+      }
+      navigate("/dashboard");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -30,10 +52,10 @@ const Auth = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
           </div>
-          <Button type="submit" className="w-full" variant="hero">
-            {isLogin ? "Sign In" : "Sign Up"}
+          <Button type="submit" className="w-full" variant="default" disabled={submitting}>
+            {submitting ? "Please wait…" : isLogin ? "Sign In" : "Sign Up"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}

@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Download, ArrowRight } from "lucide-react";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
@@ -8,11 +9,54 @@ import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { ScoreRing } from "@/components/report/ScoreRing";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import type { MockReportData } from "@/data/mockReport";
 import { mockReport } from "@/data/mockReport";
 
 const Report = () => {
   const navigate = useNavigate();
-  const r = mockReport;
+  const { id } = useParams();
+  const { user, loading } = useAuth();
+  const [report, setReport] = useState<MockReportData | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/auth", { replace: true });
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!id || !user) return;
+
+    supabase.from("analyses")
+      .select("*")
+      .eq("id", id)
+      .single()
+      .then(({ data }) => {
+        if (data?.report_data) {
+          // Use real report data from DB
+          const rd = data.report_data as unknown as MockReportData;
+          setReport({
+            ...rd,
+            overallScore: data.overall_score ?? rd.overallScore,
+            signalStrength: (data.signal_strength as MockReportData["signalStrength"]) ?? rd.signalStrength,
+            blueprint: data.blueprint_data as unknown as MockReportData["blueprint"] ?? rd.blueprint,
+          });
+        } else {
+          // Fallback to mock for demo
+          setReport({ ...mockReport, idea: data?.idea ?? mockReport.idea });
+        }
+      });
+  }, [id, user]);
+
+  if (!report) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading report…</p>
+      </div>
+    );
+  }
+
+  const r = report;
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,7 +101,7 @@ const Report = () => {
         />
 
         {/* Blueprint Generator */}
-        <BlueprintSection blueprint={r.blueprint} />
+        <BlueprintSection blueprint={r.blueprint} analysisId={id} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
