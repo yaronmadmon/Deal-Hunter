@@ -1,5 +1,6 @@
 import { DollarSign } from "lucide-react";
 import type { RevenueBenchmarkData } from "@/data/mockReport";
+import { DataSourceBadge } from "./DataSourceBadge";
 
 interface Props {
   benchmark: RevenueBenchmarkData;
@@ -15,7 +16,8 @@ export const RevenueBenchmark = ({ benchmark }: Props) => {
         <h2 className="font-heading text-xl font-bold text-foreground">Revenue Benchmark</h2>
       </div>
       <p className="text-foreground font-medium mb-2">{benchmark.summary}</p>
-      <p className="text-sm text-muted-foreground">{benchmark.basis}</p>
+      <p className="text-sm text-muted-foreground mb-3">{benchmark.basis}</p>
+      <DataSourceBadge dataSource={benchmark.dataSource} sourceUrls={benchmark.sourceUrls} />
     </div>
   );
 };
