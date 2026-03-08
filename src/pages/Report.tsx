@@ -9,6 +9,9 @@ import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { ScoreRing } from "@/components/report/ScoreRing";
+import { KeyStatsBar } from "@/components/report/KeyStatsBar";
+import { UserQuotesSection } from "@/components/report/UserQuotesSection";
+import { MethodologySection } from "@/components/report/MethodologySection";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +37,6 @@ const Report = () => {
       .single()
       .then(({ data }) => {
         if (data?.report_data) {
-          // Use real report data from DB
           const rd = data.report_data as unknown as MockReportData;
           setReport({
             ...rd,
@@ -43,7 +45,6 @@ const Report = () => {
             blueprint: data.blueprint_data as unknown as MockReportData["blueprint"] ?? rd.blueprint,
           });
         } else {
-          // Fallback to mock for demo
           setReport({ ...mockReport, idea: data?.idea ?? mockReport.idea });
         }
       });
@@ -59,6 +60,9 @@ const Report = () => {
 
   const r = report;
 
+  // Compute total evidence count across all signal cards
+  const totalEvidence = r.signalCards.reduce((sum, c) => sum + (c.evidenceCount || 0), 0);
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
@@ -73,11 +77,11 @@ const Report = () => {
 
       <main id="report-content" className="max-w-6xl mx-auto px-6 py-10">
         {/* Header */}
-        <div className="mb-12">
+        <div className="mb-8">
           <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">{r.idea}</h1>
           <ScoreRing score={r.overallScore} signalStrength={r.signalStrength} />
           <p className="text-sm text-muted-foreground mt-4">
-            Analysis based on {r.dataSources?.length ? `${r.dataSources.length} verified sources` : "Reddit, App Store, and Google Trends data"}.
+            Analysis based on <span className="font-semibold text-foreground">{r.dataSources?.length || totalEvidence}</span> verified data points from {r.dataSources?.length ? `${r.dataSources.length} sources` : "Reddit, App Store, and Google Trends"}.
           </p>
           {r.dataSources && r.dataSources.length > 0 && (
             <details className="mt-2">
@@ -88,7 +92,7 @@ const Report = () => {
                 {r.dataSources.map((url: string, i: number) => (
                   <li key={i}>
                     <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate block max-w-md">
-                      {url}
+                      [{i + 1}] {url}
                     </a>
                   </li>
                 ))}
@@ -98,12 +102,32 @@ const Report = () => {
           <p className="text-[11px] text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
+        {/* Key Stats */}
+        <KeyStatsBar stats={r.keyStats || [
+          { value: `${r.overallScore}/100`, label: "Market Signal Score", sentiment: r.overallScore >= 70 ? "positive" : r.overallScore >= 40 ? "neutral" : "negative" as any },
+          { value: `${totalEvidence}+`, label: "Data Points Analyzed", sentiment: "neutral" as any },
+          { value: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value || "N/A", label: "Interest Change (90d)", change: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
+          { value: r.revenueBenchmark.range, label: "Revenue Potential (est.)", sentiment: "positive" as any },
+        ]} />
+
         {/* Signal Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
           {r.signalCards.map((card) => (
             <SignalCard key={card.title} card={card} />
           ))}
         </div>
+
+        {/* User Quotes */}
+        <UserQuotesSection quotes={r.userQuotes || [
+          ...r.signalCards.flatMap(c => c.evidence.filter(e => e.includes('"')).map(e => {
+            const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
+            return match ? {
+              text: match[1],
+              source: match[2],
+              platform: (match[2].toLowerCase().includes("reddit") ? "reddit" : match[2].toLowerCase().includes("app store") ? "app_store" : "other") as any,
+            } : null;
+          }).filter(Boolean)) as any[],
+        ]} />
 
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
@@ -121,6 +145,9 @@ const Report = () => {
 
         {/* Blueprint Generator */}
         <BlueprintSection blueprint={r.blueprint} analysisId={id} idea={r.idea} />
+
+        {/* Methodology */}
+        <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 justify-center">
