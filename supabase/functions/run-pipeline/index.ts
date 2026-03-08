@@ -23,14 +23,11 @@ Deno.serve(async (req) => {
 
     // Step 1: fetching
     await supabase.from("analyses").update({ status: "fetching" }).eq("id", analysisId);
-
-    // Simulate data fetching delay (replace with real API calls later)
     await new Promise((r) => setTimeout(r, 2000));
 
     // Step 2: analyzing
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    // Use Lovable AI to analyze the idea
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     let reportData = null;
     let overallScore = 65;
@@ -38,14 +35,14 @@ Deno.serve(async (req) => {
 
     if (lovableApiKey) {
       try {
-        const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${lovableApiKey}`,
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-3-flash-preview",
             messages: [
               {
                 role: "system",
@@ -65,7 +62,7 @@ Deno.serve(async (req) => {
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
       "metrics": [{"label": "string", "value": "string"}],
-      "sparkline": [{"name": "W1", "value": number}, ...12 points],
+      "sparkline": [{"name": "W1", "value": number}, ...12 data points],
       "evidence": ["quote strings"],
       "insight": "one sentence"
     },
@@ -111,7 +108,7 @@ Deno.serve(async (req) => {
       "confidence": "Medium",
       "evidenceCount": number,
       "metrics": [{"label": "string", "value": "string"}],
-      "lineChart": [{"name": "month", "value": number}, ...9 points],
+      "lineChart": [{"name": "month", "value": number}, ...9 data points],
       "evidence": ["strings"],
       "insight": "one sentence"
     }
@@ -128,14 +125,14 @@ Deno.serve(async (req) => {
   "blueprint": {
     "productConcept": "string",
     "strategicPositioning": "string",
-    "coreFeatures": ["strings"],
-    "targetUsers": ["strings"],
-    "monetization": ["strings"],
-    "mvpPlan": ["strings"]
+    "coreFeatures": ["strings 5-7 items"],
+    "targetUsers": ["strings 3-4 items"],
+    "monetization": ["strings 2-3 items"],
+    "mvpPlan": ["strings 5-6 items"]
   }
 }
 
-Be realistic and data-driven. Generate plausible market data, competitor names, and user sentiments. Score honestly - not everything should be high.`
+Be realistic and data-driven. Generate plausible market data, competitor names, and user sentiments based on what would realistically exist for this type of product. Score honestly - not everything should be high. Return ONLY the JSON, no markdown formatting.`
               },
               {
                 role: "user",
@@ -150,17 +147,21 @@ Be realistic and data-driven. Generate plausible market data, competitor names, 
         if (aiResponse.ok) {
           const aiResult = await aiResponse.json();
           const content = aiResult.choices?.[0]?.message?.content || "";
-          // Extract JSON from potential markdown wrapping
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             reportData = JSON.parse(jsonMatch[0]);
             overallScore = reportData.overallScore || 65;
             signalStrength = reportData.signalStrength || "Moderate";
           }
+        } else {
+          const errText = await aiResponse.text();
+          console.error("AI gateway error:", aiResponse.status, errText);
         }
       } catch (aiErr) {
-        console.error("AI analysis failed, using defaults:", aiErr);
+        console.error("AI analysis failed:", aiErr);
       }
+    } else {
+      console.error("LOVABLE_API_KEY not found");
     }
 
     // Step 3: complete
@@ -175,18 +176,15 @@ Be realistic and data-driven. Generate plausible market data, competitor names, 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Pipeline error:", err);
-
-    // Try to mark as failed
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, serviceKey);
-      const { analysisId } = await req.json().catch(() => ({}));
-      if (analysisId) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
+      const body = await req.clone().json().catch(() => ({}));
+      if (body.analysisId) {
+        await supabase.from("analyses").update({ status: "failed" }).eq("id", body.analysisId);
       }
     } catch (_) {}
-
     return new Response(JSON.stringify({ error: "Pipeline failed" }), { status: 500, headers: corsHeaders });
   }
 });

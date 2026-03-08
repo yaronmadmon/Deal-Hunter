@@ -21,7 +21,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing analysisId" }), { status: 400, headers: corsHeaders });
     }
 
-    // Get analysis report data
     const { data: analysis } = await supabase.from("analyses").select("*").eq("id", analysisId).single();
     if (!analysis || !analysis.report_data) {
       return new Response(JSON.stringify({ error: "No report data found" }), { status: 404, headers: corsHeaders });
@@ -33,14 +32,14 @@ Deno.serve(async (req) => {
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     if (lovableApiKey) {
       try {
-        const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${lovableApiKey}`,
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
+            model: "google/gemini-3-flash-preview",
             messages: [
               {
                 role: "system",
@@ -71,6 +70,9 @@ Deno.serve(async (req) => {
           if (jsonMatch) {
             blueprint = JSON.parse(jsonMatch[0]);
           }
+        } else {
+          const errText = await aiResponse.text();
+          console.error("Blueprint AI error:", aiResponse.status, errText);
         }
       } catch (aiErr) {
         console.error("Blueprint AI failed:", aiErr);
