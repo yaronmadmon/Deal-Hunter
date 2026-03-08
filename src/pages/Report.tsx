@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { Download, ArrowRight } from "lucide-react";
-import { generateReportPdf } from "@/lib/generateReportPdf";
+import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
