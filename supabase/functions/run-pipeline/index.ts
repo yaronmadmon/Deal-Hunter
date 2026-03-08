@@ -110,6 +110,99 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── Product Hunt helper ─────────────────────────────────────────────
+async function productHuntSearch(
+  apiKey: string,
+  topic: string,
+  first = 10
+): Promise<{ products: any[] }> {
+  const query = `
+    query {
+      posts(order: VOTES, topic: "${topic}", first: ${first}) {
+        edges {
+          node {
+            id
+            name
+            tagline
+            votesCount
+            createdAt
+            url
+            website
+            topics {
+              edges {
+                node { name }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  // Try topic-based first, fall back to keyword search
+  const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const data = await res.json();
+  let products = (data.data?.posts?.edges || []).map((e: any) => e.node);
+
+  // If topic query returned nothing, try a broader keyword search
+  if (products.length === 0) {
+    const fallbackQuery = `
+      query {
+        posts(order: VOTES, first: ${first}) {
+          edges {
+            node {
+              id
+              name
+              tagline
+              votesCount
+              createdAt
+              url
+              website
+            }
+          }
+        }
+      }
+    `;
+    const res2 = await fetch("https://api.producthunt.com/v2/api/graphql", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ query: fallbackQuery }),
+    });
+    const data2 = await res2.json();
+    products = (data2.data?.posts?.edges || []).map((e: any) => e.node);
+    // Filter by keyword match in name/tagline
+    const kw = topic.toLowerCase();
+    products = products.filter((p: any) =>
+      (p.name || "").toLowerCase().includes(kw) ||
+      (p.tagline || "").toLowerCase().includes(kw)
+    );
+  }
+
+  return {
+    products: products.map((p: any) => ({
+      name: p.name,
+      tagline: p.tagline,
+      upvotes: p.votesCount,
+      launchDate: p.createdAt,
+      url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+      website: p.website,
+    })),
+  };
+}
+
 // ── Main pipeline ──────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
