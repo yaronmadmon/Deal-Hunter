@@ -314,17 +314,17 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   "signalCards": [
     {
       "title": "Trend Momentum",
-      "source": "Perplexity Sonar — Web Search",
-      "dataSource": "perplexity" or "ai_estimated",
+      "source": "Serper.dev + Perplexity Sonar — Google Trends & Search Volume",
+      "dataSource": "serper" or "perplexity" or "ai_estimated",
       "sourceUrls": ["citation URLs"],
       "icon": "TrendingUp",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "string", "value": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrl": "url or null"}],
+      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}],
       "sparkline": [{"name": "W1", "value": number}, ...12 data points],
-      "evidence": ["real quotes with source URLs"],
-      "insight": "one sentence based on real data"
+      "evidence": ["real quotes with source URLs — prefer Serper Google results for trend data"],
+      "insight": "one sentence based on real Google search data"
     },
     {
       "title": "Market Saturation",
