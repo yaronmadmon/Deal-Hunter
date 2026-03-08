@@ -383,6 +383,12 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
+
+--- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
+${rawData.productHunt?.products?.length > 0
+  ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
+  : "No similar products found on Product Hunt — this could indicate a blue ocean opportunity"}
+Total PH products found: ${rawData.productHunt?.products?.length ?? 0}
 `;
 
     // Unique source URLs for the report
