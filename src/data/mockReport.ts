@@ -21,6 +21,10 @@ export interface SentimentData {
   emotion: string;
   complaintCount: number;
   positiveCount: number;
+  complaintsSourceUrl?: string;
+  lovesSourceUrl?: string;
+  complaintsSourceLabel?: string;
+  lovesSourceLabel?: string;
 }
 
 export interface ChartPoint {
