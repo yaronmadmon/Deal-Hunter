@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb } from "lucide-react";
+import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateBlueprintPdf } from "@/lib/generateBlueprintPdf";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
