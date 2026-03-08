@@ -44,10 +44,27 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
           </div>
         </div>
         <div className="flex items-start gap-2">
+          <Search className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.serperSearches ?? 3}</div>
+            <div className="text-[11px] text-muted-foreground">Google Searches</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
+        <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.analysisDate ?? new Date().toLocaleDateString()}</div>
             <div className="text-[11px] text-muted-foreground">Analysis Date</div>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.dataPoints ?? "—"}</div>
+            <div className="text-[11px] text-muted-foreground">Data Points Analyzed</div>
           </div>
         </div>
       </div>
