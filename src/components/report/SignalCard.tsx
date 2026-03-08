@@ -9,6 +9,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SignalCardData, ProductHuntLaunch } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
+import { EvidenceLink } from "./EvidenceLink";
 
 interface SignalCardProps {
   card: SignalCardData;
