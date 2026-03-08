@@ -110,6 +110,99 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── Product Hunt helper ─────────────────────────────────────────────
+async function productHuntSearch(
+  apiKey: string,
+  topic: string,
+  first = 10
+): Promise<{ products: any[] }> {
+  const query = `
+    query {
+      posts(order: VOTES, topic: "${topic}", first: ${first}) {
+        edges {
+          node {
+            id
+            name
+            tagline
+            votesCount
+            createdAt
+            url
+            website
+            topics {
+              edges {
+                node { name }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  // Try topic-based first, fall back to keyword search
+  const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const data = await res.json();
+  let products = (data.data?.posts?.edges || []).map((e: any) => e.node);
+
+  // If topic query returned nothing, try a broader keyword search
+  if (products.length === 0) {
+    const fallbackQuery = `
+      query {
+        posts(order: VOTES, first: ${first}) {
+          edges {
+            node {
+              id
+              name
+              tagline
+              votesCount
+              createdAt
+              url
+              website
+            }
+          }
+        }
+      }
+    `;
+    const res2 = await fetch("https://api.producthunt.com/v2/api/graphql", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ query: fallbackQuery }),
+    });
+    const data2 = await res2.json();
+    products = (data2.data?.posts?.edges || []).map((e: any) => e.node);
+    // Filter by keyword match in name/tagline
+    const kw = topic.toLowerCase();
+    products = products.filter((p: any) =>
+      (p.name || "").toLowerCase().includes(kw) ||
+      (p.tagline || "").toLowerCase().includes(kw)
+    );
+  }
+
+  return {
+    products: products.map((p: any) => ({
+      name: p.name,
+      tagline: p.tagline,
+      upvotes: p.votesCount,
+      launchDate: p.createdAt,
+      url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+      website: p.website,
+    })),
+  };
+}
+
 // ── Main pipeline ──────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -130,6 +223,7 @@ Deno.serve(async (req) => {
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
+    const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
     // ── Step 1: Fetching real market data ──
@@ -145,6 +239,7 @@ Deno.serve(async (req) => {
       serperTrends: null,
       serperReddit: null,
       serperAutoComplete: null,
+      productHunt: null,
       sources: [],
     };
 
@@ -226,7 +321,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises]);
+    // Run Product Hunt search
+    const productHuntPromises: Promise<void>[] = [];
+
+    if (productHuntKey) {
+      // Extract a short keyword from the idea for PH search
+      const phKeyword = idea.split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+      productHuntPromises.push(
+        productHuntSearch(productHuntKey, phKeyword, 10)
+          .then(r => {
+            rawData.productHunt = r;
+            rawData.sources.push(...r.products.map((p: any) => ({ url: p.url, type: "producthunt" })));
+          })
+          .catch(e => console.error("Product Hunt error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
@@ -272,6 +383,12 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
+
+--- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
+${rawData.productHunt?.products?.length > 0
+  ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
+  : "No similar products found on Product Hunt — this could indicate a blue ocean opportunity"}
+Total PH products found: ${rawData.productHunt?.products?.length ?? 0}
 `;
 
     // Unique source URLs for the report
@@ -291,11 +408,12 @@ ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.li
             content: `You are a market analysis AI for Gold Rush, a startup idea validation tool.
 
 CRITICAL RULES:
-1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), and Serper.dev (real Google search results, autocomplete suggestions, and site:reddit.com searches). USE THIS DATA. Do NOT invent numbers.
+1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), Serper.dev (real Google search results), and Product Hunt API (real launch data with upvotes). USE THIS DATA. Do NOT invent numbers.
 2. Every data point MUST include a "dataSource" field with one of these values:
    - "perplexity" — if the data came from Perplexity search results
    - "firecrawl" — if the data came from Firecrawl web scraping
    - "serper" — if the data came from Serper.dev Google search results or autocomplete
+   - "producthunt" — if the data came from Product Hunt API (launch data, upvotes)
    - "ai_estimated" — ONLY if the real data sources didn't cover this specific point
 3. Every data point MUST include a "sourceUrl" field with the actual citation URL, or null if ai_estimated.
 4. Extract REAL numbers from the data provided. If the data says "+34% growth", use that exact number. If the data mentions "500k downloads", use that.
@@ -368,17 +486,25 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Growth Signals",
-      "source": "Perplexity Sonar — Market Research",
-      "dataSource": "perplexity" or "ai_estimated",
-      "sourceUrls": ["citation URLs"],
+      "source": "Product Hunt + Perplexity Sonar — Market Research",
+      "dataSource": "producthunt" or "perplexity" or "ai_estimated",
+      "sourceUrls": ["citation URLs and PH URLs"],
       "icon": "Zap",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "string", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}],
+      "metrics": [
+        {"label": "PH Similar Launches", "value": "count of similar products found on Product Hunt", "dataSource": "producthunt", "sourceUrl": "url or null"},
+        {"label": "Top PH Upvotes", "value": "highest upvote count among similar PH products", "dataSource": "producthunt", "sourceUrl": "PH product url"},
+        {"label": "Search Growth (90d)", "value": "percentage", "dataSource": "perplexity" or "serper", "sourceUrl": "url or null"},
+        {"label": "Builder Activity", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}
+      ],
+      "productHuntLaunches": [
+        {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
+      ],
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["strings with citations"],
-      "insight": "one sentence"
+      "evidence": ["Include PH launch data: 'ProductName launched on PH with X upvotes' — URL. High upvotes = validated demand. Zero launches = blue ocean."],
+      "insight": "one sentence referencing PH data — e.g. 'X similar products launched on PH with avg Y upvotes, indicating validated demand' OR 'No similar PH launches found, suggesting blue ocean opportunity'"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
@@ -401,6 +527,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "perplexityQueries": 4,
     "firecrawlScrapes": 0,
     "serperSearches": 0,
+    "productHuntQueries": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"

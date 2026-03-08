@@ -1,4 +1,4 @@
-import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck } from "lucide-react";
+import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck, Rocket } from "lucide-react";
 import type { MethodologyInfo } from "@/data/mockReport";
 
 interface Props {
@@ -21,7 +21,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="flex items-start gap-2">
           <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
@@ -48,6 +48,13 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
           <div>
             <div className="text-lg font-bold text-foreground">{m?.serperSearches ?? 3}</div>
             <div className="text-[11px] text-muted-foreground">Google Searches</div>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <Rocket className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.productHuntQueries ?? 1}</div>
+            <div className="text-[11px] text-muted-foreground">PH Searches</div>
           </div>
         </div>
       </div>
@@ -77,6 +84,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <span className="text-muted-foreground">
               Market trends, competitor data, and VC activity are sourced via Perplexity Sonar (AI-powered live web search with citations).
               Google search volume, trending keywords, and autocomplete data are pulled from Serper.dev (real Google results).
+              Product launch data, upvote counts, and market validation signals come from the Product Hunt API.
               App Store listings, Reddit discussions, and user reviews are scraped directly via Firecrawl.
             </span>
           </div>
@@ -89,7 +97,8 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
               All collected data is synthesized by AI grounded in the real sources. Data points are tagged as
               <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">Live Search</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-[10px] font-medium">Google</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>, or
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>, or
               <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-medium">AI Estimated</span>
               for full transparency.
             </span>
