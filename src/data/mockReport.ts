@@ -104,6 +104,7 @@ export interface MethodologyInfo {
   perplexityQueries: number;
   firecrawlScrapes: number;
   serperSearches?: number;
+  productHuntQueries?: number;
   dataPoints: number;
   analysisDate: string;
   confidenceNote: string;
