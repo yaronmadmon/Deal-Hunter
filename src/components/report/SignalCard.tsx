@@ -114,6 +114,9 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-1">
+              <EvidenceLink href="https://trends.google.com" label="View Source" />
+            </div>
           </div>
         )}
 
