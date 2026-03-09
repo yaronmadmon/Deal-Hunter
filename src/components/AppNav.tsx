@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard } from "lucide-react";
+import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard, Settings } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -28,6 +28,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
     ...(location.pathname !== "/watchlist"
       ? [{ label: "Watchlist", icon: Bookmark, path: "/watchlist" }]
       : []),
+    { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin
       ? [{ label: "Admin", icon: Shield, path: "/admin", className: "text-gold" }]
       : []),
