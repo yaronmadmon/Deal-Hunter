@@ -109,6 +109,9 @@ const Dashboard = () => {
           <Button variant="outline" size="sm" onClick={() => navigate("/live")} className="text-orange-500 border-orange-500/30 hover:bg-orange-500/10">
             <Flame className="w-3.5 h-3.5 mr-1" /> Live
           </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/watchlist")}>
+            <Bookmark className="w-3.5 h-3.5 mr-1" /> Watchlist
+          </Button>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="text-gold border-gold/30 hover:bg-gold/10">
               <Shield className="w-3.5 h-3.5 mr-1" /> Admin
