@@ -260,6 +260,68 @@ async function twitterUserLookup(
   }
 }
 
+async function twitterInfluencerSignals(
+  bearerToken: string,
+  usernames: string[],
+  nicheQuery: string
+): Promise<{ influencers: any[] }> {
+  try {
+    const limitedUsernames = usernames.slice(0, 3);
+    const influencers: any[] = [];
+    const headers = { Authorization: `Bearer ${bearerToken}` };
+
+    for (const uname of limitedUsernames) {
+      try {
+        const userRes = await fetch(
+          `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
+          { headers }
+        );
+        if (!userRes.ok) continue;
+        const userData = await userRes.json();
+        const user = userData.data;
+        if (!user) continue;
+
+        const tweetsRes = await fetch(
+          `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
+          { headers }
+        );
+        let nicheTweet = null;
+        if (tweetsRes.ok) {
+          const tweetsData = await tweetsRes.json();
+          const tweets = tweetsData.data || [];
+          const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
+          const matched = tweets.filter((t: any) =>
+            nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+          );
+          nicheTweet = matched.length > 0
+            ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
+            : tweets[0];
+        }
+
+        influencers.push({
+          name: user.name,
+          username: user.username,
+          description: user.description || '',
+          followers_count: user.public_metrics?.followers_count || 0,
+          latest_niche_tweet: nicheTweet ? {
+            text: nicheTweet.text,
+            created_at: nicheTweet.created_at,
+            like_count: nicheTweet.public_metrics?.like_count || 0,
+            retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
+            id: nicheTweet.id,
+          } : null,
+        });
+      } catch (e) {
+        console.error(`Influencer lookup error for @${uname}:`, e);
+      }
+    }
+    return { influencers };
+  } catch (e) {
+    console.error("Twitter influencer signals error:", e);
+    return { influencers: [] };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
