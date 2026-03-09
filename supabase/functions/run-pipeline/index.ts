@@ -375,6 +375,7 @@ Deno.serve(async (req) => {
     const serperKey = Deno.env.get("SERPER_API_KEY");
     const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const twitterBearerToken = Deno.env.get("TWITTER_BEARER_TOKEN");
 
     // ── Step 1: Fetching real market data ──
     await supabase.from("analyses").update({ status: "fetching" }).eq("id", analysisId);
