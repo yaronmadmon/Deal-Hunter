@@ -237,7 +237,19 @@ const Report = () => {
         </div>
 
         {/* Blueprint Generator — below the report */}
-        <BlueprintSection blueprint={r.blueprint} analysisId={id} idea={r.idea} />
+        <BlueprintSection
+          blueprint={r.blueprint}
+          analysisId={id}
+          idea={r.idea}
+          pdfContext={{
+            overallScore: r.overallScore,
+            signalStrength: r.signalStrength,
+            googleTrendsSparkline: r.signalCards.find(c => c.googleTrendsSparkline)?.googleTrendsSparkline,
+            sparkline: r.signalCards.find(c => c.sparkline)?.sparkline,
+            donut: r.signalCards.find(c => c.donut)?.donut,
+            scoreBreakdown: r.scoreBreakdown,
+          }}
+        />
       </main>
 
       <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border/50">

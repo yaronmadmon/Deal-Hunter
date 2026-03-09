@@ -4,13 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
+import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
   blueprint: BlueprintData;
   analysisId?: string;
   idea?: string;
+  pdfContext?: BlueprintPdfContext;
 }
 
 const sections = [
@@ -24,7 +25,7 @@ const sections = [
   { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea" }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
@@ -110,7 +111,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
       </div>
 
       <div className="flex justify-center mt-8">
-        <Button variant="default" size="lg" onClick={() => generatePdfFromElement("blueprint-content", `GoldRush_Blueprint_${idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
+        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea, pdfContext)}>
           <Download className="mr-1" /> Download Blueprint PDF
         </Button>
       </div>
