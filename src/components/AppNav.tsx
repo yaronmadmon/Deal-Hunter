@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard } from "lucide-react";
@@ -39,7 +39,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50 relative">
+    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50 relative z-50">
       <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
 
       {/* Desktop nav */}
@@ -85,29 +85,48 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
         </Button>
       </div>
 
-      {/* Mobile dropdown */}
+      {/* Backdrop overlay */}
       {open && (
-        <div className="absolute top-full left-0 right-0 bg-background border-b border-border z-50 p-4 flex flex-col gap-2 md:hidden animate-in slide-in-from-top-2 duration-200">
-          {navItems.map((item) => (
-            <Button
-              key={item.path}
-              variant="ghost"
-              className={`justify-start ${item.className ?? ""}`}
-              onClick={() => go(item.path)}
-            >
-              <item.icon className="w-4 h-4 mr-2" /> {item.label}
-            </Button>
-          ))}
-          <div className="flex items-center justify-between pt-2 border-t border-border mt-1">
-            <ThemeToggle />
-            {onSignOut && (
-              <Button variant="ghost" size="sm" onClick={onSignOut} className="text-muted-foreground">
-                <LogOut className="w-4 h-4 mr-1" /> Sign Out
-              </Button>
-            )}
-          </div>
-        </div>
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          onClick={() => setOpen(false)}
+        />
       )}
+
+      {/* Mobile slide-in panel */}
+      <div
+        className={`fixed top-0 right-0 h-full w-72 bg-background border-l border-border z-50 p-6 flex flex-col gap-3 md:hidden transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-heading text-lg font-bold text-foreground">Menu</span>
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {navItems.map((item, i) => (
+          <Button
+            key={item.path}
+            variant="ghost"
+            className={`justify-start h-11 text-base ${item.className ?? ""}`}
+            style={{ animationDelay: `${i * 50}ms` }}
+            onClick={() => go(item.path)}
+          >
+            <item.icon className="w-4 h-4 mr-3" /> {item.label}
+          </Button>
+        ))}
+
+        <div className="mt-auto flex items-center justify-between pt-4 border-t border-border">
+          <ThemeToggle />
+          {onSignOut && (
+            <Button variant="ghost" size="sm" onClick={() => { onSignOut(); setOpen(false); }} className="text-muted-foreground">
+              <LogOut className="w-4 h-4 mr-1" /> Sign Out
+            </Button>
+          )}
+        </div>
+      </div>
     </nav>
   );
 };
