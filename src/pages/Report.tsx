@@ -8,6 +8,7 @@ import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
+import { OpenSourceLandscape } from "@/components/report/OpenSourceLandscape";
 import { ScoreRing } from "@/components/report/ScoreRing";
 import { KeyStatsBar } from "@/components/report/KeyStatsBar";
 import { UserQuotesSection } from "@/components/report/UserQuotesSection";
