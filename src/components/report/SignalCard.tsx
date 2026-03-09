@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SignalCardData, ProductHuntLaunch, TwitterSentimentItem } from "@/data/mockReport";
+import type { SignalCardData, ProductHuntLaunch, TwitterSentimentItem, InfluencerSignal } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { EvidenceLink } from "./EvidenceLink";
 
