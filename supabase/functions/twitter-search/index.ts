@@ -225,7 +225,7 @@ serve(async (req) => {
       }
 
       const now = new Date(Date.now() - 30 * 1000); // 30s buffer to avoid "too recent" error
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 1000); // +1min buffer on start
 
       const searchParams = new URLSearchParams({
         query,
