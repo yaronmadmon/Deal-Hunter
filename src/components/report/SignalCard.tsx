@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink, Twitter, Heart, Repeat2 } from "lucide-react";
+import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink, Twitter, Heart, Repeat2, BadgeCheck } from "lucide-react";
 import {
   AreaChart, Area, PieChart as RePieChart, Pie, Cell,
   LineChart, Line, BarChart, Bar,
@@ -13,6 +13,7 @@ import { EvidenceLink } from "./EvidenceLink";
 
 interface SignalCardProps {
   card: SignalCardData;
+  subtitle?: string;
 }
 
 const iconMap: Record<string, React.ElementType> = {
@@ -24,6 +25,16 @@ const confidenceBadge = (c: string) => {
   if (c === "Medium") return "pivot" as const;
   return "nogo" as const;
 };
+
+/** Safely display a value — never show null, undefined, NaN, or N/A */
+const safeVal = (val: any): string => {
+  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
+    return "Data unavailable";
+  }
+  return String(val);
+};
+
+const isMutedValue = (val: string) => val === "Data unavailable";
 
 const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => {
   const maxUpvotes = Math.max(...launches.map(l => l.upvotes));
@@ -42,7 +53,7 @@ const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => 
   return <p className="text-xs text-muted-foreground px-3 py-2">Some related products exist but with moderate traction.</p>;
 };
 
-export const SignalCard = ({ card }: SignalCardProps) => {
+export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
   const IconComp = iconMap[card.icon] || TrendingUp;
 
   return (
@@ -55,6 +66,7 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             </div>
             <div>
               <CardTitle className="text-sm font-heading">{card.title}</CardTitle>
+              {subtitle && <p className="text-[11px] text-muted-foreground italic">{subtitle}</p>}
               <span className="text-[11px] text-muted-foreground">{card.source}</span>
             </div>
           </div>
@@ -238,20 +250,25 @@ export const SignalCard = ({ card }: SignalCardProps) => {
 
           return (
             <div className="space-y-2">
-              {visibleMetrics.map((m) => (
-                <div key={m.label} className="flex justify-between text-sm items-start gap-2">
-                  <span className="text-muted-foreground">{m.label}</span>
-                  <div className="text-right flex flex-col items-end gap-0.5">
-                    <span className="font-medium text-foreground">{m.value}</span>
-                    {m.dataSource && (
-                      <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
-                    )}
-                    {m.sourceUrl && (
-                      <EvidenceLink href={m.sourceUrl} label="View Source" />
-                    )}
+              {visibleMetrics.map((m) => {
+                const displayValue = safeVal(m.value);
+                return (
+                  <div key={m.label} className="flex justify-between text-sm items-start gap-2">
+                    <span className="text-muted-foreground">{m.label}</span>
+                    <div className="text-right flex flex-col items-end gap-0.5">
+                      <span className={`font-medium ${isMutedValue(displayValue) ? "text-muted-foreground/60 text-xs italic" : "text-foreground"}`}>
+                        {displayValue}
+                      </span>
+                      {m.dataSource && (
+                        <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
+                      )}
+                      {m.sourceUrl && (
+                        <EvidenceLink href={m.sourceUrl} label="View Source" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {hasHiddenPH && (
                 <p className="text-xs text-success font-medium bg-success/10 rounded-md px-3 py-2">
                   🟢 No competing launches found on Product Hunt — this is a blue ocean signal for launch strategy.
@@ -271,9 +288,9 @@ export const SignalCard = ({ card }: SignalCardProps) => {
                   <DataSourceBadge dataSource={c.dataSource} sourceUrl={c.sourceUrl} compact />
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[11px] text-muted-foreground">
-                  <span>{c.rating}</span>
-                  <span>{c.reviews} reviews</span>
-                  <span>{c.downloads} dl</span>
+                  <span>{safeVal(c.rating)}</span>
+                  <span className={isMutedValue(safeVal(c.reviews)) ? "text-muted-foreground/60 italic" : ""}>{safeVal(c.reviews)} {!isMutedValue(safeVal(c.reviews)) && "reviews"}</span>
+                  <span className={isMutedValue(safeVal(c.downloads)) ? "text-muted-foreground/60 italic" : ""}>{safeVal(c.downloads)} {!isMutedValue(safeVal(c.downloads)) && "dl"}</span>
                 </div>
                 <div className="text-[11px] text-destructive/80">⚠ {c.weakness}</div>
                 <div className="flex items-center gap-2 mt-1">
@@ -346,20 +363,20 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           </div>
         )}
 
-        {/* X/Twitter Sentiment Posts */}
+        {/* X/Twitter Sentiment Posts — "What people are saying on X" */}
         {card.twitterSentiment && card.twitterSentiment.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">X/Twitter Posts</div>
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">What people are saying on X</div>
               <DataSourceBadge dataSource="twitter" compact />
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {card.twitterSentiment.map((tweet, idx) => (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {card.twitterSentiment.slice(0, 10).map((tweet, idx) => (
                 <div key={idx} className="border rounded-lg p-3 space-y-1.5 bg-[hsl(204,88%,53%)]/5">
                   <p className="text-xs text-foreground leading-relaxed">{tweet.text}</p>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <div className="flex items-center gap-2">
-                      <Twitter className="w-3 h-3 text-[hsl(204,88%,53%)]" />
+                      <BadgeCheck className="w-3.5 h-3.5 text-[hsl(204,88%,53%)]" />
                       <span className="font-medium">@{tweet.authorUsername}</span>
                       <span>·</span>
                       <span>{tweet.followerCount.toLocaleString()} followers</span>
