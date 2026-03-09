@@ -110,6 +110,48 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── GitHub helper (public API, no key required) ────────────────────
+async function githubSearch(
+  query: string,
+  limit = 10
+): Promise<{ repos: any[] }> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${limit}`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "GoldRush-Pipeline",
+        },
+      }
+    );
+    if (!res.ok) {
+      console.error("GitHub API error:", res.status);
+      return { repos: [] };
+    }
+    const data = await res.json();
+    return {
+      repos: (data.items || []).map((r: any) => ({
+        name: r.full_name,
+        description: r.description || "",
+        stars: r.stargazers_count,
+        forks: r.forks_count,
+        openIssues: r.open_issues_count,
+        language: r.language,
+        url: r.html_url,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        pushedAt: r.pushed_at,
+        watchers: r.watchers_count,
+        topics: r.topics || [],
+      })),
+    };
+  } catch (e) {
+    console.error("GitHub search error:", e);
+    return { repos: [] };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
@@ -240,6 +282,7 @@ Deno.serve(async (req) => {
       serperReddit: null,
       serperAutoComplete: null,
       productHunt: null,
+      github: null,
       sources: [],
     };
 
@@ -337,7 +380,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises]);
+    // Run GitHub search (public API, no key needed)
+    const githubPromises: Promise<void>[] = [];
+    const ghKeyword = idea.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+    githubPromises.push(
+      githubSearch(ghKeyword, 10)
+        .then(r => {
+          rawData.github = r;
+          rawData.sources.push(...r.repos.map((repo: any) => ({ url: repo.url, type: "github" })));
+        })
+        .catch(e => console.error("GitHub error:", e))
+    );
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
@@ -389,6 +444,12 @@ ${rawData.productHunt?.products?.length > 0
   ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
   : "No similar products found on Product Hunt — this could indicate a blue ocean opportunity"}
 Total PH products found: ${rawData.productHunt?.products?.length ?? 0}
+
+--- GITHUB REPOSITORIES (from GitHub API — real open-source data) ---
+${rawData.github?.repos?.length > 0
+  ? rawData.github.repos.map((r: any) => `Repo: ${r.name}\nStars: ${r.stars}\nForks: ${r.forks}\nOpen Issues: ${r.openIssues}\nLanguage: ${r.language}\nLast Push: ${r.pushedAt}\nURL: ${r.url}\nTopics: ${(r.topics || []).join(", ")}`).join("\n---\n")
+  : "No relevant GitHub repositories found — limited open-source competition"}
+Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
 `;
 
     // Unique source URLs for the report
@@ -487,9 +548,9 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Growth Signals",
-      "source": "Product Hunt + Perplexity Sonar — Market Research",
-      "dataSource": "producthunt" or "perplexity" or "ai_estimated",
-      "sourceUrls": ["citation URLs and PH URLs"],
+      "source": "Product Hunt + GitHub + Perplexity Sonar — Market Research",
+      "dataSource": "producthunt" or "github" or "perplexity" or "ai_estimated",
+      "sourceUrls": ["citation URLs, PH URLs, and GitHub URLs"],
       "icon": "Zap",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
@@ -497,15 +558,17 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "metrics": [
         {"label": "PH Similar Launches", "value": "count of similar products found on Product Hunt", "dataSource": "producthunt", "sourceUrl": "url or null"},
         {"label": "Top PH Upvotes", "value": "highest upvote count among similar PH products", "dataSource": "producthunt", "sourceUrl": "PH product url"},
+        {"label": "GitHub Stars (top repo)", "value": "star count of most starred related repo", "dataSource": "github", "sourceUrl": "github repo url"},
+        {"label": "GitHub Repos Found", "value": "count of related open-source repos", "dataSource": "github", "sourceUrl": null},
         {"label": "Search Growth (90d)", "value": "percentage", "dataSource": "perplexity" or "serper", "sourceUrl": "url or null"},
-        {"label": "Builder Activity", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}
+        {"label": "Builder Activity", "value": "string — use GitHub push dates and fork counts to assess", "dataSource": "github" or "string", "sourceUrl": "url or null"}
       ],
       "productHuntLaunches": [
         {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
       ],
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["Include PH launch data: 'ProductName launched on PH with X upvotes' — URL. High upvotes = validated demand. Zero launches = blue ocean."],
-      "insight": "one sentence referencing PH data — e.g. 'X similar products launched on PH with avg Y upvotes, indicating validated demand' OR 'No similar PH launches found, suggesting blue ocean opportunity'"
+      "evidence": ["Include PH launch data AND GitHub data: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. High activity = validated builder interest."],
+      "insight": "one sentence referencing PH + GitHub data — e.g. 'X similar products on PH with avg Y upvotes, and Z open-source repos with total W stars, indicating strong builder activity'"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
@@ -529,6 +592,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "firecrawlScrapes": 0,
     "serperSearches": 0,
     "productHuntQueries": 0,
+    "githubSearches": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"
