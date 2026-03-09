@@ -93,6 +93,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
               Google search volume, trending keywords, and autocomplete data are pulled from Serper.dev (real Google results).
               Product launch data, upvote counts, and market validation signals come from the Product Hunt API.
               App Store listings, Reddit discussions, and user reviews are scraped directly via Firecrawl.
+              Public post sentiment, influencer signals, and tweet volume trends are sourced from the X/Twitter API v2.
             </span>
           </div>
         </div>
