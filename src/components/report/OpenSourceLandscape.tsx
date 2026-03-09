@@ -161,7 +161,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
               )}
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-0.5">
-                  <Star className="w-3 h-3 text-amber-500" /> {repo.stars.toLocaleString()}
+                  <Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}
                 </span>
                 <span className="inline-flex items-center gap-0.5">
                   <GitFork className="w-3 h-3" /> {repo.forks.toLocaleString()}
