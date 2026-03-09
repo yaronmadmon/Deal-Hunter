@@ -65,6 +65,20 @@ export interface SignalCardData {
   googleTrendsSparkline?: ChartPoint[];
   donut?: DonutSegment[];
   lineChart?: ChartPoint[];
+  githubRepos?: GitHubRepoData[];
+}
+
+export interface GitHubRepoData {
+  name: string;
+  description: string;
+  stars: number;
+  forks: number;
+  openIssues: number;
+  language: string | null;
+  url: string;
+  updatedAt: string;
+  pushedAt: string;
+  topics: string[];
 }
 
 export interface OpportunityData {
