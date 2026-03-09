@@ -219,7 +219,90 @@ Return ONLY a JSON array.`
       }
     }
 
-    // ── Section 5: Breakout Idea of the Day ──
+    // ── Section 7: GitHub Trending Repos ──
+    if (section === "all" || section === "github_trending") {
+      try {
+        const ghToken = Deno.env.get("GITHUB_API_TOKEN");
+        const headers: Record<string, string> = {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "GoldRush-LiveFeed",
+        };
+        if (ghToken) headers["Authorization"] = `Bearer ${ghToken}`;
+
+        // Search for recently created repos with high stars in tech/startup categories
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const ghRes = await fetch(
+          `https://api.github.com/search/repositories?q=created:>${since}+stars:>50&sort=stars&order=desc&per_page=8`,
+          { headers }
+        );
+        const ghData = await ghRes.json();
+        const repos = (ghData.items || []).map((r: any) => ({
+          name: r.full_name,
+          description: (r.description || "").slice(0, 120),
+          stars: r.stargazers_count,
+          forks: r.forks_count,
+          language: r.language,
+          url: r.html_url,
+          createdAt: r.created_at,
+        }));
+
+        await saveSnapshot(supabase, "github_trending", repos);
+        results.github_trending = repos;
+      } catch (e) {
+        console.error("github_trending error:", e);
+        results.github_trending = [];
+      }
+    }
+
+    // ── Section 8: Google Trends via Serper ──
+    if (section === "all" || section === "google_trends") {
+      try {
+        const serperKey = Deno.env.get("SERPER_API_KEY");
+        if (serperKey) {
+          // Get trending searches and news
+          const [trendsRes, newsRes] = await Promise.all([
+            fetch("https://google.serper.dev/search", {
+              method: "POST",
+              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+              body: JSON.stringify({ q: "trending startup ideas app 2026", num: 8 }),
+            }),
+            fetch("https://google.serper.dev/news", {
+              method: "POST",
+              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+              body: JSON.stringify({ q: "startup launch funding SaaS 2026", num: 8 }),
+            }),
+          ]);
+
+          const trendsData = await trendsRes.json();
+          const newsData = await newsRes.json();
+
+          const trendItems = (trendsData.organic || []).slice(0, 6).map((r: any) => ({
+            title: r.title,
+            snippet: (r.snippet || "").slice(0, 150),
+            url: r.link,
+            type: "search" as const,
+          }));
+
+          const newsItems = (newsData.organic || []).slice(0, 6).map((r: any) => ({
+            title: r.title,
+            snippet: (r.snippet || "").slice(0, 150),
+            url: r.link,
+            date: r.date || null,
+            type: "news" as const,
+          }));
+
+          const combined = [...newsItems, ...trendItems].slice(0, 8);
+          await saveSnapshot(supabase, "google_trends", combined);
+          results.google_trends = combined;
+        } else {
+          results.google_trends = [];
+        }
+      } catch (e) {
+        console.error("google_trends error:", e);
+        results.google_trends = [];
+      }
+    }
+
     if (section === "all" || section === "breakout_idea") {
       try {
         const trending = Array.isArray(results.trending_searches) ? results.trending_searches as any[] : [];
@@ -227,6 +310,8 @@ Return ONLY a JSON array.`
         const reddit = Array.isArray(results.reddit_pain_points) ? results.reddit_pain_points as any[] : [];
         const niches = Array.isArray(results.growing_niches) ? results.growing_niches as any[] : [];
         const hn = Array.isArray(results.hacker_news) ? results.hacker_news as any[] : [];
+        const ghTrending = Array.isArray(results.github_trending) ? results.github_trending as any[] : [];
+        const gTrends = Array.isArray(results.google_trends) ? results.google_trends as any[] : [];
 
         const candidates = [
           ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: parseInt(String(t.spike).replace(/[^0-9]/g, "")) || 100 })),
@@ -234,6 +319,8 @@ Return ONLY a JSON array.`
           ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: (r.upvotes || 0) })),
           ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: 150 })),
           ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: (h.points || 0) })),
+          ...ghTrending.map((g: any) => ({ name: `Open source: ${g.name.split("/").pop()}`, type: "github", signal: (g.stars || 0) })),
+          ...gTrends.filter((g: any) => g.type === "news").map((g: any) => ({ name: g.title, type: "google_trends", signal: 120 })),
         ];
 
         candidates.sort((a, b) => b.signal - a.signal);
