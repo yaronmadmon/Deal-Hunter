@@ -122,7 +122,9 @@ async function githubSearch(
       "User-Agent": "GoldRush-Pipeline",
     };
     if (ghToken) {
-      headers["Authorization"] = `Bearer ${ghToken}`;
+      // Support both classic (ghp_) and fine-grained (github_pat_) tokens
+      const prefix = ghToken.startsWith("ghp_") ? "token" : "Bearer";
+      headers["Authorization"] = `${prefix} ${ghToken}`;
     }
     const res = await fetch(
       `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${limit}`,
