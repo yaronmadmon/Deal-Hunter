@@ -96,6 +96,8 @@ const Live = () => {
   const [reddit, setReddit] = useState<RedditItem[]>([]);
   const [niches, setNiches] = useState<NicheItem[]>([]);
   const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
+  const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
+  const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
