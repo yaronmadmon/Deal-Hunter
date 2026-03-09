@@ -660,6 +660,122 @@ const Live = () => {
                   </div>
                 )}
               </SectionCard>
+              {/* ── Section 6: GitHub Trending Repos ── */}
+              <SectionCard
+                icon={<Star className="w-5 h-5 text-warning" />}
+                title="GitHub Trending Repos"
+                loading={loadingData}
+              >
+                {githubTrending.length === 0 ? (
+                  <ErrorState />
+                ) : (
+                  <div className="space-y-3">
+                    {githubTrending.map((repo, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={repo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-foreground text-sm hover:text-primary flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {repo.name}
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {repo.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <GitFork className="w-3 h-3" /> {repo.forks}
+                            </span>
+                            {repo.language && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {repo.language}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                          onClick={() =>
+                            analyzeIdea(`Open source tool like ${repo.name.split("/").pop()}`)
+                          }
+                        >
+                          Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* ── Section 7: Google Trends & News ── */}
+              <SectionCard
+                icon={<Search className="w-5 h-5 text-primary" />}
+                title="Google Trends & News"
+                loading={loadingData}
+              >
+                {googleTrends.length === 0 ? (
+                  <ErrorState />
+                ) : (
+                  <div className="space-y-3">
+                    {googleTrends.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {item.type === "news" ? (
+                              <Newspaper className="w-3 h-3 text-primary shrink-0" />
+                            ) : (
+                              <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                            )}
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-foreground text-sm hover:text-primary truncate"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {item.title}
+                            </a>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                            {item.snippet}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-[9px]">
+                              {item.type === "news" ? "News" : "Search"}
+                            </Badge>
+                            {item.date && (
+                              <span className="text-[10px] text-muted-foreground">{item.date}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                          onClick={() => analyzeIdea(item.title)}
+                        >
+                          Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
             </div>
           </div>
         )}
