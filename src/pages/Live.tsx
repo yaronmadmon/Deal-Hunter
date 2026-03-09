@@ -155,6 +155,12 @@ const Live = () => {
         case "hacker_news":
           if (Array.isArray(payload)) setHackerNews(payload);
           break;
+        case "github_trending":
+          if (Array.isArray(payload)) setGithubTrending(payload);
+          break;
+        case "google_trends":
+          if (Array.isArray(payload)) setGoogleTrends(payload);
+          break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
           break;
