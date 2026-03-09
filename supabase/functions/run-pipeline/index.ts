@@ -110,6 +110,48 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── GitHub helper (public API, no key required) ────────────────────
+async function githubSearch(
+  query: string,
+  limit = 10
+): Promise<{ repos: any[] }> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${limit}`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "GoldRush-Pipeline",
+        },
+      }
+    );
+    if (!res.ok) {
+      console.error("GitHub API error:", res.status);
+      return { repos: [] };
+    }
+    const data = await res.json();
+    return {
+      repos: (data.items || []).map((r: any) => ({
+        name: r.full_name,
+        description: r.description || "",
+        stars: r.stargazers_count,
+        forks: r.forks_count,
+        openIssues: r.open_issues_count,
+        language: r.language,
+        url: r.html_url,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        pushedAt: r.pushed_at,
+        watchers: r.watchers_count,
+        topics: r.topics || [],
+      })),
+    };
+  } catch (e) {
+    console.error("GitHub search error:", e);
+    return { repos: [] };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
