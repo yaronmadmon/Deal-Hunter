@@ -394,6 +394,8 @@ Deno.serve(async (req) => {
       serperAutoComplete: null,
       productHunt: null,
       github: null,
+      twitterSentiment: null,
+      twitterCounts: null,
       sources: [],
     };
 
