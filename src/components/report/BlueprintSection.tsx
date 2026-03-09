@@ -25,7 +25,7 @@ const sections = [
   { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea" }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
