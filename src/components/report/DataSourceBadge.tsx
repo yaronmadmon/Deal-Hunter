@@ -58,7 +58,7 @@ export const DataSourceBadge = ({ dataSource, sourceUrl, sourceUrls, compact }: 
     <div className="flex items-center gap-1.5 flex-wrap">
       <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-normal gap-1 ${config.className}`}>
         <Icon className="w-2.5 h-2.5" />
-        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : dataSource === "serper" ? "Google" : dataSource === "producthunt" ? "PH" : dataSource === "github" ? "GitHub" : "Scraped") : config.label}
+        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : dataSource === "serper" ? "Google" : dataSource === "producthunt" ? "PH" : dataSource === "github" ? "GitHub" : dataSource === "twitter" ? "X" : "Scraped") : config.label}
       </Badge>
       {!compact && urls.length > 0 && (
         <a
