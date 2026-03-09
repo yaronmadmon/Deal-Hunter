@@ -28,6 +28,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
     ...(location.pathname !== "/watchlist"
       ? [{ label: "Watchlist", icon: Bookmark, path: "/watchlist" }]
       : []),
+    { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin
       ? [{ label: "Admin", icon: Shield, path: "/admin", className: "text-gold" }]
       : []),
