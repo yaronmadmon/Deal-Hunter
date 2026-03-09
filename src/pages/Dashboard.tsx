@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Coins, LogOut, Flame, Shield } from "lucide-react";
+import { ArrowRight, Coins, LogOut, Flame, Shield, Bookmark } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,14 +70,12 @@ const Dashboard = () => {
         return;
       }
 
-      // Deduct credit
-      await supabase.from("profiles")
-        .update({ credits: credits - 1 })
-        .eq("id", user.id);
-
-      // Log credit usage
-      await supabase.from("credits_log")
-        .insert({ user_id: user.id, amount: -1, reason: "analysis", analysis_id: data.id });
+      // Deduct credit atomically
+      const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
+      if (!deducted) {
+        toast.error("Failed to deduct credit");
+        return;
+      }
 
       // Kick off pipeline
       supabase.functions.invoke("run-pipeline", {
@@ -96,7 +94,11 @@ const Dashboard = () => {
     return "nogo" as const;
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Loading…</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,6 +112,9 @@ const Dashboard = () => {
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/live")} className="text-orange-500 border-orange-500/30 hover:bg-orange-500/10">
             <Flame className="w-3.5 h-3.5 mr-1" /> Live
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/watchlist")}>
+            <Bookmark className="w-3.5 h-3.5 mr-1" /> Watchlist
           </Button>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="text-gold border-gold/30 hover:bg-gold/10">

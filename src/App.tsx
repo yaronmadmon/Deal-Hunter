@@ -9,6 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import Processing from "./pages/Processing";
 import Report from "./pages/Report";
 import BuyCredits from "./pages/BuyCredits";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import ResetPassword from "./pages/ResetPassword";
 import Watchlist from "./pages/Watchlist";
 import Live from "./pages/Live";
 import Admin from "./pages/Admin";
@@ -29,6 +31,8 @@ const App = () => (
           <Route path="/processing/:id" element={<Processing />} />
           <Route path="/report/:id" element={<Report />} />
           <Route path="/buy-credits" element={<BuyCredits />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/live" element={<Live />} />
           <Route path="/admin" element={<Admin />} />
