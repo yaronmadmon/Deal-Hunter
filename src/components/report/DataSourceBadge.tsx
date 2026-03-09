@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Globe, Search, Bot, Rocket, Github } from "lucide-react";
+import { ExternalLink, Globe, Search, Bot, Rocket, Github, Twitter } from "lucide-react";
 import type { DataSourceType } from "@/data/mockReport";
 
 interface Props {
@@ -34,6 +34,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     label: "GitHub — open-source activity",
     icon: Github,
     className: "bg-[hsl(0,0%,20%)]/10 text-[hsl(0,0%,30%)] dark:text-[hsl(0,0%,80%)] border-[hsl(0,0%,20%)]/20",
+  },
+  twitter: {
+    label: "X — public post sentiment",
+    icon: Twitter,
+    className: "bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] border-[hsl(204,88%,53%)]/20",
   },
   ai_estimated: {
     label: "AI Estimated",
