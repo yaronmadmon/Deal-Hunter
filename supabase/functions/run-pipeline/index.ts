@@ -562,32 +562,77 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Run Product Hunt search
+    // Run Product Hunt search — use broader keyword extraction
     const productHuntPromises: Promise<void>[] = [];
 
     if (productHuntKey) {
-      // Extract a short keyword from the idea for PH search
-      const phKeyword = idea.split(/\s+/).slice(0, 3).join(" ").toLowerCase();
+      // Extract 2-3 core keywords from the idea
+      const ideaWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
+      const coreKeywords = ideaWords.slice(0, 3);
+      // Run multiple keyword combos and deduplicate
+      const phSearches = [
+        coreKeywords.join(" "),
+        coreKeywords.slice(0, 2).join(" "),
+        coreKeywords.length > 2 ? `${coreKeywords[0]} ${coreKeywords[2]}` : coreKeywords[0],
+      ].filter((v, i, a) => a.indexOf(v) === i);
+
+      const phResults: any[] = [];
+      for (const kw of phSearches) {
+        productHuntPromises.push(
+          productHuntSearch(productHuntKey, kw, 5)
+            .then(r => {
+              phResults.push(...r.products);
+            })
+            .catch(e => console.error("Product Hunt error:", e))
+        );
+      }
+      // Merge after all resolve
       productHuntPromises.push(
-        productHuntSearch(productHuntKey, phKeyword, 10)
-          .then(r => {
-            rawData.productHunt = r;
-            rawData.sources.push(...r.products.map((p: any) => ({ url: p.url, type: "producthunt" })));
-          })
-          .catch(e => console.error("Product Hunt error:", e))
+        Promise.all(productHuntPromises.slice()).then(() => {
+          // Deduplicate by name
+          const seen = new Set<string>();
+          const unique = phResults.filter(p => {
+            if (seen.has(p.name)) return false;
+            seen.add(p.name);
+            return true;
+          }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
+          rawData.productHunt = { products: unique };
+          rawData.sources.push(...unique.map((p: any) => ({ url: p.url, type: "producthunt" })));
+        })
       );
     }
 
-    // Run GitHub search (public API, no key needed)
+    // Run GitHub search — use broader keyword extraction with multiple queries
     const githubPromises: Promise<void>[] = [];
-    const ghKeyword = idea.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+    const ghWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
+    const ghKeywords = ghWords.slice(0, 3);
+    const ghSearches = [
+      ghKeywords.join(" "),
+      ghKeywords.slice(0, 2).join(" "),
+      ghKeywords.length > 2 ? `${ghKeywords[0]} ${ghKeywords[2]}` : ghKeywords[0],
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    const ghResults: any[] = [];
+    for (const kw of ghSearches) {
+      githubPromises.push(
+        githubSearch(kw, 5)
+          .then(r => {
+            ghResults.push(...r.repos);
+          })
+          .catch(e => console.error("GitHub error:", e))
+      );
+    }
     githubPromises.push(
-      githubSearch(ghKeyword, 10)
-        .then(r => {
-          rawData.github = r;
-          rawData.sources.push(...r.repos.map((repo: any) => ({ url: repo.url, type: "github" })));
-        })
-        .catch(e => console.error("GitHub error:", e))
+      Promise.all(githubPromises.slice()).then(() => {
+        const seen = new Set<string>();
+        const unique = ghResults.filter(r => {
+          if (seen.has(r.name)) return false;
+          seen.add(r.name);
+          return true;
+        }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 10);
+        rawData.github = { repos: unique };
+        rawData.sources.push(...unique.map((repo: any) => ({ url: repo.url, type: "github" })));
+      })
     );
 
     // Run Twitter/X searches in parallel
