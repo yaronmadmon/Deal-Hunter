@@ -1,7 +1,7 @@
 export interface SignalMetric {
   label: string;
   value: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: "perplexity" | "firecrawl" | "twitter" | "ai_estimated";
   sourceUrl?: string | null;
 }
 
