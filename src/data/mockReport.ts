@@ -11,7 +11,7 @@ export interface CompetitorEntry {
   reviews: string;
   downloads: string;
   weakness: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: "perplexity" | "firecrawl" | "twitter" | "ai_estimated";
   sourceUrl?: string | null;
   websiteUrl?: string | null;
 }
