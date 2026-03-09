@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye } from "lucide-react";
-import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
+import { generateReportPdf } from "@/lib/generateReportPdf";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
@@ -220,7 +220,7 @@ const Report = () => {
 
         {/* Download & Track CTAs — right after report content */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 mb-12 justify-center">
-          <Button variant="default" size="lg" onClick={() => generatePdfFromElement("report-content", `GoldRush_Report_${r.idea.replace(/\s+/g, "_").slice(0, 30)}.pdf`)}>
+          <Button variant="default" size="lg" onClick={() => generateReportPdf(r)}>
             <Download className="mr-1" /> Download Report PDF
           </Button>
           <Button
