@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Coins, LogOut, Flame } from "lucide-react";
+import { ArrowRight, Coins, LogOut, Flame, Shield } from "lucide-react";
+import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -26,6 +27,7 @@ const Dashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -109,6 +111,11 @@ const Dashboard = () => {
           <Button variant="outline" size="sm" onClick={() => navigate("/live")} className="text-orange-500 border-orange-500/30 hover:bg-orange-500/10">
             <Flame className="w-3.5 h-3.5 mr-1" /> Live
           </Button>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="text-gold border-gold/30 hover:bg-gold/10">
+              <Shield className="w-3.5 h-3.5 mr-1" /> Admin
+            </Button>
+          )}
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/"); }}>
             <LogOut className="w-4 h-4" />
