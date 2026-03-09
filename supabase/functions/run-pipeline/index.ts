@@ -558,8 +558,10 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "metrics": [
         {"label": "PH Similar Launches", "value": "count of similar products found on Product Hunt", "dataSource": "producthunt", "sourceUrl": "url or null"},
         {"label": "Top PH Upvotes", "value": "highest upvote count among similar PH products", "dataSource": "producthunt", "sourceUrl": "PH product url"},
+        {"label": "GitHub Stars (top repo)", "value": "star count of most starred related repo", "dataSource": "github", "sourceUrl": "github repo url"},
+        {"label": "GitHub Repos Found", "value": "count of related open-source repos", "dataSource": "github", "sourceUrl": null},
         {"label": "Search Growth (90d)", "value": "percentage", "dataSource": "perplexity" or "serper", "sourceUrl": "url or null"},
-        {"label": "Builder Activity", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}
+        {"label": "Builder Activity", "value": "string — use GitHub push dates and fork counts to assess", "dataSource": "github" or "string", "sourceUrl": "url or null"}
       ],
       "productHuntLaunches": [
         {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
