@@ -525,7 +525,30 @@ Deno.serve(async (req) => {
         .catch(e => console.error("GitHub error:", e))
     );
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises]);
+    // Run Twitter/X searches in parallel
+    const twitterPromises: Promise<void>[] = [];
+    if (twitterBearerToken) {
+      const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
+      
+      // Sentiment search — top engaged tweets about the niche
+      twitterPromises.push(
+        twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50)
+          .then(r => {
+            rawData.twitterSentiment = r;
+            rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
+          })
+          .catch(e => console.error("Twitter sentiment error:", e))
+      );
+      
+      // Tweet volume counts over 7 days
+      twitterPromises.push(
+        twitterTweetCounts(twitterBearerToken, twitterKeyword)
+          .then(r => { rawData.twitterCounts = r; })
+          .catch(e => console.error("Twitter counts error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
