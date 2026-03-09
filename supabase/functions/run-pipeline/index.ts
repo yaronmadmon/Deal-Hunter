@@ -110,20 +110,23 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
-// ── GitHub helper (public API, no key required) ────────────────────
+// ── GitHub helper (authenticated for higher rate limits) ────────────────────
 async function githubSearch(
   query: string,
   limit = 10
 ): Promise<{ repos: any[] }> {
   try {
+    const ghToken = Deno.env.get("GITHUB_API_TOKEN");
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "GoldRush-Pipeline",
+    };
+    if (ghToken) {
+      headers["Authorization"] = `Bearer ${ghToken}`;
+    }
     const res = await fetch(
       `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${limit}`,
-      {
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "GoldRush-Pipeline",
-        },
-      }
+      { headers }
     );
     if (!res.ok) {
       console.error("GitHub API error:", res.status);
