@@ -174,6 +174,9 @@ export interface MockReportData {
   signalCards: SignalCardData[];
   opportunity: OpportunityData;
   revenueBenchmark: RevenueBenchmarkData;
+  nicheAnalysis?: NicheAnalysisData;
+  unitEconomics?: UnitEconomicsData;
+  buildComplexity?: BuildComplexityData;
   scoreBreakdown: ScoreBreakdownItem[];
   scoreExplanation: string;
   blueprint: BlueprintData;
