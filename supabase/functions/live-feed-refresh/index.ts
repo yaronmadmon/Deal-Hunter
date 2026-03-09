@@ -157,15 +157,17 @@ Return ONLY a JSON array.`
     // ── Section 3: Reddit Pain Points ──
     if (section === "all" || section === "reddit_pain_points") {
       try {
-        const raw = await askPerplexity(
-          `Search Reddit communities like r/entrepreneur, r/startups, r/SaaS, and r/Entrepreneur for the most discussed startup pain points and problems this week. Find 6 real trending posts or recurring complaints. For each, return a JSON object with:
-- "title": the post title or problem description (max 100 chars)
-- "problemSummary": a concise 8-12 word summary of the core problem
-- "subreddit": which subreddit e.g. "r/startups"
-- "upvotes": approximate upvote count (number)
-Return ONLY a JSON array.`
-        );
-        const items = parseJsonArray(raw).slice(0, 6);
+        const prompt = `Find 6 real startup pain points trending on Reddit (r/startups, r/SaaS, r/entrepreneur) this week. Return a JSON array where each object has: "title" (post title, max 100 chars), "problemSummary" (8-12 word summary), "subreddit" (e.g. "r/startups"), "upvotes" (number). Example: [{"title":"Can't find good devs","problemSummary":"Hiring qualified developers is extremely difficult for startups","subreddit":"r/startups","upvotes":342}]. Return ONLY the JSON array.`;
+        
+        let items = parseJsonArray(await askPerplexity(prompt)).slice(0, 6);
+        
+        // Fallback to Lovable AI if Perplexity didn't return parseable data
+        if (items.length === 0) {
+          console.log("Reddit: Perplexity failed, trying Lovable AI fallback");
+          const fallback = await askAI(prompt);
+          items = parseJsonArray(fallback).slice(0, 6);
+        }
+        
         await saveSnapshot(supabase, "reddit_pain_points", items);
         results.reddit_pain_points = items;
       } catch (e) {
