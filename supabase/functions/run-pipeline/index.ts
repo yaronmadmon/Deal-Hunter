@@ -444,6 +444,12 @@ ${rawData.productHunt?.products?.length > 0
   ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
   : "No similar products found on Product Hunt — this could indicate a blue ocean opportunity"}
 Total PH products found: ${rawData.productHunt?.products?.length ?? 0}
+
+--- GITHUB REPOSITORIES (from GitHub API — real open-source data) ---
+${rawData.github?.repos?.length > 0
+  ? rawData.github.repos.map((r: any) => `Repo: ${r.name}\nStars: ${r.stars}\nForks: ${r.forks}\nOpen Issues: ${r.openIssues}\nLanguage: ${r.language}\nLast Push: ${r.pushedAt}\nURL: ${r.url}\nTopics: ${(r.topics || []).join(", ")}`).join("\n---\n")
+  : "No relevant GitHub repositories found — limited open-source competition"}
+Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
 `;
 
     // Unique source URLs for the report
