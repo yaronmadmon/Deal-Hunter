@@ -282,6 +282,7 @@ Deno.serve(async (req) => {
       serperReddit: null,
       serperAutoComplete: null,
       productHunt: null,
+      github: null,
       sources: [],
     };
 
