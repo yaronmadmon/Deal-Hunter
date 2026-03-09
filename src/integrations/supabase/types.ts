@@ -244,6 +244,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_credit: { Args: { analysis_id?: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
