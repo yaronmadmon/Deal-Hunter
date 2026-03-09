@@ -48,20 +48,6 @@ const Watchlist = () => {
 
   const handleReanalyze = async (item: WatchlistItem) => {
     if (!user) return;
-
-    // Check credits
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("credits")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || profile.credits <= 0) {
-      toast.error("No credits remaining. Buy more to re-analyze.");
-      navigate("/buy-credits");
-      return;
-    }
-
     setReanalyzing(item.id);
 
     try {
@@ -77,15 +63,13 @@ const Watchlist = () => {
         return;
       }
 
-      // Deduct credit
-      await supabase
-        .from("profiles")
-        .update({ credits: profile.credits - 1 })
-        .eq("id", user.id);
-
-      await supabase
-        .from("credits_log")
-        .insert({ user_id: user.id, amount: -1, reason: "re-analysis", analysis_id: newAnalysis.id });
+      // Deduct credit atomically
+      const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: newAnalysis.id });
+      if (!deducted) {
+        toast.error("No credits remaining. Buy more to re-analyze.");
+        navigate("/buy-credits");
+        return;
+      }
 
       // Store previous score before updating
       await supabase
