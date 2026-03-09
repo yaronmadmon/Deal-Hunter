@@ -30,6 +30,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     icon: Rocket,
     className: "bg-[hsl(16,100%,50%)]/10 text-[hsl(16,100%,45%)] dark:text-[hsl(16,100%,60%)] border-[hsl(16,100%,50%)]/20",
   },
+  github: {
+    label: "GitHub — open-source activity",
+    icon: Github,
+    className: "bg-[hsl(0,0%,20%)]/10 text-[hsl(0,0%,30%)] dark:text-[hsl(0,0%,80%)] border-[hsl(0,0%,20%)]/20",
+  },
   ai_estimated: {
     label: "AI Estimated",
     icon: Bot,
