@@ -243,6 +243,11 @@ Return ONLY a JSON array.`
 });
 
 async function saveSnapshot(supabase: any, sectionName: string, data: any) {
+  // Don't overwrite existing data with empty results
+  if (Array.isArray(data) && data.length === 0) {
+    console.log(`Skipping save for ${sectionName} — empty data, preserving existing`);
+    return;
+  }
   await supabase.from("live_feed_snapshots").delete().eq("section_name", sectionName);
   await supabase.from("live_feed_snapshots").insert({
     section_name: sectionName,
