@@ -4,11 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Coins, LogOut, Flame, Shield, Bookmark } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 
 interface AnalysisRow {
@@ -102,31 +102,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50">
-        <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-card border rounded-full px-3 py-1.5 text-sm">
-            <Coins className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-foreground">{credits}</span>
-            <span className="text-muted-foreground">credits</span>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => navigate("/live")} className="text-orange-500 border-orange-500/30 hover:bg-orange-500/10">
-            <Flame className="w-3.5 h-3.5 mr-1" /> Live
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/watchlist")}>
-            <Bookmark className="w-3.5 h-3.5 mr-1" /> Watchlist
-          </Button>
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => navigate("/admin")} className="text-gold border-gold/30 hover:bg-gold/10">
-              <Shield className="w-3.5 h-3.5 mr-1" /> Admin
-            </Button>
-          )}
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/"); }}>
-            <LogOut className="w-4 h-4" />
-          </Button>
-        </div>
-      </nav>
+      <AppNav credits={credits} onSignOut={() => { signOut(); navigate("/"); }} />
 
       <main className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="font-heading text-3xl font-bold text-foreground mb-2">Validate an Idea</h1>
