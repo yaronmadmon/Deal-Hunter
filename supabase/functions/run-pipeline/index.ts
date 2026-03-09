@@ -548,9 +548,9 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Growth Signals",
-      "source": "Product Hunt + Perplexity Sonar — Market Research",
-      "dataSource": "producthunt" or "perplexity" or "ai_estimated",
-      "sourceUrls": ["citation URLs and PH URLs"],
+      "source": "Product Hunt + GitHub + Perplexity Sonar — Market Research",
+      "dataSource": "producthunt" or "github" or "perplexity" or "ai_estimated",
+      "sourceUrls": ["citation URLs, PH URLs, and GitHub URLs"],
       "icon": "Zap",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
