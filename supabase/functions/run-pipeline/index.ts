@@ -567,8 +567,8 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
         {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
       ],
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["Include PH launch data: 'ProductName launched on PH with X upvotes' — URL. High upvotes = validated demand. Zero launches = blue ocean."],
-      "insight": "one sentence referencing PH data — e.g. 'X similar products launched on PH with avg Y upvotes, indicating validated demand' OR 'No similar PH launches found, suggesting blue ocean opportunity'"
+      "evidence": ["Include PH launch data AND GitHub data: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. High activity = validated builder interest."],
+      "insight": "one sentence referencing PH + GitHub data — e.g. 'X similar products on PH with avg Y upvotes, and Z open-source repos with total W stars, indicating strong builder activity'"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
