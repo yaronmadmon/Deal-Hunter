@@ -66,6 +66,22 @@ interface BreakoutItem {
   summary: string;
   generatedAt: string;
 }
+interface GitHubTrendingItem {
+  name: string;
+  description: string;
+  stars: number;
+  forks: number;
+  language: string | null;
+  url: string;
+  createdAt: string;
+}
+interface GoogleTrendItem {
+  title: string;
+  snippet: string;
+  url: string;
+  date?: string | null;
+  type: "search" | "news";
+}
 
 const CACHE_HOURS = 4;
 
