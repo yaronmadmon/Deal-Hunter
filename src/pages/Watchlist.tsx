@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { RefreshCw, Trash2, TrendingUp, TrendingDown, Minus, ArrowLeft } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
