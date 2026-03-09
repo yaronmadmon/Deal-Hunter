@@ -531,11 +531,11 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}],
+      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "News Coverage", "value": "X articles in last 30 days", "dataSource": "serper", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}],
       "sparkline": [{"name": "W1", "value": number}, ...12 data points representing relative search interest over the last 12 weeks],
-      "googleTrendsSparkline": [{"name": "Mon1", "value": number}, {"name": "Mon2", "value": number}, ...up to 12 monthly data points] — IMPORTANT: generate this from Serper Google Trends data. Values should represent relative search interest (0-100 scale). Use month abbreviations (Jan, Feb, Mar, etc.) as names. If Serper data is available, base values on real search volume trends. Mark dataSource as "serper" if based on real data.
-      "evidence": ["real quotes with source URLs — prefer Serper Google results for trend data"],
-      "insight": "one sentence based on real Google search data"
+      "googleTrendsSparkline": [{"name": "Apr", "value": number}, {"name": "May", "value": number}, ...12 monthly data points covering the last 12 months] — CRITICAL: You MUST generate this array. Use month abbreviations (Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Jan, Feb, Mar) as names. Values are relative search interest on a 0-100 scale. Use the Serper trends data, monthly trend data, and news coverage timeline dates to model realistic month-over-month interest. If news articles cluster in recent months, show an upward trend. If Serper snippets mention growth percentages, reflect those in the curve shape. Always generate 12 data points. dataSource should be "serper".
+      "evidence": ["real quotes with source URLs — include news article titles and dates from Serper news data, and trend snippets from Serper search results"],
+      "insight": "one sentence based on real Google search and news coverage data"
     },
     {
       "title": "Market Saturation",
