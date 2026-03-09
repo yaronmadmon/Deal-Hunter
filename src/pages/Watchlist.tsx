@@ -7,8 +7,6 @@ import { RefreshCw, Trash2, TrendingUp, TrendingDown, Minus, ArrowLeft } from "l
 import { AppNav } from "@/components/AppNav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { NotificationBell } from "@/components/NotificationBell";
 import { toast } from "sonner";
 
 interface WatchlistItem {
