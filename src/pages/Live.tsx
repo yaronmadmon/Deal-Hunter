@@ -45,6 +45,15 @@ interface NicheItem {
   name: string;
   description: string;
 }
+interface HNItem {
+  title: string;
+  points: number;
+  comments: number;
+  author: string;
+  url: string;
+  hnUrl: string;
+  createdAt: string;
+}
 interface BreakoutItem {
   name: string;
   category: string;
