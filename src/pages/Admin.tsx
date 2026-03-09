@@ -1,12 +1,15 @@
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { AdminOverview } from "@/components/admin/AdminOverview";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { AnalysisManagement } from "@/components/admin/AnalysisManagement";
 import { CreditsManagement } from "@/components/admin/CreditsManagement";
 import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
+import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
+import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame } from "lucide-react";
+import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame, LayoutDashboard, Bell, Eye } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -31,8 +34,12 @@ const AdminPage = () => {
 
         {/* Content */}
         <main className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="users" className="space-y-6">
-            <TabsList className="bg-muted/50 p-1">
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="bg-muted/50 p-1 flex-wrap h-auto gap-1">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Users</span>
@@ -45,11 +52,23 @@ const AdminPage = () => {
                 <CreditCard className="h-4 w-4" />
                 <span className="hidden sm:inline">Credits</span>
               </TabsTrigger>
+              <TabsTrigger value="watchlist" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Watchlist</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Notifications</span>
+              </TabsTrigger>
               <TabsTrigger value="live-feed" className="flex items-center gap-2">
                 <Flame className="h-4 w-4" />
                 <span className="hidden sm:inline">Live Feed</span>
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="overview">
+              <AdminOverview />
+            </TabsContent>
 
             <TabsContent value="users">
               <UserManagement />
@@ -61,6 +80,14 @@ const AdminPage = () => {
 
             <TabsContent value="credits">
               <CreditsManagement />
+            </TabsContent>
+
+            <TabsContent value="watchlist">
+              <WatchlistManagement />
+            </TabsContent>
+
+            <TabsContent value="notifications">
+              <NotificationsManagement />
             </TabsContent>
 
             <TabsContent value="live-feed">
