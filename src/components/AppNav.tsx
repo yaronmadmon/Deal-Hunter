@@ -39,7 +39,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50 relative">
+    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50 relative z-50">
       <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
 
       {/* Desktop nav */}
