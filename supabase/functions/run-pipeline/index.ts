@@ -645,12 +645,13 @@ Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? 
             content: `You are a market analysis AI for Gold Rush, a startup idea validation tool.
 
 CRITICAL RULES:
-1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), Serper.dev (real Google search results), and Product Hunt API (real launch data with upvotes). USE THIS DATA. Do NOT invent numbers.
+1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), Serper.dev (real Google search results), Product Hunt API (real launch data with upvotes), GitHub API, and X/Twitter API v2 (real public posts and tweet volume). USE THIS DATA. Do NOT invent numbers.
 2. Every data point MUST include a "dataSource" field with one of these values:
    - "perplexity" — if the data came from Perplexity search results
    - "firecrawl" — if the data came from Firecrawl web scraping
    - "serper" — if the data came from Serper.dev Google search results or autocomplete
    - "producthunt" — if the data came from Product Hunt API (launch data, upvotes)
+   - "twitter" — if the data came from X/Twitter API (tweets, sentiment, volume)
    - "ai_estimated" — ONLY if the real data sources didn't cover this specific point
 3. Every data point MUST include a "sourceUrl" field with the actual citation URL, or null if ai_estimated.
 4. Extract REAL numbers from the data provided. If the data says "+34% growth", use that exact number. If the data mentions "500k downloads", use that.
