@@ -609,6 +609,10 @@ Deno.serve(async (req) => {
           .then(r => { rawData.twitterCounts = r; })
           .catch(e => console.error("Twitter counts error:", e))
       );
+
+      // Influencer / founder signals — AI will provide usernames from competitor data
+      // For now, we pass the niche query so the AI prompt can instruct including influencer data
+      rawData.twitterInfluencerNicheQuery = twitterKeyword;
     }
 
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
