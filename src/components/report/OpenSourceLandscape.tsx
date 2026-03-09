@@ -88,7 +88,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
           </div>
           <div className="bg-secondary/40 rounded-lg p-3 text-center">
             <div className="text-lg font-bold text-foreground flex items-center justify-center gap-1">
-              <Star className="w-3.5 h-3.5 text-amber-500" />
+              <Star className="w-3.5 h-3.5 text-warning" />
               {totalStars.toLocaleString()}
             </div>
             <div className="text-[11px] text-muted-foreground">Total Stars</div>
