@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText } from "lucide-react";
+import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText, Cpu, Rocket, ShieldAlert, CheckCircle, UserCheck, BadgeDollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
@@ -21,8 +21,15 @@ const sections = [
   { key: "competitiveEdge", title: "Competitive Edge", icon: Shield },
   { key: "coreFeatures", title: "Sentiment-Driven Features", icon: Lightbulb },
   { key: "targetUsers", title: "Target Users", icon: Users },
+  { key: "primaryLaunchSegment", title: "Primary Launch Segment", icon: UserCheck },
   { key: "monetization", title: "Monetization Strategy", icon: DollarSign },
-  { key: "mvpPlan", title: "MVP Plan", icon: ListChecks },
+  { key: "monetizationValidation", title: "Monetization Validation Plan", icon: BadgeDollarSign },
+  { key: "mvpPlan", title: "MVP Timeline (Realistic)", icon: ListChecks },
+  { key: "techStack", title: "Technical Architecture", icon: Cpu },
+  { key: "techTradeoffs", title: "Technical Tradeoffs & Honest Calls", icon: ShieldAlert },
+  { key: "goToMarket", title: "Go-to-Market Plan", icon: Rocket },
+  { key: "competitiveResponse", title: "Competitive Response Scenario", icon: Shield },
+  { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle },
 ] as const;
 
 export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext }: Props) => {
@@ -70,6 +77,49 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
     );
   }
 
+  // Render MVP phasing as a special section if present
+  const renderPhasing = () => {
+    if (!blueprint.mvpPhasing) return null;
+    return (
+      <Card className="md:col-span-2">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ListChecks className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="font-heading font-semibold text-foreground">MVP vs Phase 2 Phasing</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary" /> MVP (Launch)
+              </h4>
+              <ul className="space-y-1.5">
+                {blueprint.mvpPhasing.mvp.map((item, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-primary mt-0.5 font-bold">{i + 1}.</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-accent" /> Phase 2 (Post-Launch)
+              </h4>
+              <ul className="space-y-1.5">
+                {blueprint.mvpPhasing.phase2.map((item, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-accent mt-0.5 font-bold">{i + 1}.</span> {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div id="blueprint-content" className="mt-10">
       <div className="mb-6">
@@ -82,7 +132,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
           const value = (blueprint as any)[key];
           if (!value || (Array.isArray(value) && value.length === 0)) return null;
 
-          const isFullWidth = key === "reportSummary" || key === "productConcept" || key === "strategicPositioning";
+          const isFullWidth = ["reportSummary", "productConcept", "strategicPositioning", "primaryLaunchSegment", "goToMarket", "competitiveResponse"].includes(key);
 
           return (
             <Card key={key} className={isFullWidth ? "md:col-span-2" : ""}>
@@ -108,6 +158,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
             </Card>
           );
         })}
+        {renderPhasing()}
       </div>
 
       <div className="flex justify-center mt-8">

@@ -180,8 +180,15 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     { title: "Competitive Edge", content: blueprint.competitiveEdge || [], color: C.gold },
     { title: "Core Features", content: blueprint.coreFeatures, color: C.indigo },
     { title: "Target Users", content: blueprint.targetUsers, color: C.teal },
+    { title: "Primary Launch Segment", content: blueprint.primaryLaunchSegment || "", color: C.success },
     { title: "Monetization Strategy", content: blueprint.monetization, color: C.success },
-    { title: "MVP Plan", content: blueprint.mvpPlan, color: C.indigo },
+    { title: "Monetization Validation", content: blueprint.monetizationValidation || [], color: C.gold },
+    { title: "MVP Timeline", content: blueprint.mvpPlan, color: C.indigo },
+    { title: "Technical Architecture", content: blueprint.techStack || [], color: C.teal },
+    { title: "Technical Tradeoffs", content: blueprint.techTradeoffs || [], color: C.danger },
+    { title: "Go-to-Market Plan", content: blueprint.goToMarket || [], color: C.success },
+    { title: "Competitive Response", content: blueprint.competitiveResponse || [], color: C.gold },
+    { title: "Validation Checkpoints", content: blueprint.validationMilestones || [], color: C.indigo },
   ];
 
   bpSections.forEach(({ title, content, color }) => {

@@ -170,8 +170,16 @@ export interface BlueprintData {
   competitiveEdge?: string[];
   coreFeatures: string[];
   targetUsers: string[];
+  primaryLaunchSegment?: string;
   monetization: string[];
+  monetizationValidation?: string[];
   mvpPlan: string[];
+  mvpPhasing?: { mvp: string[]; phase2: string[] };
+  techStack?: string[];
+  techTradeoffs?: string[];
+  goToMarket?: string[];
+  competitiveResponse?: string[];
+  validationMilestones?: string[];
 }
 
 export interface KeyStat {
