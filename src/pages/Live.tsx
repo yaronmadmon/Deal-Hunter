@@ -14,6 +14,8 @@ import {
   Flame,
   Lock,
   Trophy,
+  Code,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +45,15 @@ interface NicheItem {
   name: string;
   description: string;
 }
+interface HNItem {
+  title: string;
+  points: number;
+  comments: number;
+  author: string;
+  url: string;
+  hnUrl: string;
+  createdAt: string;
+}
 interface BreakoutItem {
   name: string;
   category: string;
@@ -64,6 +75,7 @@ const Live = () => {
   const [productHunt, setProductHunt] = useState<PHItem[]>([]);
   const [reddit, setReddit] = useState<RedditItem[]>([]);
   const [niches, setNiches] = useState<NicheItem[]>([]);
+  const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -117,6 +129,9 @@ const Live = () => {
           break;
         case "growing_niches":
           if (Array.isArray(payload)) setNiches(payload);
+          break;
+        case "hacker_news":
+          if (Array.isArray(payload)) setHackerNews(payload);
           break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
@@ -555,6 +570,59 @@ const Live = () => {
                             analyzeIdea(
                               `Build an app in the niche: ${n.name}`
                             )
+                          }
+                        >
+                          Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* ── Section 5: Hacker News Dev Buzz ── */}
+              <SectionCard
+                icon={<Code className="w-5 h-5 text-orange-600" />}
+                title="Hacker News Dev Buzz"
+                loading={loadingData}
+              >
+                {hackerNews.length === 0 ? (
+                  <ErrorState />
+                ) : (
+                  <div className="space-y-3">
+                    {hackerNews.map((hn, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">
+                            {hn.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-[9px]">
+                              {hn.points} pts
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {hn.comments} comments
+                            </span>
+                            <a
+                              href={hn.hnUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" /> HN
+                            </a>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                          onClick={() =>
+                            analyzeIdea(`${hn.title}`)
                           }
                         >
                           Analyze <ArrowRight className="w-3 h-3 ml-1" />

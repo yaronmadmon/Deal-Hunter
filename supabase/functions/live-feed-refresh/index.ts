@@ -191,6 +191,34 @@ Return ONLY a JSON array.`
       }
     }
 
+    // ── Section 6: Hacker News Dev Buzz ──
+    if (section === "all" || section === "hacker_news") {
+      try {
+        // Use Algolia HN API to search for recent startup/tech stories
+        const hnRes = await fetch(
+          `https://hn.algolia.com/api/v1/search?query=startup OR SaaS OR "side project" OR launch&tags=story&hitsPerPage=20&numericFilters=points>30`
+        );
+        const hnData = await hnRes.json();
+        const hnItems = (hnData.hits || [])
+          .slice(0, 8)
+          .map((hit: any) => ({
+            title: hit.title || "",
+            points: hit.points || 0,
+            comments: hit.num_comments || 0,
+            author: hit.author || "",
+            url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+            hnUrl: `https://news.ycombinator.com/item?id=${hit.objectID}`,
+            createdAt: hit.created_at || "",
+          }));
+        
+        await saveSnapshot(supabase, "hacker_news", hnItems);
+        results.hacker_news = hnItems;
+      } catch (e) {
+        console.error("hacker_news error:", e);
+        results.hacker_news = [];
+      }
+    }
+
     // ── Section 5: Breakout Idea of the Day ──
     if (section === "all" || section === "breakout_idea") {
       try {
@@ -198,12 +226,14 @@ Return ONLY a JSON array.`
         const ph = Array.isArray(results.product_hunt) ? results.product_hunt as any[] : [];
         const reddit = Array.isArray(results.reddit_pain_points) ? results.reddit_pain_points as any[] : [];
         const niches = Array.isArray(results.growing_niches) ? results.growing_niches as any[] : [];
+        const hn = Array.isArray(results.hacker_news) ? results.hacker_news as any[] : [];
 
         const candidates = [
           ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: parseInt(String(t.spike).replace(/[^0-9]/g, "")) || 100 })),
           ...ph.map((p: any) => ({ name: `${p.name} style app`, type: "product_hunt", signal: (p.upvotes || 0) * 2 })),
           ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: (r.upvotes || 0) })),
           ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: 150 })),
+          ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: (h.points || 0) })),
         ];
 
         candidates.sort((a, b) => b.signal - a.signal);
