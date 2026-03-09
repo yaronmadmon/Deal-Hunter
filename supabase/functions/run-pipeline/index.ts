@@ -155,6 +155,111 @@ async function githubSearch(
   }
 }
 
+// ── Twitter/X helper ────────────────────────────────────────────────
+async function twitterSearch(
+  bearerToken: string,
+  query: string,
+  maxResults = 50
+): Promise<{ tweets: any[]; total_fetched: number }> {
+  try {
+    const params = new URLSearchParams({
+      query: `${query} lang:en -is:retweet`,
+      max_results: String(Math.min(Math.max(maxResults, 10), 100)),
+      'tweet.fields': 'created_at,public_metrics,author_id',
+      'user.fields': 'name,username,public_metrics',
+      expansions: 'author_id',
+    });
+    const res = await fetch(`https://api.x.com/2/tweets/search/recent?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${bearerToken}` },
+    });
+    if (!res.ok) {
+      console.error("Twitter search error:", res.status);
+      return { tweets: [], total_fetched: 0 };
+    }
+    const data = await res.json();
+    const usersMap: Record<string, any> = {};
+    if (data.includes?.users) {
+      for (const user of data.includes.users) {
+        usersMap[user.id] = user;
+      }
+    }
+    const tweets = (data.data || []).map((t: any) => ({
+      id: t.id,
+      text: t.text,
+      created_at: t.created_at,
+      like_count: t.public_metrics?.like_count || 0,
+      retweet_count: t.public_metrics?.retweet_count || 0,
+      reply_count: t.public_metrics?.reply_count || 0,
+      author_name: usersMap[t.author_id]?.name || "Unknown",
+      author_username: usersMap[t.author_id]?.username || "unknown",
+      author_followers: usersMap[t.author_id]?.public_metrics?.followers_count || 0,
+    }));
+    // Filter 10+ likes and sort by engagement
+    const filtered = tweets
+      .filter((t: any) => t.like_count >= 10)
+      .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
+      .slice(0, 10);
+    return { tweets: filtered, total_fetched: tweets.length };
+  } catch (e) {
+    console.error("Twitter search error:", e);
+    return { tweets: [], total_fetched: 0 };
+  }
+}
+
+async function twitterTweetCounts(
+  bearerToken: string,
+  query: string
+): Promise<{ counts: any[]; total_count: number; volume_change_pct: number }> {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      query,
+      granularity: 'day',
+      start_time: sevenDaysAgo.toISOString(),
+      end_time: now.toISOString(),
+    });
+    const res = await fetch(`https://api.x.com/2/tweets/counts/recent?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${bearerToken}` },
+    });
+    if (!res.ok) {
+      console.error("Twitter counts error:", res.status);
+      return { counts: [], total_count: 0, volume_change_pct: 0 };
+    }
+    const data = await res.json();
+    const counts = data.data || [];
+    let volumeChange = 0;
+    if (counts.length >= 2) {
+      const half = Math.floor(counts.length / 2);
+      const firstTotal = counts.slice(0, half).reduce((s: number, d: any) => s + (d.tweet_count || 0), 0);
+      const secondTotal = counts.slice(half).reduce((s: number, d: any) => s + (d.tweet_count || 0), 0);
+      if (firstTotal > 0) volumeChange = Math.round(((secondTotal - firstTotal) / firstTotal) * 100);
+    }
+    return { counts, total_count: data.meta?.total_tweet_count || 0, volume_change_pct: volumeChange };
+  } catch (e) {
+    console.error("Twitter counts error:", e);
+    return { counts: [], total_count: 0, volume_change_pct: 0 };
+  }
+}
+
+async function twitterUserLookup(
+  bearerToken: string,
+  username: string
+): Promise<{ user: any | null }> {
+  try {
+    const res = await fetch(
+      `https://api.x.com/2/users/by/username/${encodeURIComponent(username)}?user.fields=public_metrics,description`,
+      { headers: { Authorization: `Bearer ${bearerToken}` } }
+    );
+    if (!res.ok) return { user: null };
+    const data = await res.json();
+    return { user: data.data || null };
+  } catch (e) {
+    console.error("Twitter user lookup error:", e);
+    return { user: null };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
