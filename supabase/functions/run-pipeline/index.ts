@@ -282,6 +282,8 @@ Deno.serve(async (req) => {
       firecrawlAppStore: null,
       firecrawlReddit: null,
       serperTrends: null,
+      serperTrendsMonthly: null,
+      serperNews: null,
       serperReddit: null,
       serperAutoComplete: null,
       productHunt: null,
