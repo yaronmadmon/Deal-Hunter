@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   useEffect(() => {
     if (!loading && !user) {
