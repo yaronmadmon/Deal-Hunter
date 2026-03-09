@@ -346,6 +346,42 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           </div>
         )}
 
+        {/* X/Twitter Sentiment Posts */}
+        {card.twitterSentiment && card.twitterSentiment.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">X/Twitter Posts</div>
+              <DataSourceBadge dataSource="twitter" compact />
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {card.twitterSentiment.map((tweet, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-1.5 bg-[hsl(204,88%,53%)]/5">
+                  <p className="text-xs text-foreground leading-relaxed">{tweet.text}</p>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Twitter className="w-3 h-3 text-[hsl(204,88%,53%)]" />
+                      <span className="font-medium">@{tweet.authorUsername}</span>
+                      <span>·</span>
+                      <span>{tweet.followerCount.toLocaleString()} followers</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-0.5">
+                        <Heart className="w-3 h-3" /> {tweet.likeCount}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Repeat2 className="w-3 h-3" /> {tweet.retweetCount}
+                      </span>
+                    </div>
+                  </div>
+                  {tweet.tweetUrl && (
+                    <EvidenceLink href={tweet.tweetUrl} label="View on X" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Evidence quote box */}
         <div className="bg-secondary/50 border border-border/50 rounded-lg p-3 space-y-2">
           {card.evidence.map((e, i) => (
