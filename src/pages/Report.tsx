@@ -13,6 +13,7 @@ import { ScoreRing } from "@/components/report/ScoreRing";
 import { KeyStatsBar } from "@/components/report/KeyStatsBar";
 import { UserQuotesSection } from "@/components/report/UserQuotesSection";
 import { MethodologySection } from "@/components/report/MethodologySection";
+import { GlossarySection } from "@/components/report/GlossarySection";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,23 @@ import { supabase } from "@/integrations/supabase/client";
 import type { MockReportData } from "@/data/mockReport";
 import { mockReport } from "@/data/mockReport";
 import { toast } from "sonner";
+
+/** Section subtitles for card titles */
+const sectionSubtitles: Record<string, string> = {
+  "Trend Momentum": "Is interest growing or fading?",
+  "Market Saturation": "How crowded is this market?",
+  "Competitor Snapshot": "Who are you up against?",
+  "Sentiment & Pain Points": "What real users love and hate",
+  "Growth Signals": "Signs this market is heating up",
+};
+
+/** Safely display a value — never show null, undefined, NaN, or N/A */
+const safeValue = (val: any): string => {
+  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
+    return "Data unavailable";
+  }
+  return String(val);
+};
 
 const Report = () => {
   const navigate = useNavigate();
@@ -84,7 +102,7 @@ const Report = () => {
           last_analyzed_at: new Date().toISOString(),
         });
         if (error) {
-          toast.error("Failed to add to watchlist");
+          toast.error("Something went wrong — please try again");
         } else {
           setIsTracked(true);
           toast.success("Added to watchlist! Track it from your Idea Watchlist.");
@@ -146,7 +164,7 @@ const Report = () => {
             Analysis based on <span className="font-semibold text-foreground">{r.dataSources?.length || totalEvidence}</span> verified data points from {r.dataSources?.length ? `${r.dataSources.length} sources` : "Reddit, App Store, and Google Trends"}.
           </p>
           {r.dataSources && r.dataSources.length > 0 && (
-            <details className="mt-2 mb-6">
+            <details className="mt-2 mb-8">
               <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
                 View {r.dataSources.length} source URLs
               </summary>
@@ -168,14 +186,14 @@ const Report = () => {
         <KeyStatsBar stats={r.keyStats || [
           { value: `${r.overallScore}/100`, label: "Market Signal Score", sentiment: r.overallScore >= 70 ? "positive" : r.overallScore >= 40 ? "neutral" : "negative" as any },
           { value: `${totalEvidence}+`, label: "Data Points Analyzed", sentiment: "neutral" as any },
-          { value: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value || "N/A", label: "Interest Change (90d)", change: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
-          { value: r.revenueBenchmark.range, label: "Revenue Potential (est.)", sentiment: "positive" as any },
+          { value: safeValue(r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value), label: "Interest Change (90d)", change: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
+          { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
         {/* Signal Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
           {r.signalCards.map((card) => (
-            <SignalCard key={card.title} card={card} />
+            <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
           ))}
         </div>
 
@@ -214,6 +232,9 @@ const Report = () => {
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
         />
+
+        {/* Glossary */}
+        <GlossarySection />
 
         {/* Methodology */}
         <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
