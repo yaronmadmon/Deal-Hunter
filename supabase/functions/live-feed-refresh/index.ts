@@ -27,11 +27,21 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${pplxKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "sonar",
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "You are a data API. Always respond with ONLY valid JSON arrays. No markdown, no explanation, no extra text." },
+          { role: "user", content: prompt }
+        ],
       }),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`Perplexity API error [${res.status}]:`, errText);
+      throw new Error(`Perplexity API error: ${res.status}`);
+    }
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    const content = data.choices?.[0]?.message?.content || "";
+    console.log("Perplexity response preview:", content.slice(0, 200));
+    return content;
   }
 
   async function askAI(prompt: string): Promise<string> {
@@ -49,10 +59,21 @@ Deno.serve(async (req) => {
   }
 
   function parseJsonArray(text: string): any[] {
+    // Try to find a JSON array in the text
     const match = text.match(/\[[\s\S]*\]/);
     if (match) {
-      try { return JSON.parse(match[0]); } catch {}
+      try { return JSON.parse(match[0]); } catch (e) {
+        console.error("JSON parse failed for matched array:", e, "Raw match:", match[0].slice(0, 200));
+      }
     }
+    // Try parsing markdown code blocks
+    const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlock) {
+      try { return JSON.parse(codeBlock[1].trim()); } catch (e) {
+        console.error("JSON parse failed for code block:", e);
+      }
+    }
+    console.error("Could not parse JSON array from response:", text.slice(0, 300));
     return [];
   }
 
@@ -136,15 +157,17 @@ Return ONLY a JSON array.`
     // ── Section 3: Reddit Pain Points ──
     if (section === "all" || section === "reddit_pain_points") {
       try {
-        const raw = await askPerplexity(
-          `Search Reddit communities like r/entrepreneur, r/startups, r/SaaS, and r/Entrepreneur for the most discussed startup pain points and problems this week. Find 6 real trending posts or recurring complaints. For each, return a JSON object with:
-- "title": the post title or problem description (max 100 chars)
-- "problemSummary": a concise 8-12 word summary of the core problem
-- "subreddit": which subreddit e.g. "r/startups"
-- "upvotes": approximate upvote count (number)
-Return ONLY a JSON array.`
-        );
-        const items = parseJsonArray(raw).slice(0, 6);
+        const prompt = `Find 6 real startup pain points trending on Reddit (r/startups, r/SaaS, r/entrepreneur) this week. Return a JSON array where each object has: "title" (post title, max 100 chars), "problemSummary" (8-12 word summary), "subreddit" (e.g. "r/startups"), "upvotes" (number). Example: [{"title":"Can't find good devs","problemSummary":"Hiring qualified developers is extremely difficult for startups","subreddit":"r/startups","upvotes":342}]. Return ONLY the JSON array.`;
+        
+        let items = parseJsonArray(await askPerplexity(prompt)).slice(0, 6);
+        
+        // Fallback to Lovable AI if Perplexity didn't return parseable data
+        if (items.length === 0) {
+          console.log("Reddit: Perplexity failed, trying Lovable AI fallback");
+          const fallback = await askAI(prompt);
+          items = parseJsonArray(fallback).slice(0, 6);
+        }
+        
         await saveSnapshot(supabase, "reddit_pain_points", items);
         results.reddit_pain_points = items;
       } catch (e) {
@@ -222,6 +245,11 @@ Return ONLY a JSON array.`
 });
 
 async function saveSnapshot(supabase: any, sectionName: string, data: any) {
+  // Don't overwrite existing data with empty results
+  if (Array.isArray(data) && data.length === 0) {
+    console.log(`Skipping save for ${sectionName} — empty data, preserving existing`);
+    return;
+  }
   await supabase.from("live_feed_snapshots").delete().eq("section_name", sectionName);
   await supabase.from("live_feed_snapshots").insert({
     section_name: sectionName,
