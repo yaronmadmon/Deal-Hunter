@@ -8,6 +8,7 @@ import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
+import { OpenSourceLandscape } from "@/components/report/OpenSourceLandscape";
 import { ScoreRing } from "@/components/report/ScoreRing";
 import { KeyStatsBar } from "@/components/report/KeyStatsBar";
 import { UserQuotesSection } from "@/components/report/UserQuotesSection";
@@ -196,6 +197,9 @@ const Report = () => {
           ) as any[];
           return extracted.slice(0, 5);
         })()} />
+
+        {/* Open Source Landscape */}
+        {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
 
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
