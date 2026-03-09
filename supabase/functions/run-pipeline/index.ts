@@ -728,6 +728,12 @@ ${rawData.twitterCounts?.counts?.length > 0
 Total tweets in 7 days: ${rawData.twitterCounts.total_count}
 Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}%`
   : "No X/Twitter volume data available"}
+
+--- X/TWITTER INFLUENCER & FOUNDER SIGNALS (from X API v2 — real founder profiles and tweets) ---
+${rawData.twitterInfluencers?.influencers?.length > 0
+  ? rawData.twitterInfluencers.influencers.map((inf: any) => `Founder: ${inf.name} (@${inf.username})\nFollowers: ${inf.followers_count?.toLocaleString()}\nBio: ${inf.description}\nLatest Niche Tweet: "${inf.latest_niche_tweet?.text || 'N/A'}"\nLikes: ${inf.latest_niche_tweet?.like_count || 0} | Retweets: ${inf.latest_niche_tweet?.retweet_count || 0}\nTweet URL: ${inf.latest_niche_tweet?.id ? `https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}` : 'N/A'}`).join("\n---\n")
+  : "No influencer/founder signals found — no relevant X accounts identified"}
+Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
 `;
 
     // Unique source URLs for the report
