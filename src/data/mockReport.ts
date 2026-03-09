@@ -28,6 +28,16 @@ export interface SentimentData {
   lovesSourceLabel?: string;
 }
 
+export interface TwitterSentimentItem {
+  text: string;
+  authorName: string;
+  authorUsername: string;
+  followerCount: number;
+  likeCount: number;
+  retweetCount: number;
+  tweetUrl: string;
+}
+
 export interface ChartPoint {
   name: string;
   value: number;
