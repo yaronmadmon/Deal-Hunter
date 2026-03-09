@@ -910,6 +910,42 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
   "revenueBenchmark": {"summary": "string", "range": "string", "basis": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
+  "nicheAnalysis": {
+    "samEstimate": "dollar amount — the Serviceable Addressable Market for THIS SPECIFIC niche positioning (not the whole TAM). Calculate what % of the total market actually wants the user's specific angle (e.g. voice-first, privacy-conscious). Be specific with a dollar range.",
+    "samPercentage": "X-Y% of TAM — the realistic percentage slice",
+    "samReasoning": "Explain WHY this percentage — what filters reduce TAM to SAM (geography, willingness to pay for privacy, voice-only preference, etc.)",
+    "competitorClarity": "Are there ZERO apps doing exactly this niche, or zero launched on PH? Clarify the difference. Be specific about what exists vs what doesn't.",
+    "directCompetitors": 0,
+    "competitorDetail": "Name any apps that come close to this exact niche. If none exist, say so clearly and explain whether that's opportunity or warning sign.",
+    "xSignalInterpretation": "Instead of just showing volume change %, interpret it: 'This niche is undertalked-about on X, indicating either early-stage opportunity or low consumer interest.' Explain WHICH is more likely based on the other data signals.",
+    "xVolumeContext": "Put the X volume in context: compare to similar niches, explain what low/high volume means for this specific idea.",
+    "dataSource": "perplexity" or "ai_estimated",
+    "sourceUrls": ["urls"]
+  },
+  "unitEconomics": {
+    "churnBenchmarks": [
+      {"name": "Peloton Digital", "churnRate": "X%/mo", "source": "source"},
+      {"name": "Fitbit Premium", "churnRate": "X%/mo", "source": "source"},
+      {"name": "Category Average", "churnRate": "X%/mo", "source": "source"}
+    ],
+    "churnImplication": "What does this churn rate mean for the user's business? If churn is 70%, explain how that changes unit economics.",
+    "realisticArpu": "$X/mo — realistic ARPU for privacy-first positioning",
+    "arpuReasoning": "Explain: privacy-first means no ads, so subscription must cover all costs. What price point is realistic given willingness-to-pay data?",
+    "privacyPremium": "Can you charge MORE for privacy? How much more? Reference examples like Signal vs WhatsApp, ProtonMail vs Gmail.",
+    "ltvEstimate": "$X — based on realistic ARPU × expected retention period given churn data",
+    "dataSource": "perplexity" or "ai_estimated",
+    "sourceUrls": ["urls"]
+  },
+  "buildComplexity": {
+    "mvpTimeline": "X-Y weeks — realistic for a solo founder or small team",
+    "mvpScope": ["list of 4-5 MVP features with brief scope notes"],
+    "techChallenges": ["list of 3-4 technical challenges specific to this idea — e.g. voice API latency, on-device ML model size, privacy-compliant data handling"],
+    "estimatedCost": "$X-Y — MVP development cost range including API costs for first 3 months",
+    "voiceApiCosts": "Explain voice API pricing (Whisper, Deepgram, etc.) per minute of audio. What does 1000 users cost?",
+    "onDeviceNote": "Is on-device processing feasible for privacy? What are the tradeoffs (model size, battery, accuracy)?",
+    "dataSource": "ai_estimated",
+    "sourceUrls": []
+  },
   "scoreBreakdown": [
     {"label": "Trend Momentum", "value": 0-20},
     {"label": "Market Saturation", "value": 0-20},
