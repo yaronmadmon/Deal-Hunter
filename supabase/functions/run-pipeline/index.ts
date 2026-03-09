@@ -592,6 +592,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "firecrawlScrapes": 0,
     "serperSearches": 0,
     "productHuntQueries": 0,
+    "githubSearches": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"

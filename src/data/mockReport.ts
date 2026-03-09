@@ -120,6 +120,7 @@ export interface MethodologyInfo {
   firecrawlScrapes: number;
   serperSearches?: number;
   productHuntQueries?: number;
+  githubSearches?: number;
   dataPoints: number;
   analysisDate: string;
   confidenceNote: string;
