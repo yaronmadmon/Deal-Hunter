@@ -106,7 +106,9 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
               <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">Live Search</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-[10px] font-medium">Google</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>, or
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] rounded text-[10px] font-medium">X Live Search</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(25,95%,53%)]/10 text-[hsl(25,95%,40%)] dark:text-[hsl(25,95%,65%)] rounded text-[10px] font-medium">X Trending</span>, or
               <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-medium">AI Estimated</span>
               for full transparency.
             </span>
