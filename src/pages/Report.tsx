@@ -6,6 +6,9 @@ import { generateReportPdf } from "@/lib/generateReportPdf";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
+import { NicheAnalysis } from "@/components/report/NicheAnalysis";
+import { UnitEconomics } from "@/components/report/UnitEconomics";
+import { BuildComplexity } from "@/components/report/BuildComplexity";
 import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { OpenSourceLandscape } from "@/components/report/OpenSourceLandscape";
@@ -222,9 +225,17 @@ const Report = () => {
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
 
+        {/* Niche Deep Dive */}
+        {r.nicheAnalysis && <NicheAnalysis data={r.nicheAnalysis} />}
+
+        {/* Unit Economics */}
+        {r.unitEconomics && <UnitEconomics data={r.unitEconomics} />}
+
         {/* Revenue Benchmark */}
         <RevenueBenchmark benchmark={r.revenueBenchmark} />
 
+        {/* Build Complexity */}
+        {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
