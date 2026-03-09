@@ -103,7 +103,7 @@ export interface RevenueBenchmarkData {
   summary: string;
   range: string;
   basis: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: DataSourceType;
   sourceUrls?: string[];
 }
 
