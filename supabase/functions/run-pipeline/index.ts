@@ -351,6 +351,26 @@ Deno.serve(async (req) => {
           .catch(e => console.error("Serper trends error:", e))
       );
 
+      // Monthly search interest trend data - search for monthly mentions over the past year
+      serperPromises.push(
+        serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10)
+          .then(r => {
+            rawData.serperTrendsMonthly = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper monthly trends error:", e))
+      );
+
+      // News coverage timeline - shows real temporal interest
+      serperPromises.push(
+        serperSearch(serperKey, `${idea}`, "news", 10)
+          .then(r => {
+            rawData.serperNews = r;
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          })
+          .catch(e => console.error("Serper news error:", e))
+      );
+
       // Reddit fallback via Serper site:reddit.com search
       serperPromises.push(
         serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10)
