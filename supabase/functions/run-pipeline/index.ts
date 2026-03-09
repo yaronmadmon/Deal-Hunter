@@ -458,6 +458,7 @@ Deno.serve(async (req) => {
       github: null,
       twitterSentiment: null,
       twitterCounts: null,
+      twitterInfluencers: null,
       sources: [],
     };
 
