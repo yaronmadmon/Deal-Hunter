@@ -70,14 +70,12 @@ const Dashboard = () => {
         return;
       }
 
-      // Deduct credit
-      await supabase.from("profiles")
-        .update({ credits: credits - 1 })
-        .eq("id", user.id);
-
-      // Log credit usage
-      await supabase.from("credits_log")
-        .insert({ user_id: user.id, amount: -1, reason: "analysis", analysis_id: data.id });
+      // Deduct credit atomically
+      const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
+      if (!deducted) {
+        toast.error("Failed to deduct credit");
+        return;
+      }
 
       // Kick off pipeline
       supabase.functions.invoke("run-pipeline", {
