@@ -127,16 +127,7 @@ const Watchlist = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50">
-        <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <ThemeToggle />
-          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
-            Dashboard
-          </Button>
-        </div>
-      </nav>
+      <AppNav showCredits={false} />
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center gap-3 mb-2">
