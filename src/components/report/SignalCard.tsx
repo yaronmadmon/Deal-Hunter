@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink } from "lucide-react";
+import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink, Twitter, Heart, Repeat2 } from "lucide-react";
 import {
   AreaChart, Area, PieChart as RePieChart, Pie, Cell,
   LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis,
 } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SignalCardData, ProductHuntLaunch } from "@/data/mockReport";
+import type { SignalCardData, ProductHuntLaunch, TwitterSentimentItem } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { EvidenceLink } from "./EvidenceLink";
 
@@ -116,6 +116,34 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             </div>
             <div className="mt-1">
               <EvidenceLink href="https://trends.google.com" label="View Source" />
+            </div>
+          </div>
+        )}
+
+        {/* X/Twitter Volume Sparkline */}
+        {card.twitterVolumeSparkline && card.twitterVolumeSparkline.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">X Buzz (7 days)</div>
+              <DataSourceBadge dataSource="twitter" compact />
+            </div>
+            <div className="h-16 -mx-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={card.twitterVolumeSparkline}>
+                  <defs>
+                    <linearGradient id="twitterVolumeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(204 88% 53%)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(204 88% 53%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(220 9% 46%)' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(220 13% 91%)', background: 'hsl(0 0% 100%)' }}
+                    formatter={(value: number) => [`${value}`, 'Tweets']}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="hsl(204 88% 53%)" fill="url(#twitterVolumeGrad)" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
@@ -314,6 +342,42 @@ export const SignalCard = ({ card }: SignalCardProps) => {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Dominant Emotion</span>
               <span className="font-medium text-foreground">{card.sentiment.emotion}</span>
+            </div>
+          </div>
+        )}
+
+        {/* X/Twitter Sentiment Posts */}
+        {card.twitterSentiment && card.twitterSentiment.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">X/Twitter Posts</div>
+              <DataSourceBadge dataSource="twitter" compact />
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {card.twitterSentiment.map((tweet, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-1.5 bg-[hsl(204,88%,53%)]/5">
+                  <p className="text-xs text-foreground leading-relaxed">{tweet.text}</p>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Twitter className="w-3 h-3 text-[hsl(204,88%,53%)]" />
+                      <span className="font-medium">@{tweet.authorUsername}</span>
+                      <span>·</span>
+                      <span>{tweet.followerCount.toLocaleString()} followers</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-0.5">
+                        <Heart className="w-3 h-3" /> {tweet.likeCount}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Repeat2 className="w-3 h-3" /> {tweet.retweetCount}
+                      </span>
+                    </div>
+                  </div>
+                  {tweet.tweetUrl && (
+                    <EvidenceLink href={tweet.tweetUrl} label="View on X" />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}

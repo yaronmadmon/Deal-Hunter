@@ -155,6 +155,111 @@ async function githubSearch(
   }
 }
 
+// ── Twitter/X helper ────────────────────────────────────────────────
+async function twitterSearch(
+  bearerToken: string,
+  query: string,
+  maxResults = 50
+): Promise<{ tweets: any[]; total_fetched: number }> {
+  try {
+    const params = new URLSearchParams({
+      query: `${query} lang:en -is:retweet`,
+      max_results: String(Math.min(Math.max(maxResults, 10), 100)),
+      'tweet.fields': 'created_at,public_metrics,author_id',
+      'user.fields': 'name,username,public_metrics',
+      expansions: 'author_id',
+    });
+    const res = await fetch(`https://api.x.com/2/tweets/search/recent?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${bearerToken}` },
+    });
+    if (!res.ok) {
+      console.error("Twitter search error:", res.status);
+      return { tweets: [], total_fetched: 0 };
+    }
+    const data = await res.json();
+    const usersMap: Record<string, any> = {};
+    if (data.includes?.users) {
+      for (const user of data.includes.users) {
+        usersMap[user.id] = user;
+      }
+    }
+    const tweets = (data.data || []).map((t: any) => ({
+      id: t.id,
+      text: t.text,
+      created_at: t.created_at,
+      like_count: t.public_metrics?.like_count || 0,
+      retweet_count: t.public_metrics?.retweet_count || 0,
+      reply_count: t.public_metrics?.reply_count || 0,
+      author_name: usersMap[t.author_id]?.name || "Unknown",
+      author_username: usersMap[t.author_id]?.username || "unknown",
+      author_followers: usersMap[t.author_id]?.public_metrics?.followers_count || 0,
+    }));
+    // Filter 10+ likes and sort by engagement
+    const filtered = tweets
+      .filter((t: any) => t.like_count >= 10)
+      .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
+      .slice(0, 10);
+    return { tweets: filtered, total_fetched: tweets.length };
+  } catch (e) {
+    console.error("Twitter search error:", e);
+    return { tweets: [], total_fetched: 0 };
+  }
+}
+
+async function twitterTweetCounts(
+  bearerToken: string,
+  query: string
+): Promise<{ counts: any[]; total_count: number; volume_change_pct: number }> {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      query,
+      granularity: 'day',
+      start_time: sevenDaysAgo.toISOString(),
+      end_time: now.toISOString(),
+    });
+    const res = await fetch(`https://api.x.com/2/tweets/counts/recent?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${bearerToken}` },
+    });
+    if (!res.ok) {
+      console.error("Twitter counts error:", res.status);
+      return { counts: [], total_count: 0, volume_change_pct: 0 };
+    }
+    const data = await res.json();
+    const counts = data.data || [];
+    let volumeChange = 0;
+    if (counts.length >= 2) {
+      const half = Math.floor(counts.length / 2);
+      const firstTotal = counts.slice(0, half).reduce((s: number, d: any) => s + (d.tweet_count || 0), 0);
+      const secondTotal = counts.slice(half).reduce((s: number, d: any) => s + (d.tweet_count || 0), 0);
+      if (firstTotal > 0) volumeChange = Math.round(((secondTotal - firstTotal) / firstTotal) * 100);
+    }
+    return { counts, total_count: data.meta?.total_tweet_count || 0, volume_change_pct: volumeChange };
+  } catch (e) {
+    console.error("Twitter counts error:", e);
+    return { counts: [], total_count: 0, volume_change_pct: 0 };
+  }
+}
+
+async function twitterUserLookup(
+  bearerToken: string,
+  username: string
+): Promise<{ user: any | null }> {
+  try {
+    const res = await fetch(
+      `https://api.x.com/2/users/by/username/${encodeURIComponent(username)}?user.fields=public_metrics,description`,
+      { headers: { Authorization: `Bearer ${bearerToken}` } }
+    );
+    if (!res.ok) return { user: null };
+    const data = await res.json();
+    return { user: data.data || null };
+  } catch (e) {
+    console.error("Twitter user lookup error:", e);
+    return { user: null };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
@@ -270,6 +375,7 @@ Deno.serve(async (req) => {
     const serperKey = Deno.env.get("SERPER_API_KEY");
     const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const twitterBearerToken = Deno.env.get("TWITTER_BEARER_TOKEN");
 
     // ── Step 1: Fetching real market data ──
     await supabase.from("analyses").update({ status: "fetching" }).eq("id", analysisId);
@@ -288,6 +394,8 @@ Deno.serve(async (req) => {
       serperAutoComplete: null,
       productHunt: null,
       github: null,
+      twitterSentiment: null,
+      twitterCounts: null,
       sources: [],
     };
 
@@ -417,7 +525,30 @@ Deno.serve(async (req) => {
         .catch(e => console.error("GitHub error:", e))
     );
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises]);
+    // Run Twitter/X searches in parallel
+    const twitterPromises: Promise<void>[] = [];
+    if (twitterBearerToken) {
+      const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
+      
+      // Sentiment search — top engaged tweets about the niche
+      twitterPromises.push(
+        twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50)
+          .then(r => {
+            rawData.twitterSentiment = r;
+            rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
+          })
+          .catch(e => console.error("Twitter sentiment error:", e))
+      );
+      
+      // Tweet volume counts over 7 days
+      twitterPromises.push(
+        twitterTweetCounts(twitterBearerToken, twitterKeyword)
+          .then(r => { rawData.twitterCounts = r; })
+          .catch(e => console.error("Twitter counts error:", e))
+      );
+    }
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
@@ -481,6 +612,20 @@ ${rawData.github?.repos?.length > 0
   ? rawData.github.repos.map((r: any) => `Repo: ${r.name}\nStars: ${r.stars}\nForks: ${r.forks}\nOpen Issues: ${r.openIssues}\nLanguage: ${r.language}\nLast Push: ${r.pushedAt}\nURL: ${r.url}\nTopics: ${(r.topics || []).join(", ")}`).join("\n---\n")
   : "No relevant GitHub repositories found — limited open-source competition"}
 Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
+
+--- X/TWITTER SENTIMENT DATA (from X API v2 — real public posts) ---
+${rawData.twitterSentiment?.tweets?.length > 0
+  ? rawData.twitterSentiment.tweets.map((t: any) => `Tweet: "${t.text}"\nAuthor: @${t.author_username} (${t.author_name}, ${t.author_followers.toLocaleString()} followers)\nLikes: ${t.like_count} | Retweets: ${t.retweet_count} | Replies: ${t.reply_count}\nDate: ${t.created_at}\nURL: https://x.com/${t.author_username}/status/${t.id}`).join("\n---\n")
+  : "No X/Twitter sentiment data available — X API not configured or returned no results"}
+Total tweets analyzed: ${rawData.twitterSentiment?.total_fetched ?? 0}
+High-engagement tweets (10+ likes): ${rawData.twitterSentiment?.tweets?.length ?? 0}
+
+--- X/TWITTER TWEET VOLUME (from X API v2 — daily tweet counts over 7 days) ---
+${rawData.twitterCounts?.counts?.length > 0
+  ? `Daily counts: ${rawData.twitterCounts.counts.map((c: any) => `${c.start?.split("T")[0]}: ${c.tweet_count}`).join(", ")}
+Total tweets in 7 days: ${rawData.twitterCounts.total_count}
+Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}%`
+  : "No X/Twitter volume data available"}
 `;
 
     // Unique source URLs for the report
@@ -500,12 +645,13 @@ Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
             content: `You are a market analysis AI for Gold Rush, a startup idea validation tool.
 
 CRITICAL RULES:
-1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), Serper.dev (real Google search results), and Product Hunt API (real launch data with upvotes). USE THIS DATA. Do NOT invent numbers.
+1. You have been given REAL market data collected from Perplexity Sonar (grounded web search), Firecrawl (web scraping), Serper.dev (real Google search results), Product Hunt API (real launch data with upvotes), GitHub API, and X/Twitter API v2 (real public posts and tweet volume). USE THIS DATA. Do NOT invent numbers.
 2. Every data point MUST include a "dataSource" field with one of these values:
    - "perplexity" — if the data came from Perplexity search results
    - "firecrawl" — if the data came from Firecrawl web scraping
    - "serper" — if the data came from Serper.dev Google search results or autocomplete
    - "producthunt" — if the data came from Product Hunt API (launch data, upvotes)
+   - "twitter" — if the data came from X/Twitter API (tweets, sentiment, volume)
    - "ai_estimated" — ONLY if the real data sources didn't cover this specific point
 3. Every data point MUST include a "sourceUrl" field with the actual citation URL, or null if ai_estimated.
 4. Extract REAL numbers from the data provided. If the data says "+34% growth", use that exact number. If the data mentions "500k downloads", use that.
@@ -531,11 +677,12 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "News Coverage", "value": "X articles in last 30 days", "dataSource": "serper", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}],
+      "metrics": [{"label": "Google Search Volume", "value": "string", "dataSource": "serper" or "perplexity" or "ai_estimated", "sourceUrl": "url or null"}, {"label": "Search Growth (90d)", "value": "string", "dataSource": "string", "sourceUrl": "url or null"}, {"label": "News Coverage", "value": "X articles in last 30 days", "dataSource": "serper", "sourceUrl": "url or null"}, {"label": "Trending Keywords", "value": "string from autocomplete data", "dataSource": "serper" or "ai_estimated", "sourceUrl": null}, {"label": "X Buzz", "value": "X tweets in 7 days, +Y% volume change — use twitter volume data if available", "dataSource": "twitter", "sourceUrl": null}],
       "sparkline": [{"name": "W1", "value": number}, ...12 data points representing relative search interest over the last 12 weeks],
+      "twitterVolumeSparkline": [{"name": "Mon", "value": number}, ...7 daily data points from X/Twitter tweet counts API] — Include this ONLY if Twitter volume data is available. Use actual daily tweet counts from the X API data. dataSource should be "twitter".
       "googleTrendsSparkline": [{"name": "Apr", "value": number}, {"name": "May", "value": number}, ...12 monthly data points covering the last 12 months] — CRITICAL: You MUST generate this array. Use month abbreviations (Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Jan, Feb, Mar) as names. Values are relative search interest on a 0-100 scale. Use the Serper trends data, monthly trend data, and news coverage timeline dates to model realistic month-over-month interest. If news articles cluster in recent months, show an upward trend. If Serper snippets mention growth percentages, reflect those in the curve shape. Always generate 12 data points. dataSource should be "serper".
-      "evidence": ["real quotes with source URLs — include news article titles and dates from Serper news data, and trend snippets from Serper search results"],
-      "insight": "one sentence based on real Google search and news coverage data"
+      "evidence": ["real quotes with source URLs — include news article titles and dates from Serper news data, trend snippets from Serper search results, and X tweet volume data if available"],
+      "insight": "one sentence based on real Google search, news coverage, and X buzz data"
     },
     {
       "title": "Market Saturation",
@@ -566,22 +713,23 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Sentiment & Pain Points",
-      "source": "Firecrawl — Reddit + App Reviews",
-      "dataSource": "firecrawl" or "ai_estimated",
-      "sourceUrls": ["scraped URLs"],
+      "source": "Firecrawl + X API — Reddit, App Reviews & X Posts",
+      "dataSource": "firecrawl" or "twitter" or "ai_estimated",
+      "sourceUrls": ["scraped URLs", "tweet URLs"],
       "icon": "MessageCircle",
       "type": "sentiment",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "sentiment": {"complaints": ["REAL complaints from REAL reviews"], "loves": ["REAL praise from REAL reviews"], "emotion": "string", "complaintCount": number, "positiveCount": number},
-      "evidence": ["REAL quotes with source URL"],
-      "insight": "one sentence"
+      "sentiment": {"complaints": ["REAL complaints from REAL reviews and X posts"], "loves": ["REAL praise from REAL reviews and X posts"], "emotion": "string", "complaintCount": number, "positiveCount": number, "complaintsSourceUrl": "url or null", "lovesSourceUrl": "url or null"},
+      "twitterSentiment": [{"text": "tweet text — use actual tweet content from X data", "authorName": "display name", "authorUsername": "handle", "followerCount": number, "likeCount": number, "retweetCount": number, "tweetUrl": "https://x.com/username/status/id"}] — Include top 10 most engaged tweets if X data is available. These are REAL tweets from the X API. If no X data, omit this field entirely (do NOT include empty array).
+      "evidence": ["REAL quotes from Reddit, app reviews, AND X posts with source URL"],
+      "insight": "one sentence incorporating both Reddit/review and X sentiment"
     },
     {
       "title": "Growth Signals",
-      "source": "Product Hunt + GitHub + Perplexity Sonar — Market Research",
-      "dataSource": "producthunt" or "github" or "perplexity" or "ai_estimated",
-      "sourceUrls": ["citation URLs, PH URLs, and GitHub URLs"],
+      "source": "Product Hunt + GitHub + X API + Perplexity Sonar — Market Research",
+      "dataSource": "producthunt" or "github" or "twitter" or "perplexity" or "ai_estimated",
+      "sourceUrls": ["citation URLs, PH URLs, GitHub URLs, and tweet URLs"],
       "icon": "Zap",
       "type": "metrics",
       "confidence": "High" or "Medium" or "Low",
@@ -627,6 +775,7 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "serperSearches": 0,
     "productHuntQueries": 0,
     "githubSearches": 0,
+    "twitterSearches": 0,
     "dataPoints": 0,
     "analysisDate": "YYYY-MM-DD",
     "confidenceNote": "Brief note on overall data quality and coverage"

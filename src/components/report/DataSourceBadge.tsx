@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Globe, Search, Bot, Rocket, Github } from "lucide-react";
+import { ExternalLink, Globe, Search, Bot, Rocket, Github, Twitter } from "lucide-react";
 import type { DataSourceType } from "@/data/mockReport";
 
 interface Props {
@@ -35,6 +35,11 @@ const sourceConfig: Record<DataSourceType, { label: string; icon: React.ElementT
     icon: Github,
     className: "bg-[hsl(0,0%,20%)]/10 text-[hsl(0,0%,30%)] dark:text-[hsl(0,0%,80%)] border-[hsl(0,0%,20%)]/20",
   },
+  twitter: {
+    label: "X — public post sentiment",
+    icon: Twitter,
+    className: "bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] border-[hsl(204,88%,53%)]/20",
+  },
   ai_estimated: {
     label: "AI Estimated",
     icon: Bot,
@@ -53,7 +58,7 @@ export const DataSourceBadge = ({ dataSource, sourceUrl, sourceUrls, compact }: 
     <div className="flex items-center gap-1.5 flex-wrap">
       <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-normal gap-1 ${config.className}`}>
         <Icon className="w-2.5 h-2.5" />
-        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : dataSource === "serper" ? "Google" : dataSource === "producthunt" ? "PH" : dataSource === "github" ? "GitHub" : "Scraped") : config.label}
+        {compact ? (dataSource === "ai_estimated" ? "Estimated" : dataSource === "perplexity" ? "Live" : dataSource === "serper" ? "Google" : dataSource === "producthunt" ? "PH" : dataSource === "github" ? "GitHub" : dataSource === "twitter" ? "X" : "Scraped") : config.label}
       </Badge>
       {!compact && urls.length > 0 && (
         <a

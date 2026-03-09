@@ -1,7 +1,7 @@
 export interface SignalMetric {
   label: string;
   value: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: "perplexity" | "firecrawl" | "twitter" | "ai_estimated";
   sourceUrl?: string | null;
 }
 
@@ -11,7 +11,7 @@ export interface CompetitorEntry {
   reviews: string;
   downloads: string;
   weakness: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: "perplexity" | "firecrawl" | "twitter" | "ai_estimated";
   sourceUrl?: string | null;
   websiteUrl?: string | null;
 }
@@ -26,6 +26,16 @@ export interface SentimentData {
   lovesSourceUrl?: string;
   complaintsSourceLabel?: string;
   lovesSourceLabel?: string;
+}
+
+export interface TwitterSentimentItem {
+  text: string;
+  authorName: string;
+  authorUsername: string;
+  followerCount: number;
+  likeCount: number;
+  retweetCount: number;
+  tweetUrl: string;
 }
 
 export interface ChartPoint {
@@ -53,16 +63,18 @@ export interface SignalCardData {
   type: "metrics" | "competitors" | "sentiment";
   confidence: "High" | "Medium" | "Low";
   evidenceCount: number;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: DataSourceType;
   sourceUrls?: string[];
   metrics?: SignalMetric[];
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
+  twitterSentiment?: TwitterSentimentItem[];
   productHuntLaunches?: ProductHuntLaunch[];
   evidence: string[];
   insight: string;
   sparkline?: ChartPoint[];
   googleTrendsSparkline?: ChartPoint[];
+  twitterVolumeSparkline?: ChartPoint[];
   donut?: DonutSegment[];
   lineChart?: ChartPoint[];
   githubRepos?: GitHubRepoData[];
@@ -91,11 +103,11 @@ export interface RevenueBenchmarkData {
   summary: string;
   range: string;
   basis: string;
-  dataSource?: "perplexity" | "firecrawl" | "ai_estimated";
+  dataSource?: DataSourceType;
   sourceUrls?: string[];
 }
 
-export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthunt" | "github" | "ai_estimated";
+export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthunt" | "github" | "twitter" | "ai_estimated";
 
 export interface ScoreBreakdownItem {
   label: string;
@@ -135,6 +147,7 @@ export interface MethodologyInfo {
   serperSearches?: number;
   productHuntQueries?: number;
   githubSearches?: number;
+  twitterSearches?: number;
   dataPoints: number;
   analysisDate: string;
   confidenceNote: string;

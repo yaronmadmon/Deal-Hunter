@@ -1,4 +1,4 @@
-import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck, Rocket } from "lucide-react";
+import { FlaskConical, Search, Globe, Database, Calendar, ShieldCheck, Rocket, Twitter } from "lucide-react";
 import type { MethodologyInfo } from "@/data/mockReport";
 
 interface Props {
@@ -21,7 +21,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
         <div className="flex items-start gap-2">
           <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
@@ -57,6 +57,13 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <div className="text-[11px] text-muted-foreground">PH Searches</div>
           </div>
         </div>
+        <div className="flex items-start gap-2">
+          <Twitter className="w-4 h-4 text-[hsl(204,88%,53%)] mt-0.5 shrink-0" />
+          <div>
+            <div className="text-lg font-bold text-foreground">{m?.twitterSearches ?? 0}</div>
+            <div className="text-[11px] text-muted-foreground">X Searches</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
@@ -86,6 +93,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
               Google search volume, trending keywords, and autocomplete data are pulled from Serper.dev (real Google results).
               Product launch data, upvote counts, and market validation signals come from the Product Hunt API.
               App Store listings, Reddit discussions, and user reviews are scraped directly via Firecrawl.
+              Public post sentiment, influencer signals, and tweet volume trends are sourced from the X/Twitter API v2.
             </span>
           </div>
         </div>
@@ -98,7 +106,9 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
               <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">Live Search</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-[10px] font-medium">Google</span>,
               <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>, or
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] rounded text-[10px] font-medium">X Live Search</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(25,95%,53%)]/10 text-[hsl(25,95%,40%)] dark:text-[hsl(25,95%,65%)] rounded text-[10px] font-medium">X Trending</span>, or
               <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-medium">AI Estimated</span>
               for full transparency.
             </span>
