@@ -75,6 +75,7 @@ const Live = () => {
   const [productHunt, setProductHunt] = useState<PHItem[]>([]);
   const [reddit, setReddit] = useState<RedditItem[]>([]);
   const [niches, setNiches] = useState<NicheItem[]>([]);
+  const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
