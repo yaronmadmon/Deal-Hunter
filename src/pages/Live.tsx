@@ -612,8 +612,17 @@ function SectionCard({
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-12 rounded-lg bg-muted/50 animate-pulse"
-              />
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+              >
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-3/5 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
+                </div>
+                <div className="flex items-center gap-3 shrink-0 ml-3">
+                  <div className="h-4 w-10 rounded bg-muted animate-pulse" />
+                  <div className="h-7 w-20 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
