@@ -310,6 +310,8 @@ Return ONLY a JSON array.`
         const reddit = Array.isArray(results.reddit_pain_points) ? results.reddit_pain_points as any[] : [];
         const niches = Array.isArray(results.growing_niches) ? results.growing_niches as any[] : [];
         const hn = Array.isArray(results.hacker_news) ? results.hacker_news as any[] : [];
+        const ghTrending = Array.isArray(results.github_trending) ? results.github_trending as any[] : [];
+        const gTrends = Array.isArray(results.google_trends) ? results.google_trends as any[] : [];
 
         const candidates = [
           ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: parseInt(String(t.spike).replace(/[^0-9]/g, "")) || 100 })),
@@ -317,6 +319,8 @@ Return ONLY a JSON array.`
           ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: (r.upvotes || 0) })),
           ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: 150 })),
           ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: (h.points || 0) })),
+          ...ghTrending.map((g: any) => ({ name: `Open source: ${g.name.split("/").pop()}`, type: "github", signal: (g.stars || 0) })),
+          ...gTrends.filter((g: any) => g.type === "news").map((g: any) => ({ name: g.title, type: "google_trends", signal: 120 })),
         ];
 
         candidates.sort((a, b) => b.signal - a.signal);
