@@ -231,9 +231,17 @@ const Report = () => {
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
 
+        {/* Niche Deep Dive */}
+        {r.nicheAnalysis && <NicheAnalysis data={r.nicheAnalysis} />}
+
+        {/* Unit Economics */}
+        {r.unitEconomics && <UnitEconomics data={r.unitEconomics} />}
+
         {/* Revenue Benchmark */}
         <RevenueBenchmark benchmark={r.revenueBenchmark} />
 
+        {/* Build Complexity */}
+        {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}

@@ -796,6 +796,14 @@ ${rawData.twitterInfluencers?.influencers?.length > 0
   ? rawData.twitterInfluencers.influencers.map((inf: any) => `Founder: ${inf.name} (@${inf.username})\nFollowers: ${inf.followers_count?.toLocaleString()}\nBio: ${inf.description}\nLatest Niche Tweet: "${inf.latest_niche_tweet?.text || 'N/A'}"\nLikes: ${inf.latest_niche_tweet?.like_count || 0} | Retweets: ${inf.latest_niche_tweet?.retweet_count || 0}\nTweet URL: ${inf.latest_niche_tweet?.id ? `https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}` : 'N/A'}`).join("\n---\n")
   : "No influencer/founder signals found — no relevant X accounts identified"}
 Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
+
+--- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — fitness app retention data) ---
+${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
+Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
+
+--- BUILD COMPLEXITY & VOICE API COSTS (from Perplexity Sonar — technical feasibility data) ---
+${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
+Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
 `;
 
     // Unique source URLs for the report
