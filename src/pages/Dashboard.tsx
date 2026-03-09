@@ -9,7 +9,6 @@ import { AppNav } from "@/components/AppNav";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
 
 interface AnalysisRow {
