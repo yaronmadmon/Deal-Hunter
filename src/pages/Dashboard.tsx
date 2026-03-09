@@ -94,7 +94,11 @@ const Dashboard = () => {
     return "nogo" as const;
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="animate-pulse text-muted-foreground">Loading…</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
