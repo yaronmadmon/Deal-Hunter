@@ -191,6 +191,34 @@ Return ONLY a JSON array.`
       }
     }
 
+    // ── Section 6: Hacker News Dev Buzz ──
+    if (section === "all" || section === "hacker_news") {
+      try {
+        // Use Algolia HN API to search for recent startup/tech stories
+        const hnRes = await fetch(
+          `https://hn.algolia.com/api/v1/search?query=startup OR SaaS OR "side project" OR launch&tags=story&hitsPerPage=20&numericFilters=points>30`
+        );
+        const hnData = await hnRes.json();
+        const hnItems = (hnData.hits || [])
+          .slice(0, 8)
+          .map((hit: any) => ({
+            title: hit.title || "",
+            points: hit.points || 0,
+            comments: hit.num_comments || 0,
+            author: hit.author || "",
+            url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+            hnUrl: `https://news.ycombinator.com/item?id=${hit.objectID}`,
+            createdAt: hit.created_at || "",
+          }));
+        
+        await saveSnapshot(supabase, "hacker_news", hnItems);
+        results.hacker_news = hnItems;
+      } catch (e) {
+        console.error("hacker_news error:", e);
+        results.hacker_news = [];
+      }
+    }
+
     // ── Section 5: Breakout Idea of the Day ──
     if (section === "all" || section === "breakout_idea") {
       try {
