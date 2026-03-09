@@ -16,6 +16,10 @@ import {
   Trophy,
   Code,
   ExternalLink,
+  Star,
+  GitFork,
+  Search,
+  Newspaper,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
