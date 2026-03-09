@@ -121,6 +121,41 @@ export interface RevenueBenchmarkData {
   sourceUrls?: string[];
 }
 
+export interface NicheAnalysisData {
+  samEstimate: string;
+  samPercentage: string;
+  samReasoning: string;
+  competitorClarity: string;
+  directCompetitors: number;
+  competitorDetail: string;
+  xSignalInterpretation: string;
+  xVolumeContext: string;
+  dataSource?: DataSourceType;
+  sourceUrls?: string[];
+}
+
+export interface UnitEconomicsData {
+  churnBenchmarks: { name: string; churnRate: string; source: string }[];
+  churnImplication: string;
+  realisticArpu: string;
+  arpuReasoning: string;
+  privacyPremium: string;
+  ltvEstimate: string;
+  dataSource?: DataSourceType;
+  sourceUrls?: string[];
+}
+
+export interface BuildComplexityData {
+  mvpTimeline: string;
+  mvpScope: string[];
+  techChallenges: string[];
+  estimatedCost: string;
+  voiceApiCosts: string;
+  onDeviceNote: string;
+  dataSource?: DataSourceType;
+  sourceUrls?: string[];
+}
+
 export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthunt" | "github" | "twitter" | "ai_estimated";
 
 export interface ScoreBreakdownItem {
