@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Globe, Search, Bot, Rocket } from "lucide-react";
+import { ExternalLink, Globe, Search, Bot, Rocket, Github } from "lucide-react";
 import type { DataSourceType } from "@/data/mockReport";
 
 interface Props {
