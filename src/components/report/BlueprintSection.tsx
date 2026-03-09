@@ -4,13 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { generatePdfFromElement } from "@/lib/generatePdfFromElement";
+import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
 import type { BlueprintData } from "@/data/mockReport";
 
 interface Props {
   blueprint: BlueprintData;
   analysisId?: string;
   idea?: string;
+  pdfContext?: BlueprintPdfContext;
 }
 
 const sections = [
