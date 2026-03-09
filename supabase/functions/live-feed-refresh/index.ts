@@ -27,11 +27,21 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${pplxKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "sonar",
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: "You are a data API. Always respond with ONLY valid JSON arrays. No markdown, no explanation, no extra text." },
+          { role: "user", content: prompt }
+        ],
       }),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`Perplexity API error [${res.status}]:`, errText);
+      throw new Error(`Perplexity API error: ${res.status}`);
+    }
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    const content = data.choices?.[0]?.message?.content || "";
+    console.log("Perplexity response preview:", content.slice(0, 200));
+    return content;
   }
 
   async function askAI(prompt: string): Promise<string> {
