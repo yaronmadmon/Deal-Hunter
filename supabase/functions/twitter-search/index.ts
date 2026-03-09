@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,14 +7,53 @@ const corsHeaders = {
 };
 
 interface TwitterSearchParams {
-  action: 'search' | 'user_lookup' | 'user_tweets' | 'tweet_counts';
+  action: 'search' | 'user_lookup' | 'user_tweets' | 'tweet_counts' | 'influencer_signals';
   query?: string;
   username?: string;
+  usernames?: string[];
   user_id?: string;
   max_results?: number;
   granularity?: 'minute' | 'hour' | 'day';
   start_time?: string;
   end_time?: string;
+  niche_query?: string;
+}
+
+// ── Cache helpers ──
+function getSupabaseAdmin() {
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  return createClient(url, key);
+}
+
+async function getCached(cacheKey: string, action: string): Promise<any | null> {
+  try {
+    const sb = getSupabaseAdmin();
+    const { data } = await sb
+      .from("x_api_cache")
+      .select("data, expires_at")
+      .eq("cache_key", cacheKey)
+      .eq("action", action)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    return data?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function setCache(cacheKey: string, action: string, payload: any): Promise<void> {
+  try {
+    const sb = getSupabaseAdmin();
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    // Delete old entries for this key
+    await sb.from("x_api_cache").delete().eq("cache_key", cacheKey).eq("action", action);
+    await sb.from("x_api_cache").insert({ cache_key: cacheKey, action, data: payload, expires_at: expires });
+  } catch (e) {
+    console.error("Cache write error:", e);
+  }
 }
 
 serve(async (req) => {
@@ -31,14 +71,19 @@ serve(async (req) => {
     const { action = 'search' } = params;
     const headers = { Authorization: `Bearer ${TWITTER_BEARER_TOKEN}` };
 
-    // ── ACTION: Search Recent Tweets ──
+    // ── ACTION: Search Recent Tweets (cached) ──
     if (action === 'search') {
       const { query, max_results = 50 } = params;
       if (!query) {
-        return new Response(
-          JSON.stringify({ error: 'Query parameter is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Query parameter is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `search:${query}:${max_results}`;
+      const cached = await getCached(cacheKey, 'search');
+      if (cached) {
+        return new Response(JSON.stringify({ ...cached, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const searchParams = new URLSearchParams({
@@ -60,12 +105,9 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-
       const usersMap: Record<string, any> = {};
       if (data.includes?.users) {
-        for (const user of data.includes.users) {
-          usersMap[user.id] = user;
-        }
+        for (const user of data.includes.users) usersMap[user.id] = user;
       }
 
       const tweets = (data.data || []).map((tweet: any) => ({
@@ -80,7 +122,6 @@ serve(async (req) => {
         } : null,
       }));
 
-      // Filter by minimum 10 likes and sort by engagement
       const filtered = tweets
         .filter((t: any) => (t.metrics?.like_count || 0) >= 10)
         .sort((a: any, b: any) => {
@@ -90,24 +131,26 @@ serve(async (req) => {
         })
         .slice(0, 10);
 
-      return new Response(
-        JSON.stringify({
-          tweets: filtered,
-          total_fetched: tweets.length,
-          result_count: data.meta?.result_count || 0,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const result = { tweets: filtered, total_fetched: tweets.length, result_count: data.meta?.result_count || 0 };
+      await setCache(cacheKey, 'search', result);
+
+      return new Response(JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── ACTION: User Lookup ──
+    // ── ACTION: User Lookup (cached) ──
     if (action === 'user_lookup') {
       const { username } = params;
       if (!username) {
-        return new Response(
-          JSON.stringify({ error: 'Username parameter is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Username parameter is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `user:${username.toLowerCase()}`;
+      const cached = await getCached(cacheKey, 'user_lookup');
+      if (cached) {
+        return new Response(JSON.stringify({ ...cached, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const response = await fetch(
@@ -121,20 +164,26 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      return new Response(
-        JSON.stringify({ user: data.data || null }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const result = { user: data.data || null };
+      await setCache(cacheKey, 'user_lookup', result);
+
+      return new Response(JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── ACTION: User Tweets ──
+    // ── ACTION: User Tweets (cached) ──
     if (action === 'user_tweets') {
       const { user_id, max_results = 10 } = params;
       if (!user_id) {
-        return new Response(
-          JSON.stringify({ error: 'user_id parameter is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'user_id parameter is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `tweets:${user_id}`;
+      const cached = await getCached(cacheKey, 'user_tweets');
+      if (cached) {
+        return new Response(JSON.stringify({ ...cached, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const searchParams = new URLSearchParams({
@@ -153,20 +202,26 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      return new Response(
-        JSON.stringify({ tweets: data.data || [] }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const result = { tweets: data.data || [] };
+      await setCache(cacheKey, 'user_tweets', result);
+
+      return new Response(JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── ACTION: Tweet Counts ──
+    // ── ACTION: Tweet Counts (cached) ──
     if (action === 'tweet_counts') {
       const { query, granularity = 'day' } = params;
       if (!query) {
-        return new Response(
-          JSON.stringify({ error: 'Query parameter is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Query parameter is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `counts:${query}`;
+      const cached = await getCached(cacheKey, 'tweet_counts');
+      if (cached) {
+        return new Response(JSON.stringify({ ...cached, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const now = new Date();
@@ -190,8 +245,6 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-
-      // Calculate volume change
       const counts = data.data || [];
       let volumeChange = 0;
       if (counts.length >= 2) {
@@ -204,14 +257,89 @@ serve(async (req) => {
         }
       }
 
-      return new Response(
-        JSON.stringify({
-          counts,
-          total_count: data.meta?.total_tweet_count || 0,
-          volume_change_pct: volumeChange,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const result = { counts, total_count: data.meta?.total_tweet_count || 0, volume_change_pct: volumeChange };
+      await setCache(cacheKey, 'tweet_counts', result);
+
+      return new Response(JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ── ACTION: Influencer Signals (batch user lookup + tweets, cached, max 3) ──
+    if (action === 'influencer_signals') {
+      const { usernames = [], niche_query = '' } = params;
+      if (!usernames.length) {
+        return new Response(JSON.stringify({ influencers: [] }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `influencers:${usernames.sort().join(',')}:${niche_query}`;
+      const cached = await getCached(cacheKey, 'influencer_signals');
+      if (cached) {
+        return new Response(JSON.stringify({ ...cached, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Cap at 3 lookups for cost control
+      const limitedUsernames = usernames.slice(0, 3);
+      const influencers: any[] = [];
+
+      for (const uname of limitedUsernames) {
+        try {
+          // Look up user
+          const userRes = await fetch(
+            `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
+            { headers }
+          );
+          if (!userRes.ok) continue;
+          const userData = await userRes.json();
+          const user = userData.data;
+          if (!user) continue;
+
+          // Get their recent tweets (max 10)
+          const tweetsRes = await fetch(
+            `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
+            { headers }
+          );
+          let nicheTweet = null;
+          if (tweetsRes.ok) {
+            const tweetsData = await tweetsRes.json();
+            const tweets = tweetsData.data || [];
+            // Find most relevant tweet matching niche
+            const nicheWords = niche_query.toLowerCase().split(/\s+/);
+            const matched = tweets.filter((t: any) =>
+              nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+            );
+            nicheTweet = matched.length > 0
+              ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
+              : tweets[0]; // fallback to most recent
+          }
+
+          influencers.push({
+            name: user.name,
+            username: user.username,
+            description: user.description || '',
+            followers_count: user.public_metrics?.followers_count || 0,
+            following_count: user.public_metrics?.following_count || 0,
+            tweet_count: user.public_metrics?.tweet_count || 0,
+            latest_niche_tweet: nicheTweet ? {
+              text: nicheTweet.text,
+              created_at: nicheTweet.created_at,
+              like_count: nicheTweet.public_metrics?.like_count || 0,
+              retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
+              reply_count: nicheTweet.public_metrics?.reply_count || 0,
+              id: nicheTweet.id,
+            } : null,
+          });
+        } catch (e) {
+          console.error(`Influencer lookup error for @${uname}:`, e);
+        }
+      }
+
+      const result = { influencers };
+      await setCache(cacheKey, 'influencer_signals', result);
+
+      return new Response(JSON.stringify(result),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(

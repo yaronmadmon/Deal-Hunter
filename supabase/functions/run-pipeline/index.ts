@@ -260,6 +260,68 @@ async function twitterUserLookup(
   }
 }
 
+async function twitterInfluencerSignals(
+  bearerToken: string,
+  usernames: string[],
+  nicheQuery: string
+): Promise<{ influencers: any[] }> {
+  try {
+    const limitedUsernames = usernames.slice(0, 3);
+    const influencers: any[] = [];
+    const headers = { Authorization: `Bearer ${bearerToken}` };
+
+    for (const uname of limitedUsernames) {
+      try {
+        const userRes = await fetch(
+          `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
+          { headers }
+        );
+        if (!userRes.ok) continue;
+        const userData = await userRes.json();
+        const user = userData.data;
+        if (!user) continue;
+
+        const tweetsRes = await fetch(
+          `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
+          { headers }
+        );
+        let nicheTweet = null;
+        if (tweetsRes.ok) {
+          const tweetsData = await tweetsRes.json();
+          const tweets = tweetsData.data || [];
+          const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
+          const matched = tweets.filter((t: any) =>
+            nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+          );
+          nicheTweet = matched.length > 0
+            ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
+            : tweets[0];
+        }
+
+        influencers.push({
+          name: user.name,
+          username: user.username,
+          description: user.description || '',
+          followers_count: user.public_metrics?.followers_count || 0,
+          latest_niche_tweet: nicheTweet ? {
+            text: nicheTweet.text,
+            created_at: nicheTweet.created_at,
+            like_count: nicheTweet.public_metrics?.like_count || 0,
+            retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
+            id: nicheTweet.id,
+          } : null,
+        });
+      } catch (e) {
+        console.error(`Influencer lookup error for @${uname}:`, e);
+      }
+    }
+    return { influencers };
+  } catch (e) {
+    console.error("Twitter influencer signals error:", e);
+    return { influencers: [] };
+  }
+}
+
 // ── Product Hunt helper ─────────────────────────────────────────────
 async function productHuntSearch(
   apiKey: string,
@@ -396,6 +458,7 @@ Deno.serve(async (req) => {
       github: null,
       twitterSentiment: null,
       twitterCounts: null,
+      twitterInfluencers: null,
       sources: [],
     };
 
@@ -546,6 +609,10 @@ Deno.serve(async (req) => {
           .then(r => { rawData.twitterCounts = r; })
           .catch(e => console.error("Twitter counts error:", e))
       );
+
+      // Influencer / founder signals — AI will provide usernames from competitor data
+      // For now, we pass the niche query so the AI prompt can instruct including influencer data
+      rawData.twitterInfluencerNicheQuery = twitterKeyword;
     }
 
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
@@ -745,9 +812,12 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "productHuntLaunches": [
         {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
       ],
+      "influencerSignals": [
+        {"name": "Founder Name", "username": "x_handle", "followers_count": number, "description": "bio snippet", "latest_niche_tweet": {"text": "tweet text", "like_count": number, "retweet_count": number, "id": "tweet_id"}}
+      ] — Include up to 3 influencer/founder signals. These are X accounts of founders, CEOs, or influential people building in this niche. Use competitor company names and founder names from the competitor data to identify relevant X usernames. If competitor data mentions specific people or companies, look them up. dataSource should be "twitter". If no influencer data is available, use an empty array.
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["Include PH launch data AND GitHub data: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. High activity = validated builder interest."],
-      "insight": "one sentence referencing PH + GitHub data — e.g. 'X similar products on PH with avg Y upvotes, and Z open-source repos with total W stars, indicating strong builder activity'"
+      "evidence": ["Include PH launch data AND GitHub data AND influencer signals: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. '@founder has X followers and is active in this niche' — X URL. High activity = validated builder interest."],
+      "insight": "one sentence referencing PH + GitHub + influencer data"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},

@@ -38,6 +38,19 @@ export interface TwitterSentimentItem {
   tweetUrl: string;
 }
 
+export interface InfluencerSignal {
+  name: string;
+  username: string;
+  followers_count: number;
+  description: string;
+  latest_niche_tweet: {
+    text: string;
+    like_count: number;
+    retweet_count: number;
+    id: string;
+  } | null;
+}
+
 export interface ChartPoint {
   name: string;
   value: number;
@@ -69,6 +82,7 @@ export interface SignalCardData {
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
   twitterSentiment?: TwitterSentimentItem[];
+  influencerSignals?: InfluencerSignal[];
   productHuntLaunches?: ProductHuntLaunch[];
   evidence: string[];
   insight: string;
