@@ -713,16 +713,17 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     },
     {
       "title": "Sentiment & Pain Points",
-      "source": "Firecrawl — Reddit + App Reviews",
-      "dataSource": "firecrawl" or "ai_estimated",
-      "sourceUrls": ["scraped URLs"],
+      "source": "Firecrawl + X API — Reddit, App Reviews & X Posts",
+      "dataSource": "firecrawl" or "twitter" or "ai_estimated",
+      "sourceUrls": ["scraped URLs", "tweet URLs"],
       "icon": "MessageCircle",
       "type": "sentiment",
       "confidence": "High" or "Medium" or "Low",
       "evidenceCount": number,
-      "sentiment": {"complaints": ["REAL complaints from REAL reviews"], "loves": ["REAL praise from REAL reviews"], "emotion": "string", "complaintCount": number, "positiveCount": number},
-      "evidence": ["REAL quotes with source URL"],
-      "insight": "one sentence"
+      "sentiment": {"complaints": ["REAL complaints from REAL reviews and X posts"], "loves": ["REAL praise from REAL reviews and X posts"], "emotion": "string", "complaintCount": number, "positiveCount": number, "complaintsSourceUrl": "url or null", "lovesSourceUrl": "url or null"},
+      "twitterSentiment": [{"text": "tweet text — use actual tweet content from X data", "authorName": "display name", "authorUsername": "handle", "followerCount": number, "likeCount": number, "retweetCount": number, "tweetUrl": "https://x.com/username/status/id"}] — Include top 10 most engaged tweets if X data is available. These are REAL tweets from the X API. If no X data, omit this field entirely (do NOT include empty array).
+      "evidence": ["REAL quotes from Reddit, app reviews, AND X posts with source URL"],
+      "insight": "one sentence incorporating both Reddit/review and X sentiment"
     },
     {
       "title": "Growth Signals",
