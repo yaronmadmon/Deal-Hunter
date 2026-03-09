@@ -382,6 +382,54 @@ export const SignalCard = ({ card }: SignalCardProps) => {
           </div>
         )}
 
+        {/* X Influencer / Founder Signals */}
+        {card.influencerSignals && card.influencerSignals.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Who's Building in This Space</div>
+              <DataSourceBadge dataSource="twitter" compact />
+            </div>
+            <div className="space-y-2">
+              {card.influencerSignals.map((inf, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-2 bg-[hsl(204,88%,53%)]/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Twitter className="w-4 h-4 text-[hsl(204,88%,53%)]" />
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{inf.name}</span>
+                        <span className="text-xs text-muted-foreground ml-1">@{inf.username}</span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[hsl(204,88%,53%)]/30 text-[hsl(204,88%,53%)]">
+                      {inf.followers_count.toLocaleString()} followers
+                    </Badge>
+                  </div>
+                  {inf.description && (
+                    <p className="text-[11px] text-muted-foreground line-clamp-2">{inf.description}</p>
+                  )}
+                  {inf.latest_niche_tweet && (
+                    <div className="bg-background/50 rounded-md p-2 space-y-1.5">
+                      <p className="text-xs text-foreground leading-relaxed line-clamp-3">{inf.latest_niche_tweet.text}</p>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-0.5">
+                          <Heart className="w-3 h-3" /> {inf.latest_niche_tweet.like_count}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <Repeat2 className="w-3 h-3" /> {inf.latest_niche_tweet.retweet_count}
+                        </span>
+                        <EvidenceLink href={`https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}`} label="View on X" />
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-primary font-medium bg-primary/5 rounded px-2 py-1">
+                    ✅ Respected founder active in this space
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Evidence quote box */}
         <div className="bg-secondary/50 border border-border/50 rounded-lg p-3 space-y-2">
           {card.evidence.map((e, i) => (
