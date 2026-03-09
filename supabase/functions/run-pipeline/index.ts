@@ -812,9 +812,12 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       "productHuntLaunches": [
         {"name": "product name", "tagline": "tagline", "upvotes": number, "launchDate": "YYYY-MM-DD", "url": "https://producthunt.com/posts/..."}
       ],
+      "influencerSignals": [
+        {"name": "Founder Name", "username": "x_handle", "followers_count": number, "description": "bio snippet", "latest_niche_tweet": {"text": "tweet text", "like_count": number, "retweet_count": number, "id": "tweet_id"}}
+      ] — Include up to 3 influencer/founder signals. These are X accounts of founders, CEOs, or influential people building in this niche. Use competitor company names and founder names from the competitor data to identify relevant X usernames. If competitor data mentions specific people or companies, look them up. dataSource should be "twitter". If no influencer data is available, use an empty array.
       "lineChart": [{"name": "month", "value": number}, ...9 data points],
-      "evidence": ["Include PH launch data AND GitHub data: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. High activity = validated builder interest."],
-      "insight": "one sentence referencing PH + GitHub data — e.g. 'X similar products on PH with avg Y upvotes, and Z open-source repos with total W stars, indicating strong builder activity'"
+      "evidence": ["Include PH launch data AND GitHub data AND influencer signals: 'ProductName launched on PH with X upvotes' — URL. 'RepoName has X stars and Y forks on GitHub' — URL. '@founder has X followers and is active in this niche' — X URL. High activity = validated builder interest."],
+      "insight": "one sentence referencing PH + GitHub + influencer data"
     }
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},

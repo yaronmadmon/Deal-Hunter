@@ -82,6 +82,7 @@ export interface SignalCardData {
   competitors?: CompetitorEntry[];
   sentiment?: SentimentData;
   twitterSentiment?: TwitterSentimentItem[];
+  influencerSignals?: InfluencerSignal[];
   productHuntLaunches?: ProductHuntLaunch[];
   evidence: string[];
   insight: string;
