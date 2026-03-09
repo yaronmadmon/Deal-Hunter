@@ -28,7 +28,6 @@ Deno.serve(async (req) => {
 
     const report = analysis.report_data as Record<string, unknown>;
 
-    // ── Extract structured fields from the report ──
     const overallScore = analysis.overall_score ?? (report as any).overallScore ?? 0;
     const signalStrength = analysis.signal_strength ?? (report as any).signalStrength ?? "Unknown";
     const idea = analysis.idea;
@@ -42,9 +41,11 @@ Deno.serve(async (req) => {
 
     const opportunity = (report as any).opportunity ?? {};
     const revenueBenchmark = (report as any).revenueBenchmark ?? {};
+    const nicheAnalysis = (report as any).nicheAnalysis ?? {};
+    const unitEconomics = (report as any).unitEconomics ?? {};
+    const buildComplexity = (report as any).buildComplexity ?? {};
     const scoreBreakdown = (report as any).scoreBreakdown ?? [];
 
-    // Build a structured context object for the AI
     const reportContext = {
       idea,
       overallScore,
@@ -61,6 +62,9 @@ Deno.serve(async (req) => {
       underservedUsers: opportunity.underservedUsers ?? [],
       positioning: opportunity.positioning ?? "",
       revenueBenchmark,
+      nicheAnalysis,
+      unitEconomics,
+      buildComplexity,
       scoreBreakdown,
     };
 
@@ -83,38 +87,104 @@ Deno.serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `You are a startup strategist for Gold Rush, a market validation tool. You are given REAL market analysis data for a specific startup idea. Your job is to generate a startup blueprint that is DIRECTLY and SPECIFICALLY derived from this data. Every sentence you write must trace back to a data point from the report.
+              content: `You are a startup strategist for Gold Rush, a market validation tool. You are given REAL market analysis data for a specific startup idea. Your job is to generate an ACTIONABLE, HONEST startup blueprint with realistic timelines, technical specifics, and validation gates.
 
 RULES:
 - NEVER write generic startup advice. Every statement must reference specific data from the report.
-- If a competitor has a weakness, name the competitor and state the weakness.
-- If users complained about something, quote or reference the complaint.
-- Pricing must reference the revenue benchmark range provided.
-- The MVP plan must prioritize the highest-signal opportunity from the report.
-- Financial modeling (TAM/SAM/SOM) belongs in post-MVP, NOT in the MVP plan.
+- Be HONEST about timelines — a real MVP takes 10-14 weeks, not 6.
+- Specify EXACT technologies, not vague references.
+- Clearly separate MVP features from Phase 2 features.
+- Include go-to-market, competitive response, and validation milestones.
+- If a claim (like "local processing") has tradeoffs, be explicit about them.
+- For monetization, include validation approach, not just pricing.
 
 Return ONLY a JSON object (no markdown, no code fences) with this exact structure:
 
 {
-  "reportSummary": "One paragraph that opens with the market score, references the strongest signal, and identifies the key opportunity. This must read like a continuation of the report, not a generic intro. Example tone: 'Based on a market score of X/100 with [signal strength] trend momentum ([specific metric from report]) and a clear gap in [specific gap from opportunity data], here is your build strategy.'",
-  "productConcept": "A refined product description that directly addresses the opportunity gaps and pain points found in the report. Reference specific competitor weaknesses this product solves.",
-  "strategicPositioning": "How to differentiate based on SPECIFIC competitor weaknesses and opportunity gaps from the report. Name competitors and their weaknesses.",
-  "competitiveEdge": [
-    "For each top competitor from the report: '[Competitor Name] weakness: [their weakness]. Your edge: [how this product exploits it specifically].' One entry per competitor."
+  "reportSummary": "One paragraph that opens with the market score, references the strongest signal, and identifies the key opportunity.",
+
+  "productConcept": "A refined product description that directly addresses opportunity gaps and pain points. Reference specific competitor weaknesses.",
+
+  "strategicPositioning": "How to differentiate based on SPECIFIC competitor weaknesses. Name competitors.",
+
+  "competitiveEdge": ["For each top competitor: '[Name] weakness: [X]. Your edge: [Y].'"],
+
+  "coreFeatures": ["5-7 features. Each traces to a pain point or gap. Format: '[Feature] — addresses [complaint/gap]'"],
+
+  "targetUsers": ["3-4 user segments from report data with reasoning."],
+
+  "primaryLaunchSegment": "Which ONE segment is primary for MVP launch and why. Be specific: bigger TAM? Easier to reach? Name the communities/channels. Then name which segments are Phase 2 expansions.",
+
+  "monetization": ["2-3 revenue models with specific pricing referencing report benchmarks."],
+
+  "monetizationValidation": [
+    "How will you test pricing before launch? (surveys, beta tiers, willingness-to-pay tests)",
+    "Unit economics: cost of voice inference per user per month, storage costs, margin analysis",
+    "Is any premium tier validated or just a guess? How to test demand for it",
+    "What metrics prove pricing works? (conversion rate targets, churn thresholds)"
   ],
-  "coreFeatures": ["5-7 features. EACH feature must trace back to a specific pain point from the Sentiment card or a gap from the Opportunity data. Format: '[Feature] — addresses [specific complaint/gap from report]'"],
-  "targetUsers": ["3-4 user segments pulled from the underserved users in the report data. Reference why they are underserved based on report evidence."],
-  "monetization": ["2-3 revenue models. Pricing MUST reference the revenue benchmark range from the report. Tiers must target the specific user segments identified."],
-  "mvpPlan": ["5-6 week-by-week steps. Week 1-2 MUST focus on the highest-signal opportunity from the report. No financial modeling in MVP phase. Each step must reference which report signal it addresses."]
+
+  "mvpPlan": [
+    "Week 1-2: [specific engineering phase with deliverable]",
+    "Week 3-4: [phase]",
+    "Week 5-6: [phase]",
+    "Week 7-8: [phase]",
+    "Week 9-10: [phase]",
+    "Week 11-14: [testing, stability, beta launch prep]",
+    "Total: 10-14 weeks minimum. Be honest about complexity."
+  ],
+
+  "mvpPhasing": {
+    "mvp": ["Features included in launch — only what's needed to test core hypothesis"],
+    "phase2": ["Features deferred to post-launch — explain why each is deferred"]
+  },
+
+  "techStack": [
+    "Voice API: [specific choice, e.g. ElevenLabs, Deepgram, Whisper] — why this one",
+    "LLM: [specific model, e.g. GPT-4o-mini, Claude Haiku, open-source] — for conversational logic",
+    "Storage: [SQLite local, encrypted cloud, etc.] — for user data",
+    "Fitness APIs: [HealthKit, Google Fit] — for integration",
+    "Inference: [cloud vs on-device] — be specific about which framework",
+    "Backend: [Supabase, Firebase, etc.] — for auth and sync"
+  ],
+
+  "techTradeoffs": [
+    "If claiming local/on-device processing: which inference framework (TF Lite, Core ML, ONNX)? What's the compute cost? Is it actually feasible on mobile?",
+    "If cloud inference for MVP: be honest that data leaves the device. Recommend cloud for MVP, optimize local in Phase 2.",
+    "For any 'vibe-matching' or mood detection: specify the approach (voice check-in, user toggle, or real-time sentiment). Each has different complexity. Pick one for MVP.",
+    "Any other honest tradeoff the founder needs to know"
+  ],
+
+  "goToMarket": [
+    "Where to find early users: specific subreddits, forums, communities, influencers",
+    "How to communicate the privacy angle: specific messaging, comparisons (your data handling vs Peloton/Fitbit)",
+    "Retention hooks: weekly challenges, community features, persona unlocks, streaks",
+    "Launch strategy: beta invite, Product Hunt, specific channels"
+  ],
+
+  "competitiveResponse": [
+    "If [named competitor from report] adds similar features, what's your response?",
+    "Should you accelerate launch to get first-mover advantage?",
+    "Are there partnership opportunities?",
+    "What's your moat if a big player enters?"
+  ],
+
+  "validationMilestones": [
+    "Week 4: Can we prove [core mechanic] actually works? (Test with 5 real users)",
+    "Week 8: Do users actually prefer [your approach] over alternatives? (Preference testing)",
+    "Week 10: Is [key differentiator] messaging resonating? (Survey early adopters)",
+    "Week 12: What's early churn looking like? (Are users sticking around?)",
+    "Week 14: Go/no-go decision based on [specific metrics]"
+  ]
 }`
             },
             {
               role: "user",
-              content: `Generate a startup blueprint for "${idea}" using this market analysis data:\n\n${JSON.stringify(reportContext, null, 2)}`
+              content: `Generate a detailed startup blueprint for "${idea}" using this market analysis data:\n\n${JSON.stringify(reportContext, null, 2)}`
             }
           ],
           temperature: 0.7,
-          max_tokens: 3000,
+          max_tokens: 5000,
         }),
       });
 
@@ -123,7 +193,18 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
         const content = aiResult.choices?.[0]?.message?.content || "";
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          blueprint = JSON.parse(jsonMatch[0]);
+          let cleaned = jsonMatch[0]
+            .replace(/,\s*([}\]])/g, '$1')
+            .replace(/[\x00-\x1F\x7F]/g, (c: string) => c === '\n' || c === '\r' || c === '\t' ? c : ' ');
+          try {
+            blueprint = JSON.parse(cleaned);
+          } catch (parseErr) {
+            console.error("JSON parse failed, attempting repair:", (parseErr as Error).message);
+            const reMatch = cleaned.match(/\{[\s\S]*\}/);
+            if (reMatch) {
+              try { blueprint = JSON.parse(reMatch[0]); } catch (_) { console.error("JSON repair also failed"); }
+            }
+          }
         }
       } else {
         const errText = await aiResponse.text();
