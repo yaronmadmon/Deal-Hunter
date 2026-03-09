@@ -617,6 +617,41 @@ Deno.serve(async (req) => {
 
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
 
+    // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
+    if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
+      try {
+        const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: "Extract up to 3 X/Twitter usernames (handles without @) of founders, CEOs, or key people building products in the space described. Return ONLY a JSON array of strings like [\"username1\",\"username2\"]. If none found, return []." },
+              { role: "user", content: `Market data:\n${rawData.perplexityMarket.content}\n\nIdea: ${idea}` },
+            ],
+            temperature: 0,
+            max_tokens: 200,
+          }),
+        });
+        if (extractRes.ok) {
+          const extractData = await extractRes.json();
+          const content = extractData.choices?.[0]?.message?.content || "[]";
+          const jsonMatch = content.match(/\[[\s\S]*?\]/);
+          if (jsonMatch) {
+            const usernames: string[] = JSON.parse(jsonMatch[0]);
+            if (usernames.length > 0) {
+              const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
+              const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
+              rawData.twitterInfluencers = influencerResult;
+              rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Influencer extraction error:", e);
+      }
+    }
+
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
