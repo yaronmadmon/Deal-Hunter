@@ -130,6 +130,9 @@ const Live = () => {
         case "growing_niches":
           if (Array.isArray(payload)) setNiches(payload);
           break;
+        case "hacker_news":
+          if (Array.isArray(payload)) setHackerNews(payload);
+          break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
           break;
