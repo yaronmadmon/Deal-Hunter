@@ -154,6 +154,7 @@ export interface MockReportData {
   keyStats?: KeyStat[];
   userQuotes?: UserQuote[];
   methodology?: MethodologyInfo;
+  githubRepos?: GitHubRepoData[];
 }
 
 export const mockReport: MockReportData = {

@@ -589,6 +589,9 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   "userQuotes": [
     {"text": "REAL quote from a real user", "source": "subreddit or App Store Review", "sourceUrl": "actual URL or null", "upvotes": "1.2k or null", "platform": "reddit or app_store or twitter or other"}
   ],
+  "githubRepos": [
+    {"name": "owner/repo", "description": "repo description", "stars": 1234, "forks": 56, "openIssues": 12, "language": "TypeScript", "url": "https://github.com/owner/repo", "updatedAt": "ISO date", "pushedAt": "ISO date", "topics": ["topic1", "topic2"]}
+  ],
   "methodology": {
     "totalSources": 0,
     "perplexityQueries": 4,
