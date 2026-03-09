@@ -380,7 +380,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises]);
+    // Run GitHub search (public API, no key needed)
+    const githubPromises: Promise<void>[] = [];
+    const ghKeyword = idea.split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+    githubPromises.push(
+      githubSearch(ghKeyword, 10)
+        .then(r => {
+          rawData.github = r;
+          rawData.sources.push(...r.repos.map((repo: any) => ({ url: repo.url, type: "github" })));
+        })
+        .catch(e => console.error("GitHub error:", e))
+    );
+
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises]);
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
