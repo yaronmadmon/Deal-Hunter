@@ -449,6 +449,8 @@ Deno.serve(async (req) => {
       perplexityMarket: null,
       perplexityVC: null,
       perplexityRevenue: null,
+      perplexityChurn: null,
+      perplexityBuildCosts: null,
       firecrawlAppStore: null,
       firecrawlReddit: null,
       serperTrends: null,
