@@ -146,6 +146,7 @@ export const SignalCard = ({ card }: SignalCardProps) => {
               </ResponsiveContainer>
             </div>
           </div>
+        )}
 
         {card.donut && (
           <div className="h-20 flex items-center justify-center">
