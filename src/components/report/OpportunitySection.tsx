@@ -12,7 +12,10 @@ export const OpportunitySection = ({ opportunity }: Props) => {
         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
           <Lightbulb className="w-4 h-4 text-primary" />
         </div>
-        <h2 className="font-heading text-xl font-bold text-foreground">Opportunity Gap</h2>
+        <div>
+          <h2 className="font-heading text-xl font-bold text-foreground">Opportunity Gap</h2>
+          <p className="text-xs text-muted-foreground italic">Where you could win</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

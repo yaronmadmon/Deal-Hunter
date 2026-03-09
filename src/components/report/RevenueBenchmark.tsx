@@ -13,7 +13,10 @@ export const RevenueBenchmark = ({ benchmark }: Props) => {
         <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
           <DollarSign className="w-4 h-4 text-accent" />
         </div>
-        <h2 className="font-heading text-xl font-bold text-foreground">Revenue Benchmark</h2>
+        <div>
+          <h2 className="font-heading text-xl font-bold text-foreground">Revenue Benchmark</h2>
+          <p className="text-xs text-muted-foreground italic">What similar apps charge</p>
+        </div>
       </div>
       <p className="text-foreground font-medium mb-2">{benchmark.summary}</p>
       <p className="text-sm text-muted-foreground mb-3">{benchmark.basis}</p>
