@@ -49,10 +49,21 @@ Deno.serve(async (req) => {
   }
 
   function parseJsonArray(text: string): any[] {
+    // Try to find a JSON array in the text
     const match = text.match(/\[[\s\S]*\]/);
     if (match) {
-      try { return JSON.parse(match[0]); } catch {}
+      try { return JSON.parse(match[0]); } catch (e) {
+        console.error("JSON parse failed for matched array:", e, "Raw match:", match[0].slice(0, 200));
+      }
     }
+    // Try parsing markdown code blocks
+    const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlock) {
+      try { return JSON.parse(codeBlock[1].trim()); } catch (e) {
+        console.error("JSON parse failed for code block:", e);
+      }
+    }
+    console.error("Could not parse JSON array from response:", text.slice(0, 300));
     return [];
   }
 
