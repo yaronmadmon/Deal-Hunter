@@ -147,6 +147,7 @@ export interface MethodologyInfo {
   serperSearches?: number;
   productHuntQueries?: number;
   githubSearches?: number;
+  twitterSearches?: number;
   dataPoints: number;
   analysisDate: string;
   confidenceNote: string;
