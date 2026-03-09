@@ -971,7 +971,24 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
       const content = aiResult.choices?.[0]?.message?.content || "";
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        reportData = JSON.parse(jsonMatch[0]);
+        // Sanitize: remove trailing commas before } or ]
+        let cleaned = jsonMatch[0]
+          .replace(/,\s*([}\]])/g, '$1')
+          .replace(/[\x00-\x1F\x7F]/g, (c) => c === '\n' || c === '\r' || c === '\t' ? c : ' ');
+        try {
+          reportData = JSON.parse(cleaned);
+        } catch (parseErr) {
+          console.error("JSON parse failed, attempting repair:", (parseErr as Error).message);
+          // Try more aggressive cleanup: strip any non-JSON prefix/suffix
+          const reMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (reMatch) {
+            try {
+              reportData = JSON.parse(reMatch[0]);
+            } catch (_) {
+              console.error("JSON repair also failed, using fallback");
+            }
+          }
+        }
         // Inject the collected source URLs into the report
         reportData.dataSources = uniqueSources;
         // Always set analysis date to actual current date
