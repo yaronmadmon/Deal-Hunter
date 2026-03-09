@@ -198,6 +198,9 @@ const Report = () => {
           return extracted.slice(0, 5);
         })()} />
 
+        {/* Open Source Landscape */}
+        {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
+
         {/* Opportunity */}
         <OpportunitySection opportunity={r.opportunity} />
 
