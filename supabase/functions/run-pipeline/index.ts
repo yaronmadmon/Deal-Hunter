@@ -211,8 +211,8 @@ async function twitterTweetCounts(
   query: string
 ): Promise<{ counts: any[]; total_count: number; volume_change_pct: number }> {
   try {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const now = new Date(Date.now() - 30 * 1000); // 30s buffer
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 1000); // +1min buffer
     const params = new URLSearchParams({
       query,
       granularity: 'day',
@@ -617,6 +617,41 @@ Deno.serve(async (req) => {
 
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
 
+    // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
+    if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
+      try {
+        const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: "Extract up to 3 X/Twitter usernames (handles without @) of founders, CEOs, or key people building products in the space described. Return ONLY a JSON array of strings like [\"username1\",\"username2\"]. If none found, return []." },
+              { role: "user", content: `Market data:\n${rawData.perplexityMarket.content}\n\nIdea: ${idea}` },
+            ],
+            temperature: 0,
+            max_tokens: 200,
+          }),
+        });
+        if (extractRes.ok) {
+          const extractData = await extractRes.json();
+          const content = extractData.choices?.[0]?.message?.content || "[]";
+          const jsonMatch = content.match(/\[[\s\S]*?\]/);
+          if (jsonMatch) {
+            const usernames: string[] = JSON.parse(jsonMatch[0]);
+            if (usernames.length > 0) {
+              const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
+              const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
+              rawData.twitterInfluencers = influencerResult;
+              rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Influencer extraction error:", e);
+      }
+    }
+
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
@@ -693,6 +728,12 @@ ${rawData.twitterCounts?.counts?.length > 0
 Total tweets in 7 days: ${rawData.twitterCounts.total_count}
 Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}%`
   : "No X/Twitter volume data available"}
+
+--- X/TWITTER INFLUENCER & FOUNDER SIGNALS (from X API v2 — real founder profiles and tweets) ---
+${rawData.twitterInfluencers?.influencers?.length > 0
+  ? rawData.twitterInfluencers.influencers.map((inf: any) => `Founder: ${inf.name} (@${inf.username})\nFollowers: ${inf.followers_count?.toLocaleString()}\nBio: ${inf.description}\nLatest Niche Tweet: "${inf.latest_niche_tweet?.text || 'N/A'}"\nLikes: ${inf.latest_niche_tweet?.like_count || 0} | Retweets: ${inf.latest_niche_tweet?.retweet_count || 0}\nTweet URL: ${inf.latest_niche_tweet?.id ? `https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}` : 'N/A'}`).join("\n---\n")
+  : "No influencer/founder signals found — no relevant X accounts identified"}
+Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
 `;
 
     // Unique source URLs for the report
