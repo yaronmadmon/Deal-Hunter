@@ -612,6 +612,20 @@ ${rawData.github?.repos?.length > 0
   ? rawData.github.repos.map((r: any) => `Repo: ${r.name}\nStars: ${r.stars}\nForks: ${r.forks}\nOpen Issues: ${r.openIssues}\nLanguage: ${r.language}\nLast Push: ${r.pushedAt}\nURL: ${r.url}\nTopics: ${(r.topics || []).join(", ")}`).join("\n---\n")
   : "No relevant GitHub repositories found — limited open-source competition"}
 Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
+
+--- X/TWITTER SENTIMENT DATA (from X API v2 — real public posts) ---
+${rawData.twitterSentiment?.tweets?.length > 0
+  ? rawData.twitterSentiment.tweets.map((t: any) => `Tweet: "${t.text}"\nAuthor: @${t.author_username} (${t.author_name}, ${t.author_followers.toLocaleString()} followers)\nLikes: ${t.like_count} | Retweets: ${t.retweet_count} | Replies: ${t.reply_count}\nDate: ${t.created_at}\nURL: https://x.com/${t.author_username}/status/${t.id}`).join("\n---\n")
+  : "No X/Twitter sentiment data available — X API not configured or returned no results"}
+Total tweets analyzed: ${rawData.twitterSentiment?.total_fetched ?? 0}
+High-engagement tweets (10+ likes): ${rawData.twitterSentiment?.tweets?.length ?? 0}
+
+--- X/TWITTER TWEET VOLUME (from X API v2 — daily tweet counts over 7 days) ---
+${rawData.twitterCounts?.counts?.length > 0
+  ? `Daily counts: ${rawData.twitterCounts.counts.map((c: any) => `${c.start?.split("T")[0]}: ${c.tweet_count}`).join(", ")}
+Total tweets in 7 days: ${rawData.twitterCounts.total_count}
+Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}%`
+  : "No X/Twitter volume data available"}
 `;
 
     // Unique source URLs for the report
