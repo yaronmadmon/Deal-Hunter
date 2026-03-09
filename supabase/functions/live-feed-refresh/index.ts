@@ -226,12 +226,14 @@ Return ONLY a JSON array.`
         const ph = Array.isArray(results.product_hunt) ? results.product_hunt as any[] : [];
         const reddit = Array.isArray(results.reddit_pain_points) ? results.reddit_pain_points as any[] : [];
         const niches = Array.isArray(results.growing_niches) ? results.growing_niches as any[] : [];
+        const hn = Array.isArray(results.hacker_news) ? results.hacker_news as any[] : [];
 
         const candidates = [
           ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: parseInt(String(t.spike).replace(/[^0-9]/g, "")) || 100 })),
           ...ph.map((p: any) => ({ name: `${p.name} style app`, type: "product_hunt", signal: (p.upvotes || 0) * 2 })),
           ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: (r.upvotes || 0) })),
           ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: 150 })),
+          ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: (h.points || 0) })),
         ];
 
         candidates.sort((a, b) => b.signal - a.signal);
