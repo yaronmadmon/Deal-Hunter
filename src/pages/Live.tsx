@@ -486,7 +486,7 @@ const Live = () => {
                           className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                               <span className="text-xs font-bold text-primary/70 w-5 shrink-0">
                                 #{i + 1}
                               </span>
@@ -494,6 +494,21 @@ const Live = () => {
                                 {label}
                               </p>
                               <SignalBadge score={score} confidence={confidence} />
+                            </div>
+                            <div className="flex items-center gap-2 ml-7 mt-1.5">
+                              <div className="relative w-28 h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+                                    (score ?? 0) >= 75 ? "bg-success" :
+                                    (score ?? 0) >= 40 ? "bg-warning" :
+                                    "bg-destructive"
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, score ?? 0))}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] tabular-nums text-muted-foreground font-medium">
+                                {score ?? 0}/100
+                              </span>
                             </div>
                             <div className="flex items-center gap-2 ml-7 mt-1">
                               {source && (
