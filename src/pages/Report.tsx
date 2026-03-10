@@ -261,8 +261,17 @@ const Report = () => {
           explanation={r.scoreExplanation}
         />
 
+        {/* Market Exploit Map */}
+        {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
+
+        {/* Competitor Comparison Matrix */}
+        {r.competitorMatrix && <CompetitorMatrix data={r.competitorMatrix} />}
+
         {/* Recommended Strategy */}
         {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
+
+        {/* Founder Decision Matrix */}
+        {r.founderDecision && <FounderDecision data={r.founderDecision} />}
 
         {/* Glossary */}
         <GlossarySection />
