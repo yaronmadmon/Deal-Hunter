@@ -21,6 +21,9 @@ import { ProofDashboard } from "@/components/report/ProofDashboard";
 import { KeywordDemand } from "@/components/report/KeywordDemand";
 import { AppStoreIntelligence } from "@/components/report/AppStoreIntelligence";
 import { RecommendedStrategy } from "@/components/report/RecommendedStrategy";
+import { MarketExploitMap } from "@/components/report/MarketExploitMap";
+import { CompetitorMatrix } from "@/components/report/CompetitorMatrix";
+import { FounderDecision } from "@/components/report/FounderDecision";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -258,8 +261,17 @@ const Report = () => {
           explanation={r.scoreExplanation}
         />
 
+        {/* Market Exploit Map */}
+        {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
+
+        {/* Competitor Comparison Matrix */}
+        {r.competitorMatrix && <CompetitorMatrix data={r.competitorMatrix} />}
+
         {/* Recommended Strategy */}
         {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
+
+        {/* Founder Decision Matrix */}
+        {r.founderDecision && <FounderDecision data={r.founderDecision} />}
 
         {/* Glossary */}
         <GlossarySection />

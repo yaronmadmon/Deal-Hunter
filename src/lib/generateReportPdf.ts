@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint } from "@/data/mockReport";
+import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData } from "@/data/mockReport";
 
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
@@ -582,6 +582,319 @@ export function generateReportPdf(report: MockReportData) {
   const expLines = doc.splitTextToSize(report.scoreExplanation, cw);
   writeLines(expLines, m, 4);
   y += 5;
+
+  // ── Helper: Section title ──
+  const drawSectionTitle = (title: string, subtitle?: string) => {
+    checkPage(15);
+    drawHRule();
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    setColor(C.text);
+    doc.text(title, m, y);
+    if (subtitle) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      setColor(C.muted);
+      doc.text(subtitle, m + doc.getTextWidth(title) + 3, y);
+    }
+    y += 7;
+  };
+
+  // ── Helper: bullet list ──
+  const drawBulletList = (items: string[], bulletColor: [number, number, number], bullet = "▸") => {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    items.forEach((item) => {
+      checkPage(6);
+      setColor(bulletColor);
+      doc.text(bullet, m + 2, y);
+      setColor(C.text);
+      const lines = doc.splitTextToSize(item, cw - 10);
+      writeLines(lines, m + 7, 4);
+      y += 1;
+    });
+    y += 2;
+  };
+
+  // ── Proof Dashboard ──
+  if (report.proofDashboard) {
+    const pd = report.proofDashboard;
+    drawSectionTitle("Proof Dashboard", "Evidence-based market signals");
+
+    const blocks = [
+      { title: "Search Demand", items: pd.searchDemand ? [`Keyword: ${pd.searchDemand.keyword}`, `Monthly Searches: ${pd.searchDemand.monthlySearches}`, `Trend: ${pd.searchDemand.trend}`] : [] },
+      { title: "Developer Activity", items: pd.developerActivity ? [`Repos: ${pd.developerActivity.repoCount}`, `Stars: ${pd.developerActivity.totalStars}`, `Trend: ${pd.developerActivity.trend}`] : [] },
+      { title: "Social Activity", items: pd.socialActivity ? [`X Mentions (7d): ${pd.socialActivity.twitterMentions}`, `Reddit Threads: ${pd.socialActivity.redditThreads}`, `Sentiment: ${pd.socialActivity.sentimentScore}`] : [] },
+      { title: "App Store Signals", items: pd.appStoreSignals ? [`Related Apps: ${pd.appStoreSignals.relatedApps}`, `Avg Rating: ${pd.appStoreSignals.avgRating}`, `Downloads: ${pd.appStoreSignals.downloadEstimate}`] : [] },
+    ];
+
+    blocks.forEach(block => {
+      if (block.items.length === 0) return;
+      checkPage(15);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      setColor(C.indigo);
+      doc.text(block.title, m + 2, y);
+      y += 5;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      block.items.forEach(item => {
+        checkPage(5);
+        setColor(C.text);
+        doc.text(item, m + 4, y);
+        y += 4;
+      });
+      y += 2;
+    });
+  }
+
+  // ── Keyword Demand ──
+  if (report.keywordDemand?.keywords?.length) {
+    drawSectionTitle("Keyword Demand", "Search volume data");
+    const kws = report.keywordDemand.keywords;
+    const cols = [m, m + 60, m + 95, m + 125];
+    const headers = ["Keyword", "Volume", "Difficulty", "Trend"];
+
+    checkPage(8 + kws.length * 6);
+    setFill([241, 245, 249]);
+    doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    setColor(C.muted);
+    headers.forEach((h, i) => doc.text(h, cols[i], y + 3));
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    kws.forEach((kw, i) => {
+      checkPage(6);
+      if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
+      setColor(C.text);
+      doc.text(doc.splitTextToSize(kw.keyword, 55)[0], cols[0], y + 1);
+      setColor(C.muted);
+      doc.text(kw.volume, cols[1], y + 1);
+      doc.text(kw.difficulty, cols[2], y + 1);
+      doc.text(kw.trend, cols[3], y + 1);
+      y += 6;
+    });
+    y += 3;
+  }
+
+  // ── App Store Intelligence ──
+  if (report.appStoreIntelligence?.apps?.length) {
+    drawSectionTitle("App Market Signals");
+    const apps = report.appStoreIntelligence.apps;
+    const cols = [m, m + 45, m + 75, m + 95, m + 120];
+    const headers = ["App", "Platform", "Rating", "Reviews", "Downloads"];
+
+    checkPage(8 + apps.length * 6);
+    setFill([241, 245, 249]);
+    doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    setColor(C.muted);
+    headers.forEach((h, i) => doc.text(h, cols[i], y + 3));
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    apps.forEach((app, i) => {
+      checkPage(6);
+      if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
+      setColor(C.text);
+      doc.setFont("helvetica", "bold");
+      doc.text(doc.splitTextToSize(app.name, 42)[0], cols[0], y + 1);
+      doc.setFont("helvetica", "normal");
+      setColor(C.muted);
+      doc.text(app.platform, cols[1], y + 1);
+      doc.text(app.rating, cols[2], y + 1);
+      doc.text(app.reviews, cols[3], y + 1);
+      doc.text(app.downloads, cols[4], y + 1);
+      y += 6;
+    });
+    if (report.appStoreIntelligence.insight) {
+      y += 2;
+      doc.setFontSize(7);
+      setColor(C.muted);
+      const insLines = doc.splitTextToSize(report.appStoreIntelligence.insight, cw);
+      writeLines(insLines, m, 3.5);
+    }
+    y += 3;
+  }
+
+  // ── Market Exploit Map ──
+  if (report.marketExploitMap) {
+    const mem = report.marketExploitMap;
+    drawSectionTitle("Market Exploit Map", "Where competitors are weak");
+
+    if (mem.competitorWeaknesses?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Competitor Weaknesses", m, y); y += 5;
+      drawBulletList(mem.competitorWeaknesses, C.danger, "⚠");
+    }
+    if (mem.competitorStrengths?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("What Competitors Do Well", m, y); y += 5;
+      drawBulletList(mem.competitorStrengths, C.success, "✓");
+    }
+    if (mem.topComplaints?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Top User Complaints", m, y); y += 5;
+      drawBulletList(mem.topComplaints.map(c => `${c.complaint} (${c.frequency})`), C.warning, "●");
+    }
+    if (mem.topPraise?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("What Users Value", m, y); y += 5;
+      drawBulletList(mem.topPraise.map(p => `${p.praise} (${p.frequency})`), C.indigo, "●");
+    }
+    if (mem.whereToWin?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Where You Can Win", m, y); y += 5;
+      drawBulletList(mem.whereToWin, C.success, "→");
+    }
+    if (mem.attackAngle) {
+      checkPage(12);
+      setFill([240, 242, 255]);
+      const aaLines = doc.splitTextToSize(mem.attackAngle, cw - 8);
+      doc.roundedRect(m, y - 2, cw, aaLines.length * 4 + 8, 2, 2, "F");
+      doc.setFontSize(7); doc.setFont("helvetica", "bold"); setColor(C.indigo);
+      doc.text("RECOMMENDED ATTACK ANGLE", m + 4, y + 2);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      y += 6;
+      writeLines(aaLines, m + 4, 4);
+      y += 4;
+    }
+  }
+
+  // ── Competitor Matrix ──
+  if (report.competitorMatrix?.features?.length && report.competitorMatrix?.competitors?.length) {
+    const cm = report.competitorMatrix;
+    drawSectionTitle("Competitor Comparison Matrix");
+
+    const colW = Math.min(30, (cw - 45) / cm.competitors.length);
+    const fColW = 45;
+
+    checkPage(8 + cm.features.length * 6);
+    setFill([241, 245, 249]);
+    doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
+    doc.setFontSize(6); doc.setFont("helvetica", "bold"); setColor(C.muted);
+    doc.text("Feature", m + 2, y + 3);
+    cm.competitors.forEach((comp, i) => {
+      const cx = m + fColW + colW * i + colW / 2;
+      setColor(comp.isYou ? C.indigo : C.muted);
+      doc.text(comp.name, cx, y + 3, { align: "center" });
+    });
+    y += 8;
+
+    doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    cm.features.forEach((feature, fi) => {
+      checkPage(6);
+      if (fi % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
+      setColor(C.text);
+      doc.text(doc.splitTextToSize(feature, fColW - 4)[0], m + 2, y + 1);
+      cm.competitors.forEach((comp, ci) => {
+        const val = comp.scores[feature] || "—";
+        const cx = m + fColW + colW * ci + colW / 2;
+        const lower = val.toLowerCase();
+        if (lower === "yes" || lower === "strong") setColor(C.success);
+        else if (lower === "no" || lower === "weak" || lower === "none") setColor(C.danger);
+        else if (lower === "medium" || lower === "partial") setColor(C.warning);
+        else setColor(C.muted);
+        doc.text(val, cx, y + 1, { align: "center" });
+      });
+      y += 6;
+    });
+    y += 3;
+  }
+
+  // ── Recommended Strategy ──
+  if (report.recommendedStrategy) {
+    const rs = report.recommendedStrategy;
+    drawSectionTitle("Recommended Strategy");
+
+    if (rs.positioning) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Positioning", m, y); y += 5;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const pLines = doc.splitTextToSize(rs.positioning, cw);
+      writeLines(pLines, m + 2, 4); y += 2;
+    }
+    if (rs.suggestedPricing) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Suggested Pricing", m, y); y += 5;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const prLines = doc.splitTextToSize(rs.suggestedPricing, cw);
+      writeLines(prLines, m + 2, 4); y += 2;
+    }
+    if (rs.differentiators?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Differentiation Opportunities", m, y); y += 5;
+      drawBulletList(rs.differentiators, C.indigo, "→");
+    }
+    if (rs.channels?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Go-to-Market Channels", m, y); y += 5;
+      drawBulletList(rs.channels, C.teal, "▸");
+    }
+  }
+
+  // ── Founder Decision Matrix ──
+  if (report.founderDecision) {
+    const fd = report.founderDecision;
+    drawSectionTitle("Founder Decision Matrix");
+
+    // Decision box
+    checkPage(20);
+    const decColor = fd.decision.includes("Build Now") ? C.success : fd.decision.includes("Not Build") ? C.danger : C.gold;
+    // Light tinted background for the decision box
+    const lightDecColor: [number, number, number] = [
+      Math.min(255, 230 + Math.round(decColor[0] * 0.1)),
+      Math.min(255, 240 + Math.round(decColor[1] * 0.05)),
+      Math.min(255, 230 + Math.round(decColor[2] * 0.1)),
+    ];
+    setFill(lightDecColor);
+    doc.roundedRect(m, y - 2, cw, 14, 2, 2, "F");
+    doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(decColor);
+    doc.text(fd.decision, m + 4, y + 4);
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+    const rLines = doc.splitTextToSize(fd.reasoning, cw - 8);
+    doc.text(rLines[0] || "", m + 4, y + 9);
+    y += 17;
+
+    if (fd.whyFactors?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Why:", m, y); y += 5;
+      drawBulletList(fd.whyFactors, C.indigo, "→");
+    }
+    if (fd.nextStep) {
+      checkPage(10);
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); setColor(C.muted);
+      doc.text("SUGGESTED NEXT STEP", m, y); y += 4;
+      doc.setFont("helvetica", "normal"); setColor(C.text);
+      const nsLines = doc.splitTextToSize(fd.nextStep, cw);
+      writeLines(nsLines, m + 2, 4); y += 3;
+    }
+
+    // Risk / Speed / Clarity
+    checkPage(10);
+    const indicators = [
+      { label: "Risk Level", value: fd.riskLevel || "Medium" },
+      { label: "Speed to MVP", value: fd.speedToMvp || "Medium" },
+      { label: "Commercial Clarity", value: fd.commercialClarity || "Moderate" },
+    ];
+    const indW = cw / 3;
+    indicators.forEach((ind, i) => {
+      const ix = m + indW * i + indW / 2;
+      doc.setFontSize(6); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(ind.label, ix, y, { align: "center" });
+      doc.setFontSize(9); doc.setFont("helvetica", "bold");
+      const vc = ind.value.toLowerCase();
+      setColor(vc === "low" || vc === "fast" || vc === "clear" ? C.success : vc === "high" || vc === "slow" || vc === "weak" ? C.danger : C.gold);
+      doc.text(ind.value, ix, y + 5, { align: "center" });
+    });
+    y += 10;
+  }
+
 
   // ── Footer on every page ──
   const totalPages = doc.getNumberOfPages();
