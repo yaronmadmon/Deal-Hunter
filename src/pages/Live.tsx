@@ -133,8 +133,13 @@ const Live = () => {
     if (!data || data.length === 0) return null;
 
     let latestTime: Date | null = null;
+    const seen = new Set<string>();
 
     for (const row of data) {
+      // Only use the latest snapshot per section
+      if (seen.has(row.section_name)) continue;
+      seen.add(row.section_name);
+
       const payload = row.data_payload as any;
       const time = new Date(row.created_at);
       if (!latestTime || time > latestTime) latestTime = time;
