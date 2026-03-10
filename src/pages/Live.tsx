@@ -107,6 +107,7 @@ const Live = () => {
   const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
   const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
+  const [appStoreTrends, setAppStoreTrends] = useState<AppStoreItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
