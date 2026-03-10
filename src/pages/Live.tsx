@@ -428,7 +428,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {trending.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="search trends" />
                 ) : (
                   <div className="space-y-3">
                     {trending.map((t, i) => (
@@ -437,9 +437,12 @@ const Live = () => {
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">
-                            {t.keyword}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground text-sm truncate">
+                              {t.keyword}
+                            </p>
+                            <SignalBadge score={(t as any)._signalScore} />
+                          </div>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {t.snippet}
                           </p>
