@@ -1096,6 +1096,28 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "speedToMvp": "Fast" or "Medium" or "Slow",
     "commercialClarity": "Clear" or "Moderate" or "Weak",
     "confidence": "Medium"
+  },
+  "killShotAnalysis": {
+    "risks": [
+      {"risk": "specific risk that could kill this idea — be concrete, reference data", "severity": "High" or "Medium" or "Low"},
+      {"risk": "another specific risk", "severity": "High" or "Medium" or "Low"},
+      {"risk": "another risk", "severity": "Medium" or "Low"},
+      {"risk": "another risk", "severity": "Low"}
+    ],
+    "riskLevel": "Low" or "Medium" or "High" — overall risk assessment,
+    "interpretation": "2-3 sentences explaining whether these risks are manageable or serious deal-breakers. Reference specific data points.",
+    "confidence": "Medium"
+  },
+  "scoreExplanationData": {
+    "summary": "1-2 sentence overview of why the score is what it is",
+    "factors": [
+      {"category": "Demand Strength", "explanation": "Explain what the search/social data says about demand"},
+      {"category": "Competition Density", "explanation": "Explain what competitor landscape looks like"},
+      {"category": "User Sentiment", "explanation": "Explain what users feel about existing solutions"},
+      {"category": "Market Growth", "explanation": "Explain growth trajectory based on trends"},
+      {"category": "Opportunity Gap", "explanation": "Explain where the gaps are for a new entrant"}
+    ],
+    "confidence": "Medium"
   }
 }
 
