@@ -303,6 +303,10 @@ export interface MockReportData {
   userQuotes?: UserQuote[];
   methodology?: MethodologyInfo;
   githubRepos?: GitHubRepoData[];
+  proofDashboard?: ProofDashboardData;
+  keywordDemand?: KeywordDemandData;
+  appStoreIntelligence?: AppStoreIntelligenceData;
+  recommendedStrategy?: RecommendedStrategyData;
 }
 
 export const mockReport: MockReportData = {
