@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint } from "@/data/mockReport";
+import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData } from "@/data/mockReport";
 
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
