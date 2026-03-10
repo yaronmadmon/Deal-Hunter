@@ -21,6 +21,9 @@ import {
   Search,
   Newspaper,
   Smartphone,
+  Twitter,
+  Heart,
+  Repeat,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +94,17 @@ interface AppStoreItem {
   url?: string;
   source?: string;
 }
+interface TwitterBuzzItem {
+  text: string;
+  likes: number;
+  retweets: number;
+  replies: number;
+  impressions: number;
+  tweetId: string;
+  createdAt: string;
+  source?: string;
+  topic?: string;
+}
 
 const CACHE_HOURS = 4;
 
@@ -108,6 +122,7 @@ const Live = () => {
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
   const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
   const [appStoreTrends, setAppStoreTrends] = useState<AppStoreItem[]>([]);
+  const [twitterBuzz, setTwitterBuzz] = useState<TwitterBuzzItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
@@ -180,6 +195,9 @@ const Live = () => {
         case "app_store_trends":
           if (Array.isArray(payload)) setAppStoreTrends(payload);
           break;
+        case "twitter_buzz":
+          if (Array.isArray(payload)) setTwitterBuzz(payload);
+          break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
           break;
@@ -236,10 +254,11 @@ const Live = () => {
       ...githubTrending.map((g) => ({ ...g, _key: g.name, _label: g.name })),
       ...googleTrends.map((g) => ({ ...g, _key: g.title, _label: g.title })),
       ...appStoreTrends.map((a) => ({ ...a, _key: a.name, _label: a.name })),
+      ...twitterBuzz.map((t) => ({ ...t, _key: t.text.slice(0, 60), _label: t.topic || t.text.slice(0, 60) })),
     ];
     all.sort((a, b) => ((b as any)._signalScore ?? 0) - ((a as any)._signalScore ?? 0));
     setTopOpportunities(all.slice(0, 5));
-  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends, appStoreTrends]);
+  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends, appStoreTrends, twitterBuzz]);
 
   const analyzeIdea = async (ideaText: string) => {
     if (!user) return;
@@ -979,6 +998,75 @@ const Live = () => {
                           className="text-xs h-7 px-2.5 shrink-0 ml-3"
                           onClick={() =>
                             analyzeIdea(`${app.name} style app`)
+                          }
+                        >
+                          Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* ── Section 9: Twitter/X Buzz ── */}
+              <SectionCard
+                icon={<Twitter className="w-5 h-5 text-sky-500" />}
+                title="X / Twitter Buzz"
+                loading={loadingData}
+              >
+                {twitterBuzz.length === 0 ? (
+                  <EmptyCategory category="Twitter buzz" />
+                ) : (
+                  <div className="space-y-3">
+                    {twitterBuzz.map((tweet, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm leading-snug">
+                            {tweet.text}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <Heart className="w-3 h-3 text-red-400" /> {tweet.likes}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <Repeat className="w-3 h-3 text-green-500" /> {tweet.retweets}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <MessageSquare className="w-3 h-3" /> {tweet.replies}
+                            </span>
+                            {tweet.tweetId && (
+                              <a
+                                href={`https://x.com/i/status/${tweet.tweetId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="w-2.5 h-2.5" /> View
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <SignalBadge score={(tweet as any)._signalScore} confidence={(tweet as any)._confidence} />
+                            {tweet.topic && (
+                              <Badge variant="secondary" className="text-[9px]">
+                                {tweet.topic}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {tweet.source === "twitter_api" ? "Live Data" : "AI Estimated"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                          onClick={() =>
+                            analyzeIdea(tweet.topic || tweet.text.slice(0, 80))
                           }
                         >
                           Analyze <ArrowRight className="w-3 h-3 ml-1" />

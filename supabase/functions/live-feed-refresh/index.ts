@@ -20,6 +20,7 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   trending_searches: 9,
   growing_niches: 5,
   app_store_trends: 11,
+  twitter_buzz: 9,
 };
 
 function scoreSignal(g: number, d: number, c: number, r: number, source?: string, timestamp?: string): number {
@@ -420,9 +421,72 @@ Return ONLY a JSON array, no other text.`
       }
     }
 
+    // ── Section 9: Twitter/X Buzz ──
+    if (section === "all" || section === "twitter_buzz") {
+      try {
+        const twitterToken = Deno.env.get("TWITTER_BEARER_TOKEN");
+        let tweets: any[] = [];
+
+        if (twitterToken) {
+          // Search recent tweets about startups, SaaS launches, trending apps
+          const queries = ["startup launch 2026", "new SaaS app trending"];
+          for (const q of queries) {
+            try {
+              const twRes = await fetch(
+                `https://api.x.com/2/tweets/search/recent?query=${encodeURIComponent(q)} -is:retweet lang:en&max_results=10&tweet.fields=public_metrics,created_at,author_id`,
+                { headers: { Authorization: `Bearer ${twitterToken}` } }
+              );
+              if (twRes.ok) {
+                const twData = await twRes.json();
+                const items = (twData.data || []).map((t: any) => ({
+                  text: (t.text || "").slice(0, 180),
+                  likes: t.public_metrics?.like_count ?? 0,
+                  retweets: t.public_metrics?.retweet_count ?? 0,
+                  replies: t.public_metrics?.reply_count ?? 0,
+                  impressions: t.public_metrics?.impression_count ?? 0,
+                  createdAt: t.created_at || "",
+                  tweetId: t.id || "",
+                  source: "twitter_api",
+                }));
+                tweets.push(...items);
+              } else {
+                console.error(`Twitter API error [${twRes.status}]:`, await twRes.text());
+              }
+            } catch (e) {
+              console.error("Twitter query failed:", e);
+            }
+          }
+          // Sort by engagement and take top 8
+          tweets.sort((a: any, b: any) => (b.likes + b.retweets * 2) - (a.likes + a.retweets * 2));
+          tweets = tweets.slice(0, 8);
+        }
+
+        // Fallback to Perplexity if Twitter API returned nothing
+        if (tweets.length === 0 && pplxKey) {
+          const raw = await askPerplexity(
+            `What are the top 6 buzzing tweets or X/Twitter discussions about startups, new app launches, or SaaS tools right now in March 2026? For each, return a JSON object with: "text" (the tweet or discussion summary, max 150 chars), "likes" (number), "retweets" (number), "replies" (number), "topic" (2-3 word topic). Return ONLY a JSON array.`
+          );
+          tweets = parseJsonArray(raw).slice(0, 6).map((t: any) => ({ ...t, impressions: 0, tweetId: "", createdAt: new Date().toISOString(), source: "perplexity" }));
+        }
+
+        tweets = addSignalMeta(tweets, "twitter_buzz", { keywordField: "text", velocityField: "likes", defaultGrowth: 50 });
+        tweets = tweets.filter((t: any) => (t._signalScore ?? 0) >= MIN_SIGNAL_SCORE);
+
+        if (tweets.length > 0) {
+          await saveSnapshot(supabase, "twitter_buzz", tweets);
+          results.twitter_buzz = tweets;
+        } else {
+          results.twitter_buzz = [];
+        }
+      } catch (e) {
+        console.error("twitter_buzz error:", e);
+        results.twitter_buzz = [];
+      }
+    }
+
     // ── Top Opportunities Aggregator (cross-feed merge) ──
     const allSignals: any[] = [];
-    for (const key of ["trending_searches", "product_hunt", "reddit_pain_points", "growing_niches", "hacker_news", "github_trending", "google_trends", "app_store_trends"]) {
+    for (const key of ["trending_searches", "product_hunt", "reddit_pain_points", "growing_niches", "hacker_news", "github_trending", "google_trends", "app_store_trends", "twitter_buzz"]) {
       const arr = results[key];
       if (Array.isArray(arr)) allSignals.push(...arr);
     }
