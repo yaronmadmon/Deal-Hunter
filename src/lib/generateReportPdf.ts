@@ -846,10 +846,14 @@ export function generateReportPdf(report: MockReportData) {
     // Decision box
     checkPage(20);
     const decColor = fd.decision.includes("Build Now") ? C.success : fd.decision.includes("Not Build") ? C.danger : C.gold;
-    setFill([decColor[0], decColor[1], decColor[2]]);
-    doc.setGState(new (jsPDF as any).GState({ opacity: 0.1 }));
+    // Light tinted background for the decision box
+    const lightDecColor: [number, number, number] = [
+      Math.min(255, 230 + Math.round(decColor[0] * 0.1)),
+      Math.min(255, 240 + Math.round(decColor[1] * 0.05)),
+      Math.min(255, 230 + Math.round(decColor[2] * 0.1)),
+    ];
+    setFill(lightDecColor);
     doc.roundedRect(m, y - 2, cw, 14, 2, 2, "F");
-    doc.setGState(new (jsPDF as any).GState({ opacity: 1 }));
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(decColor);
     doc.text(fd.decision, m + 4, y + 4);
     doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
