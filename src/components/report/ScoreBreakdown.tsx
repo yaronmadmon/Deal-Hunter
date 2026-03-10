@@ -1,5 +1,6 @@
 import type { ScoreBreakdownItem } from "@/data/mockReport";
 import { Badge } from "@/components/ui/badge";
+import { ConfidenceLabel } from "./ConfidenceLabel";
 
 interface Props {
   breakdown: ScoreBreakdownItem[];
@@ -19,12 +20,30 @@ const colorForIndex = (i: number) => {
   return colors[i % colors.length];
 };
 
+const defaultWeights = ["20%", "20%", "20%", "20%", "20%"];
+
 export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }: Props) => {
   const strengthVariant = signalStrength === "Strong" ? "go" as const : signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
 
   return (
     <div className="bg-card border rounded-2xl p-8">
-      <h2 className="font-heading text-xl font-bold text-foreground mb-6">Score Breakdown</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-heading text-xl font-bold text-foreground">Score Breakdown</h2>
+        <ConfidenceLabel level="High" />
+      </div>
+
+      {/* Weight explanation */}
+      <div className="bg-secondary/30 rounded-lg px-4 py-3 mb-6">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">How the Score is Calculated</p>
+        <div className="flex flex-wrap gap-3">
+          {breakdown.map((item, i) => (
+            <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className={`w-2 h-2 rounded-full ${colorForIndex(i)}`} />
+              {item.label}: <span className="font-semibold text-foreground">{item.weight || defaultWeights[i]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-4 mb-8">
         {breakdown.map((item, i) => (
