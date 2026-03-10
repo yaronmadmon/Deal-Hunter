@@ -195,6 +195,9 @@ const Live = () => {
         case "app_store_trends":
           if (Array.isArray(payload)) setAppStoreTrends(payload);
           break;
+        case "twitter_buzz":
+          if (Array.isArray(payload)) setTwitterBuzz(payload);
+          break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
           break;
