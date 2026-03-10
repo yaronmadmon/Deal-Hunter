@@ -94,6 +94,17 @@ interface AppStoreItem {
   url?: string;
   source?: string;
 }
+interface TwitterBuzzItem {
+  text: string;
+  likes: number;
+  retweets: number;
+  replies: number;
+  impressions: number;
+  tweetId: string;
+  createdAt: string;
+  source?: string;
+  topic?: string;
+}
 
 const CACHE_HOURS = 4;
 
