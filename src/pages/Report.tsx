@@ -197,6 +197,12 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
+        {/* Proof Dashboard — immediate evidence */}
+        {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
+
+        {/* Keyword Demand */}
+        {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
+
         {/* Signal Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
           {r.signalCards.map((card) => (
