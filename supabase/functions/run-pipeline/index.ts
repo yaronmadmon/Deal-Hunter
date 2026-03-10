@@ -1192,12 +1192,11 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
   } catch (err) {
     console.error("Pipeline error:", err);
     try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, serviceKey);
-      const body = await req.clone().json().catch(() => ({}));
-      if (body.analysisId) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", body.analysisId);
+      if (capturedAnalysisId) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, serviceKey);
+        await supabase.from("analyses").update({ status: "failed" }).eq("id", capturedAnalysisId);
       }
     } catch (_) {}
     return new Response(JSON.stringify({ error: "Pipeline failed" }), { status: 500, headers: corsHeaders });
