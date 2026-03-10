@@ -238,6 +238,37 @@ export interface EnhancedCompetitorEntry extends CompetitorEntry {
   strengths?: string;
 }
 
+export interface MarketExploitMapData {
+  competitorWeaknesses: string[];
+  competitorStrengths: string[];
+  topComplaints: { complaint: string; frequency: "High" | "Medium" | "Low" }[];
+  topPraise: { praise: string; frequency: "High" | "Medium" | "Low" }[];
+  whereToWin: string[];
+  attackAngle: string;
+  confidence?: "High" | "Medium" | "Low";
+}
+
+export interface CompetitorMatrixData {
+  features: string[];
+  competitors: {
+    name: string;
+    isYou?: boolean;
+    scores: Record<string, string>;
+  }[];
+  confidence?: "High" | "Medium" | "Low";
+}
+
+export interface FounderDecisionData {
+  decision: "Build Now" | "Build, But Niche Down" | "Validate Further" | "Proceed with Caution" | "Do Not Build";
+  reasoning: string;
+  whyFactors: string[];
+  nextStep: string;
+  riskLevel: "Low" | "Medium" | "High";
+  speedToMvp: "Fast" | "Medium" | "Slow";
+  commercialClarity: "Clear" | "Moderate" | "Weak";
+  confidence?: "High" | "Medium" | "Low";
+}
+
 export interface BlueprintData {
   reportSummary?: string;
   productConcept: string;
