@@ -83,6 +83,14 @@ interface GoogleTrendItem {
   date?: string | null;
   type: "search" | "news";
 }
+interface AppStoreItem {
+  name: string;
+  platform: string;
+  snippet?: string;
+  category?: string;
+  url?: string;
+  source?: string;
+}
 
 const CACHE_HOURS = 4;
 
