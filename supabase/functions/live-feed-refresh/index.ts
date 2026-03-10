@@ -6,6 +6,59 @@ const corsHeaders = {
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/* ── Signal Scoring Helpers ── */
+function scoreSignal(g: number, d: number, c: number, r: number): number {
+  return Math.round(
+    Math.min(100, g) * 0.35 +
+    Math.min(100, d) * 0.25 +
+    Math.min(100, c) * 0.20 +
+    Math.min(100, r) * 0.20
+  );
+}
+
+function parseGrowth(spike: string | number | undefined): number {
+  if (typeof spike === "number") return spike;
+  if (!spike) return 0;
+  const num = parseInt(String(spike).replace(/[^0-9-]/g, ""), 10);
+  return isNaN(num) ? 0 : num;
+}
+
+function dedup<T extends Record<string, any>>(items: T[], keyField: string): T[] {
+  const seen = new Map<string, T>();
+  for (const item of items) {
+    const key = String(item[keyField] || "").toLowerCase().trim();
+    if (!key) { seen.set(String(Math.random()), item); continue; }
+    const existing = seen.get(key);
+    if (!existing || (item._signalScore ?? 0) > (existing._signalScore ?? 0)) {
+      seen.set(key, item);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+function addSignalMeta(items: any[], source: string, opts: {
+  keywordField?: string;
+  growthField?: string;
+  velocityField?: string;
+  defaultGrowth?: number;
+  defaultVelocity?: number;
+}): any[] {
+  return items.map((item) => {
+    const growth = opts.growthField ? parseGrowth(item[opts.growthField]) : (opts.defaultGrowth ?? 50);
+    const velocity = opts.velocityField ? (item[opts.velocityField] ?? opts.defaultVelocity ?? 40) : (opts.defaultVelocity ?? 40);
+    const score = scoreSignal(growth, velocity, 50, 70);
+    return {
+      ...item,
+      _source: source,
+      _signalScore: score,
+      _confidence: score >= 65 ? "High" : score >= 35 ? "Medium" : "Low",
+      _timestamp: new Date().toISOString(),
+    };
+  });
+}
+
+const MIN_SIGNAL_SCORE = 10;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,14 +112,12 @@ Deno.serve(async (req) => {
   }
 
   function parseJsonArray(text: string): any[] {
-    // Try to find a JSON array in the text
     const match = text.match(/\[[\s\S]*\]/);
     if (match) {
       try { return JSON.parse(match[0]); } catch (e) {
         console.error("JSON parse failed for matched array:", e, "Raw match:", match[0].slice(0, 200));
       }
     }
-    // Try parsing markdown code blocks
     const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlock) {
       try { return JSON.parse(codeBlock[1].trim()); } catch (e) {
@@ -88,7 +139,14 @@ Deno.serve(async (req) => {
 - "snippet": one sentence explaining why it's trending (max 100 chars)
 Return ONLY a JSON array, no other text.`
         );
-        const items = parseJsonArray(raw).slice(0, 6);
+        let items = parseJsonArray(raw).slice(0, 6);
+        items = addSignalMeta(items, "trending_searches", {
+          keywordField: "keyword",
+          growthField: "spike",
+          defaultVelocity: 60,
+        });
+        items = dedup(items, "keyword");
+        items = items.filter((i: any) => (i._signalScore ?? 0) >= MIN_SIGNAL_SCORE);
         if (items.length > 0) {
           await saveSnapshot(supabase, "trending_searches", items);
           results.trending_searches = items;
@@ -104,7 +162,6 @@ Return ONLY a JSON array, no other text.`
     // ── Section 2: Product Hunt Hot Launches ──
     if (section === "all" || section === "product_hunt") {
       try {
-        // Try real PH API first
         const phKey = Deno.env.get("PRODUCTHUNT_API_KEY");
         let posts: any[] = [];
 
@@ -133,7 +190,6 @@ Return ONLY a JSON array, no other text.`
           }
         }
 
-        // Perplexity fallback
         if (posts.length === 0) {
           const raw = await askPerplexity(
             `What are the top 5 most upvoted or buzzing product launches on Product Hunt this week (March 2026)? For each, return a JSON object with:
@@ -146,6 +202,12 @@ Return ONLY a JSON array.`
           posts = parseJsonArray(raw).slice(0, 5);
         }
 
+        posts = addSignalMeta(posts, "product_hunt", {
+          keywordField: "name",
+          velocityField: "upvotes",
+          defaultGrowth: 60,
+        });
+        posts = dedup(posts, "name");
         await saveSnapshot(supabase, "product_hunt", posts);
         results.product_hunt = posts;
       } catch (e) {
@@ -161,13 +223,18 @@ Return ONLY a JSON array.`
         
         let items = parseJsonArray(await askPerplexity(prompt)).slice(0, 6);
         
-        // Fallback to Lovable AI if Perplexity didn't return parseable data
         if (items.length === 0) {
           console.log("Reddit: Perplexity failed, trying Lovable AI fallback");
           const fallback = await askAI(prompt);
           items = parseJsonArray(fallback).slice(0, 6);
         }
         
+        items = addSignalMeta(items, "reddit_pain_points", {
+          keywordField: "title",
+          velocityField: "upvotes",
+          defaultGrowth: 45,
+        });
+        items = dedup(items, "title");
         await saveSnapshot(supabase, "reddit_pain_points", items);
         results.reddit_pain_points = items;
       } catch (e) {
@@ -182,7 +249,13 @@ Return ONLY a JSON array.`
         const raw = await askPerplexity(
           `What app categories or software niches are seeing the fastest user growth or VC investment this week in March 2026? Give me exactly 5 specific niches. For each, provide a JSON object with "name" (2-4 words) and "description" (one sentence with specific data points). Return ONLY a JSON array.`
         );
-        const niches = parseJsonArray(raw).slice(0, 5);
+        let niches = parseJsonArray(raw).slice(0, 5);
+        niches = addSignalMeta(niches, "growing_niches", {
+          keywordField: "name",
+          defaultGrowth: 65,
+          defaultVelocity: 55,
+        });
+        niches = dedup(niches, "name");
         await saveSnapshot(supabase, "growing_niches", niches);
         results.growing_niches = niches;
       } catch (e) {
@@ -194,12 +267,11 @@ Return ONLY a JSON array.`
     // ── Section 6: Hacker News Dev Buzz ──
     if (section === "all" || section === "hacker_news") {
       try {
-        // Use Algolia HN API to search for recent startup/tech stories
         const hnRes = await fetch(
           `https://hn.algolia.com/api/v1/search?query=startup OR SaaS OR "side project" OR launch&tags=story&hitsPerPage=20&numericFilters=points>30`
         );
         const hnData = await hnRes.json();
-        const hnItems = (hnData.hits || [])
+        let hnItems = (hnData.hits || [])
           .slice(0, 8)
           .map((hit: any) => ({
             title: hit.title || "",
@@ -211,6 +283,12 @@ Return ONLY a JSON array.`
             createdAt: hit.created_at || "",
           }));
         
+        hnItems = addSignalMeta(hnItems, "hacker_news", {
+          keywordField: "title",
+          velocityField: "points",
+          defaultGrowth: 50,
+        });
+        hnItems = dedup(hnItems, "title");
         await saveSnapshot(supabase, "hacker_news", hnItems);
         results.hacker_news = hnItems;
       } catch (e) {
@@ -229,14 +307,13 @@ Return ONLY a JSON array.`
         };
         if (ghToken) headers["Authorization"] = `Bearer ${ghToken}`;
 
-        // Search for recently created repos with high stars in tech/startup categories
         const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
         const ghRes = await fetch(
           `https://api.github.com/search/repositories?q=created:>${since}+stars:>50&sort=stars&order=desc&per_page=8`,
           { headers }
         );
         const ghData = await ghRes.json();
-        const repos = (ghData.items || []).map((r: any) => ({
+        let repos = (ghData.items || []).map((r: any) => ({
           name: r.full_name,
           description: (r.description || "").slice(0, 120),
           stars: r.stargazers_count,
@@ -246,6 +323,12 @@ Return ONLY a JSON array.`
           createdAt: r.created_at,
         }));
 
+        repos = addSignalMeta(repos, "github_trending", {
+          keywordField: "name",
+          velocityField: "stars",
+          defaultGrowth: 55,
+        });
+        repos = dedup(repos, "name");
         await saveSnapshot(supabase, "github_trending", repos);
         results.github_trending = repos;
       } catch (e) {
@@ -259,7 +342,6 @@ Return ONLY a JSON array.`
       try {
         const serperKey = Deno.env.get("SERPER_API_KEY");
         if (serperKey) {
-          // Get trending searches and news
           const [trendsRes, newsRes] = await Promise.all([
             fetch("https://google.serper.dev/search", {
               method: "POST",
@@ -291,7 +373,13 @@ Return ONLY a JSON array.`
             type: "news" as const,
           }));
 
-          const combined = [...newsItems, ...trendItems].slice(0, 8);
+          let combined = [...newsItems, ...trendItems].slice(0, 8);
+          combined = addSignalMeta(combined, "google_trends", {
+            keywordField: "title",
+            defaultGrowth: 50,
+            defaultVelocity: 45,
+          });
+          combined = dedup(combined, "title");
           await saveSnapshot(supabase, "google_trends", combined);
           results.google_trends = combined;
         } else {
@@ -303,6 +391,7 @@ Return ONLY a JSON array.`
       }
     }
 
+    // ── Breakout Idea of the Day ──
     if (section === "all" || section === "breakout_idea") {
       try {
         const trending = Array.isArray(results.trending_searches) ? results.trending_searches as any[] : [];
@@ -314,13 +403,13 @@ Return ONLY a JSON array.`
         const gTrends = Array.isArray(results.google_trends) ? results.google_trends as any[] : [];
 
         const candidates = [
-          ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: parseInt(String(t.spike).replace(/[^0-9]/g, "")) || 100 })),
-          ...ph.map((p: any) => ({ name: `${p.name} style app`, type: "product_hunt", signal: (p.upvotes || 0) * 2 })),
-          ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: (r.upvotes || 0) })),
-          ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: 150 })),
-          ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: (h.points || 0) })),
-          ...ghTrending.map((g: any) => ({ name: `Open source: ${g.name.split("/").pop()}`, type: "github", signal: (g.stars || 0) })),
-          ...gTrends.filter((g: any) => g.type === "news").map((g: any) => ({ name: g.title, type: "google_trends", signal: 120 })),
+          ...trending.map((t: any) => ({ name: t.keyword, type: "trending", signal: t._signalScore ?? (parseGrowth(t.spike) || 100) })),
+          ...ph.map((p: any) => ({ name: `${p.name} style app`, type: "product_hunt", signal: p._signalScore ?? ((p.upvotes || 0) * 2) })),
+          ...reddit.map((r: any) => ({ name: r.problemSummary || r.title, type: "reddit", signal: r._signalScore ?? (r.upvotes || 0) })),
+          ...niches.map((n: any) => ({ name: n.name, type: "niche", signal: n._signalScore ?? 150 })),
+          ...hn.map((h: any) => ({ name: h.title, type: "hacker_news", signal: h._signalScore ?? (h.points || 0) })),
+          ...ghTrending.map((g: any) => ({ name: `Open source: ${g.name.split("/").pop()}`, type: "github", signal: g._signalScore ?? (g.stars || 0) })),
+          ...gTrends.filter((g: any) => g.type === "news").map((g: any) => ({ name: g.title, type: "google_trends", signal: g._signalScore ?? 120 })),
         ];
 
         candidates.sort((a, b) => b.signal - a.signal);
@@ -339,6 +428,8 @@ Return ONLY a JSON array.`
           signalStrength: pick.signal > 200 ? "Strong" : pick.signal > 100 ? "Moderate" : "Emerging",
           summary,
           generatedAt: new Date().toISOString(),
+          _signalScore: pick.signal,
+          _confidence: pick.signal > 65 ? "High" : pick.signal > 35 ? "Medium" : "Low",
         };
 
         await saveSnapshot(supabase, "breakout_idea", [breakout]);
@@ -362,7 +453,6 @@ Return ONLY a JSON array.`
 });
 
 async function saveSnapshot(supabase: any, sectionName: string, data: any) {
-  // Don't overwrite existing data with empty results
   if (Array.isArray(data) && data.length === 0) {
     console.log(`Skipping save for ${sectionName} — empty data, preserving existing`);
     return;

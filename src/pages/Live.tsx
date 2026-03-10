@@ -428,7 +428,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {trending.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="search trends" />
                 ) : (
                   <div className="space-y-3">
                     {trending.map((t, i) => (
@@ -437,9 +437,12 @@ const Live = () => {
                         className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">
-                            {t.keyword}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground text-sm truncate">
+                              {t.keyword}
+                            </p>
+                            <SignalBadge score={(t as any)._signalScore} />
+                          </div>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {t.snippet}
                           </p>
@@ -472,7 +475,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {productHunt.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="product launches" />
                 ) : (
                   <div className="space-y-3">
                     {productHunt.map((p, i) => (
@@ -522,7 +525,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {reddit.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="startup problems" />
                 ) : (
                   <div className="space-y-3">
                     {reddit.map((r, i) => (
@@ -571,7 +574,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {niches.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="growing niches" />
                 ) : (
                   <div className="space-y-3">
                     {niches.map((n, i) => (
@@ -615,7 +618,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {hackerNews.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="developer buzz" />
                 ) : (
                   <div className="space-y-3">
                     {hackerNews.map((hn, i) => (
@@ -667,7 +670,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {githubTrending.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="open source" />
                 ) : (
                   <div className="space-y-3">
                     {githubTrending.map((repo, i) => (
@@ -726,7 +729,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {googleTrends.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="Google trends" />
                 ) : (
                   <div className="space-y-3">
                     {googleTrends.map((item, i) => (
@@ -845,13 +848,31 @@ function SectionCard({
   );
 }
 
-function ErrorState() {
+function EmptyCategory({ category }: { category: string }) {
   return (
     <div className="text-center py-6">
       <p className="text-sm text-muted-foreground">
-        Signal unavailable — retrying next refresh cycle
+        No strong signals detected in {category} right now.
+      </p>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Will retry on next refresh cycle.
       </p>
     </div>
+  );
+}
+
+function SignalBadge({ score }: { score?: number }) {
+  if (score == null) return null;
+  const color =
+    score >= 65
+      ? "bg-success/20 text-green-600 border-success/30"
+      : score >= 35
+      ? "bg-warning/20 text-yellow-600 border-warning/30"
+      : "bg-muted text-muted-foreground";
+  return (
+    <Badge className={`text-[9px] px-1.5 py-0 ${color}`}>
+      {score}
+    </Badge>
   );
 }
 
