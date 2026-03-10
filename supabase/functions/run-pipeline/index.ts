@@ -1134,7 +1134,7 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
           },
         ],
         temperature: 0.3,
-        max_tokens: 10000,
+        max_tokens: 16000,
       }),
     });
 
