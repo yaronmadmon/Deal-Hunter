@@ -446,7 +446,7 @@ const Live = () => {
                             <p className="font-medium text-foreground text-sm truncate">
                               {t.keyword}
                             </p>
-                            <SignalBadge score={(t as any)._signalScore} />
+                            <SignalBadge score={(t as any)._signalScore} confidence={(t as any)._confidence} />
                           </div>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {t.snippet}
