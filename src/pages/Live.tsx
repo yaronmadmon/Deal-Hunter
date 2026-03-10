@@ -475,7 +475,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {productHunt.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="product launches" />
                 ) : (
                   <div className="space-y-3">
                     {productHunt.map((p, i) => (
