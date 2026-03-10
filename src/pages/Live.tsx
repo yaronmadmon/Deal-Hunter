@@ -574,7 +574,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {niches.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="growing niches" />
                 ) : (
                   <div className="space-y-3">
                     {niches.map((n, i) => (
