@@ -861,7 +861,7 @@ function EmptyCategory({ category }: { category: string }) {
   );
 }
 
-function SignalBadge({ score }: { score?: number }) {
+function SignalBadge({ score, confidence }: { score?: number; confidence?: string }) {
   if (score == null) return null;
   const color =
     score >= 65
@@ -869,9 +869,10 @@ function SignalBadge({ score }: { score?: number }) {
       : score >= 35
       ? "bg-warning/20 text-yellow-600 border-warning/30"
       : "bg-muted text-muted-foreground";
+  const confLabel = confidence && confidence !== "undefined" ? ` · ${confidence}` : "";
   return (
     <Badge className={`text-[9px] px-1.5 py-0 ${color}`}>
-      {score}
+      {score}{confLabel}
     </Badge>
   );
 }
