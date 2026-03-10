@@ -212,7 +212,21 @@ const Live = () => {
     })();
   }, [user, isPro, loadCachedData, refreshFeed]);
 
-  const analyzeIdea = async (ideaText: string) => {
+  // Compute top opportunities from all feeds
+  useEffect(() => {
+    const all: any[] = [
+      ...trending.map((t) => ({ ...t, _key: t.keyword, _label: t.keyword })),
+      ...productHunt.map((p) => ({ ...p, _key: p.name, _label: p.name })),
+      ...reddit.map((r) => ({ ...r, _key: r.problemSummary || r.title, _label: r.problemSummary || r.title })),
+      ...niches.map((n) => ({ ...n, _key: n.name, _label: n.name })),
+      ...hackerNews.map((h) => ({ ...h, _key: h.title, _label: h.title })),
+      ...githubTrending.map((g) => ({ ...g, _key: g.name, _label: g.name })),
+      ...googleTrends.map((g) => ({ ...g, _key: g.title, _label: g.title })),
+    ];
+    all.sort((a, b) => ((b as any)._signalScore ?? 0) - ((a as any)._signalScore ?? 0));
+    setTopOpportunities(all.slice(0, 5));
+  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends]);
+
     if (!user) return;
     if (credits <= 0) {
       toast.error("No credits remaining");
