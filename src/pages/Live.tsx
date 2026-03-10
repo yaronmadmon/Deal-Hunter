@@ -525,7 +525,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {reddit.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="startup problems" />
                 ) : (
                   <div className="space-y-3">
                     {reddit.map((r, i) => (
