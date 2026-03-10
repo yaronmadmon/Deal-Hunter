@@ -618,7 +618,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {hackerNews.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="developer buzz" />
                 ) : (
                   <div className="space-y-3">
                     {hackerNews.map((hn, i) => (
