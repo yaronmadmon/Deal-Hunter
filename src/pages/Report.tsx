@@ -24,6 +24,8 @@ import { RecommendedStrategy } from "@/components/report/RecommendedStrategy";
 import { MarketExploitMap } from "@/components/report/MarketExploitMap";
 import { CompetitorMatrix } from "@/components/report/CompetitorMatrix";
 import { FounderDecision } from "@/components/report/FounderDecision";
+import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
+import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
