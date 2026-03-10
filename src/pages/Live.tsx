@@ -729,7 +729,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {googleTrends.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="Google trends" />
                 ) : (
                   <div className="space-y-3">
                     {googleTrends.map((item, i) => (
