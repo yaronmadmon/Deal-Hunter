@@ -421,6 +421,8 @@ async function productHuntSearch(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let capturedAnalysisId: string | null = null;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -430,6 +432,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const { analysisId, idea } = await req.json();
+    capturedAnalysisId = analysisId;
     if (!analysisId || !idea) {
       return new Response(JSON.stringify({ error: "Missing analysisId or idea" }), { status: 400, headers: corsHeaders });
     }
