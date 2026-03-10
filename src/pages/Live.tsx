@@ -440,6 +440,94 @@ const Live = () => {
               </Card>
             ) : null}
 
+            {/* ── Top Opportunities ── */}
+            {loadingData ? (
+              <Card className="border border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-5 h-5 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-36 rounded bg-muted animate-pulse" />
+                  </div>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-3/5 rounded bg-muted animate-pulse" />
+                          <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
+                        </div>
+                        <div className="h-7 w-20 rounded bg-muted animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : topOpportunities.length > 0 ? (
+              <Card className="border border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h3 className="font-heading text-lg font-bold text-foreground">
+                      Top Opportunities
+                    </h3>
+                    <Badge variant="secondary" className="text-[9px]">
+                      Cross-feed
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {topOpportunities.map((opp, i) => {
+                      const score = (opp as any)._signalScore;
+                      const confidence = (opp as any)._confidence;
+                      const momentum = (opp as any)._momentum;
+                      const source = (opp as any)._source;
+                      const label = opp._label || "Opportunity";
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-primary/70 w-5 shrink-0">
+                                #{i + 1}
+                              </span>
+                              <p className="font-medium text-foreground text-sm truncate">
+                                {label}
+                              </p>
+                              <SignalBadge score={score} confidence={confidence} />
+                            </div>
+                            <div className="flex items-center gap-2 ml-7 mt-1">
+                              {source && (
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                  {source.replace(/_/g, " ")}
+                                </Badge>
+                              )}
+                              {momentum && (
+                                <Badge className={`text-[9px] px-1.5 py-0 ${
+                                  momentum === "Exploding" ? "bg-destructive/15 text-destructive border-destructive/20" :
+                                  momentum === "Rising" ? "bg-success/15 text-green-600 border-success/20" :
+                                  "bg-muted text-muted-foreground"
+                                }`}>
+                                  {momentum}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                            onClick={() => analyzeIdea(label)}
+                          >
+                            Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
             {/* Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* ── Section 1: Trending Searches ── */}
