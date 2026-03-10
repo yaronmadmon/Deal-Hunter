@@ -31,13 +31,13 @@ export const KeyStatsBar = ({ stats }: Props) => {
                 {stat.value}
               </span>
               {stat.change && (
-                <span className={`text-xs font-medium flex items-center gap-0.5 ${config.color}`}>
+                <span className={`text-[13px] font-medium flex items-center gap-0.5 ${config.color}`}>
                   <Icon className="w-3 h-3" />
                   {stat.change}
                 </span>
               )}
             </div>
-            <span className="text-xs text-muted-foreground leading-tight">
+            <span className="text-[13px] text-muted-foreground leading-tight">
               {stat.label}
             </span>
           </div>

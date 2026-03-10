@@ -75,15 +75,15 @@ function RiskGauge({ level }: { level: "Low" | "Medium" | "High" }) {
         <text x={CX} y={CY - 12} textAnchor="middle" className="fill-foreground font-heading text-xl font-bold" fontSize="22">
           {pct}%
         </text>
-        <text x={CX} y={CY + 2} textAnchor="middle" className="fill-muted-foreground text-[10px]" fontSize="10">
+        <text x={CX} y={CY + 2} textAnchor="middle" className="fill-muted-foreground text-xs" fontSize="11">
           risk
         </text>
       </svg>
       {/* Scale labels */}
       <div className="flex justify-between w-full px-1 -mt-1">
-        <span className="text-[9px] text-success font-medium">Low</span>
-        <span className="text-[9px] text-warning font-medium">Med</span>
-        <span className="text-[9px] text-destructive font-medium">High</span>
+        <span className="text-[11px] text-success font-medium">Low</span>
+        <span className="text-[11px] text-warning font-medium">Med</span>
+        <span className="text-[11px] text-destructive font-medium">High</span>
       </div>
     </div>
   );
@@ -119,7 +119,7 @@ export const KillShotAnalysis = ({ data }: Props) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">{risk.risk}</p>
                 {risk.severity && (
-                  <Badge variant="outline" className={`mt-1 text-[10px] ${
+                  <Badge variant="outline" className={`mt-1 text-xs ${
                     risk.severity === "High" ? "border-destructive/30 text-destructive" :
                     risk.severity === "Medium" ? "border-warning/30 text-warning" :
                     "border-muted-foreground/30 text-muted-foreground"
@@ -137,7 +137,7 @@ export const KillShotAnalysis = ({ data }: Props) => {
       <div className={`rounded-xl border p-5 ${riskBg(data.riskLevel)}`}>
         <div className="flex items-center gap-2 mb-2">
           <TrendingDown className={`w-4 h-4 ${riskColor(data.riskLevel)}`} />
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Risk Level</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Overall Risk Level</span>
         </div>
         <p className={`text-lg font-bold ${riskColor(data.riskLevel)}`}>{data.riskLevel}</p>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{data.interpretation}</p>

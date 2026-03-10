@@ -15,7 +15,7 @@ export const RevenueBenchmark = ({ benchmark }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Revenue Benchmark</h2>
-          <p className="text-xs text-muted-foreground italic">What similar apps charge</p>
+          <p className="text-[13px] text-muted-foreground italic">What similar apps charge</p>
         </div>
       </div>
       <p className="text-foreground font-medium mb-2">{benchmark.summary}</p>

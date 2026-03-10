@@ -29,7 +29,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
             </div>
             <div>
               <CardTitle className="text-lg font-heading">Open Source Landscape</CardTitle>
-              <span className="text-[11px] text-muted-foreground">GitHub API</span>
+              <span className="text-[13px] text-muted-foreground">GitHub API</span>
             </div>
             <DataSourceBadge dataSource="github" compact />
           </div>
@@ -72,7 +72,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
             </div>
             <div>
               <CardTitle className="text-lg font-heading">Open Source Landscape</CardTitle>
-              <span className="text-[11px] text-muted-foreground">GitHub API · {repos.length} repositories</span>
+              <span className="text-[13px] text-muted-foreground">GitHub API · {repos.length} repositories</span>
             </div>
           </div>
           <DataSourceBadge dataSource="github" compact />
@@ -84,36 +84,36 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-secondary/40 rounded-lg p-3 text-center">
             <div className="text-lg font-bold text-foreground">{repos.length}</div>
-            <div className="text-[11px] text-muted-foreground">Repos Found</div>
+            <div className="text-[13px] text-muted-foreground">Repos Found</div>
           </div>
           <div className="bg-secondary/40 rounded-lg p-3 text-center">
             <div className="text-lg font-bold text-foreground flex items-center justify-center gap-1">
               <Star className="w-3.5 h-3.5 text-warning" />
               {totalStars.toLocaleString()}
             </div>
-            <div className="text-[11px] text-muted-foreground">Total Stars</div>
+            <div className="text-[13px] text-muted-foreground">Total Stars</div>
           </div>
           <div className="bg-secondary/40 rounded-lg p-3 text-center">
             <div className="text-lg font-bold text-foreground flex items-center justify-center gap-1">
               <GitFork className="w-3.5 h-3.5 text-primary" />
               {totalForks.toLocaleString()}
             </div>
-            <div className="text-[11px] text-muted-foreground">Total Forks</div>
+            <div className="text-[13px] text-muted-foreground">Total Forks</div>
           </div>
           <div className="bg-secondary/40 rounded-lg p-3 text-center">
             <div className="text-lg font-bold text-foreground">{recentlyActive.length}</div>
-            <div className="text-[11px] text-muted-foreground">Active (30d)</div>
+            <div className="text-[13px] text-muted-foreground">Active (30d)</div>
           </div>
         </div>
 
         {/* Stars bar chart */}
         {chartData.length > 0 && (
           <div className="space-y-2">
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Stars by Repository</div>
+            <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Stars by Repository</div>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(220 9% 46%)' }} axisLine={false} tickLine={false} angle={-20} textAnchor="end" height={40} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(220 9% 46%)' }} axisLine={false} tickLine={false} angle={-20} textAnchor="end" height={40} />
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(220 13% 91%)' }} formatter={(v: number) => [v.toLocaleString(), 'Stars']} />
                   <Bar dataKey="stars" radius={[4, 4, 0, 0]} barSize={28}>
                     {chartData.map((_, i) => (
@@ -129,10 +129,10 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
         {/* Top languages */}
         {topLanguages.length > 0 && (
           <div className="space-y-1.5">
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Top Languages</div>
+            <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Top Languages</div>
             <div className="flex flex-wrap gap-1.5">
               {topLanguages.map(([lang, count]) => (
-                <Badge key={lang} variant="secondary" className="text-[10px] px-2 py-0.5">
+                <Badge key={lang} variant="secondary" className="text-xs px-2 py-0.5">
                   {lang} ({count})
                 </Badge>
               ))}
@@ -142,7 +142,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
 
         {/* Repository list */}
         <div className="space-y-2">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Top Repositories</div>
+          <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Top Repositories</div>
           {repos.slice(0, 6).map((repo) => (
             <div key={repo.name} className="border rounded-lg p-3 space-y-1.5 bg-secondary/30">
               <div className="flex items-start justify-between gap-2">
@@ -151,15 +151,15 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 {repo.language && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 shrink-0">
                     {repo.language}
                   </Badge>
                 )}
               </div>
               {repo.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{repo.description}</p>
+                <p className="text-[13px] text-muted-foreground line-clamp-2">{repo.description}</p>
               )}
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
                 <span className="inline-flex items-center gap-0.5">
                   <Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}
                 </span>
@@ -176,7 +176,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
               {repo.topics && repo.topics.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {repo.topics.slice(0, 5).map(t => (
-                    <span key={t} className="text-[9px] bg-primary/10 text-primary rounded px-1.5 py-0.5">{t}</span>
+                    <span key={t} className="text-[11px] bg-primary/10 text-primary rounded px-1.5 py-0.5">{t}</span>
                   ))}
                 </div>
               )}
@@ -186,7 +186,7 @@ export const OpenSourceLandscape = ({ repos }: OpenSourceLandscapeProps) => {
 
         {/* Insight */}
         <div className="bg-secondary/50 border border-border/50 rounded-lg p-3">
-          <p className="text-[11px] text-muted-foreground italic">
+          <p className="text-[13px] text-muted-foreground italic">
             {recentlyActive.length > repos.length / 2
               ? `🔥 High open-source activity — ${recentlyActive.length} of ${repos.length} repos pushed code in the last 30 days, indicating strong builder interest.`
               : totalStars > 1000

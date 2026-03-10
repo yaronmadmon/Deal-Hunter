@@ -70,7 +70,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
           <Sparkles className="mr-2 w-5 h-5" />
           {isGenerating ? "Generating Blueprint…" : "Generate Blueprint"}
         </Button>
-        <p className="text-xs text-muted-foreground mt-3">
+        <p className="text-[13px] text-muted-foreground mt-3">
           Uses AI to create a startup blueprint from your market analysis.
         </p>
       </div>
@@ -167,7 +167,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-4 max-w-lg mx-auto">
+      <p className="text-[13px] text-muted-foreground text-center mt-4 max-w-lg mx-auto">
         This blueprint is generated from market signals and competitive analysis.
         It is intended to guide product development decisions.
       </p>

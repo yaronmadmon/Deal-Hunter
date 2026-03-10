@@ -20,7 +20,7 @@ export const AppStoreIntelligence = ({ data }: Props) => {
           </div>
           <div>
             <h2 className="font-heading text-xl font-bold text-foreground">App Market Signals</h2>
-            <p className="text-xs text-muted-foreground">Apps already solving this problem — proof the market is real</p>
+            <p className="text-[13px] text-muted-foreground">Apps already solving this problem — proof the market is real</p>
           </div>
         </div>
         <ConfidenceLabel level={data.confidence || "Medium"} />
@@ -30,11 +30,11 @@ export const AppStoreIntelligence = ({ data }: Props) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/30">
-              <TableHead className="h-9 text-[11px] font-semibold">App Name</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-center">Platform</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-center">Rating</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-right">Reviews</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-right">Est. Downloads</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold">App Name</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-center">Platform</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-center">Rating</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-right">Reviews</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-right">Est. Downloads</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -51,7 +51,7 @@ export const AppStoreIntelligence = ({ data }: Props) => {
                   </div>
                 </TableCell>
                 <TableCell className="py-2.5 text-center">
-                  <Badge variant="secondary" className="text-[10px] px-2 py-0">{app.platform}</Badge>
+                  <Badge variant="secondary" className="text-xs px-2 py-0">{app.platform}</Badge>
                 </TableCell>
                 <TableCell className="py-2.5 text-center">
                   <div className="flex items-center justify-center gap-1">
@@ -72,7 +72,7 @@ export const AppStoreIntelligence = ({ data }: Props) => {
       )}
 
       {data.source && (
-        <p className="text-[10px] text-muted-foreground mt-3">Source: {data.source}</p>
+        <p className="text-xs text-muted-foreground mt-3">Source: {data.source}</p>
       )}
     </div>
   );
