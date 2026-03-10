@@ -1173,6 +1173,108 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
         }
         overallScore = reportData.overallScore || 65;
         signalStrength = reportData.signalStrength || "Moderate";
+
+        // ── Fill missing sections with safe defaults so UI always renders ──
+        if (!reportData.proofDashboard) {
+          reportData.proofDashboard = {
+            searchDemand: { keyword: idea.split(" ").slice(0, 3).join(" "), monthlySearches: "Data unavailable", trend: "Stable", confidence: "Low", source: "AI Estimated", relatedKeywords: [] },
+            developerActivity: { repoCount: String(rawData.github?.repos?.length ?? 0), totalStars: String((rawData.github?.repos || []).reduce((s: number, r: any) => s + (r.stars || 0), 0)), recentCommits: "See GitHub data", trend: "Stable", confidence: rawData.github?.repos?.length > 0 ? "Medium" : "Low" },
+            socialActivity: { twitterMentions: String(rawData.twitterCounts?.total_count ?? 0), redditThreads: String(rawData.serperReddit?.organic?.length ?? 0), sentimentScore: "Mixed", hnPhLaunches: String(rawData.productHunt?.products?.length ?? 0), confidence: "Low" },
+            appStoreSignals: { relatedApps: String(rawData.firecrawlAppStore?.results?.length ?? 0), avgRating: "N/A", downloadEstimate: "N/A", marketGap: "Insufficient data to determine", confidence: "Low" },
+          };
+        }
+        if (!reportData.keywordDemand) {
+          const suggestions = rawData.serperAutoComplete?.suggestions || [];
+          reportData.keywordDemand = {
+            keywords: suggestions.slice(0, 5).map((s: string) => ({ keyword: s, volume: "N/A", difficulty: "Medium", trend: "Stable" })),
+            confidence: suggestions.length > 0 ? "Medium" : "Low",
+            source: suggestions.length > 0 ? "Serper.dev Autocomplete" : "AI Estimated",
+          };
+          if (reportData.keywordDemand.keywords.length === 0) {
+            reportData.keywordDemand.keywords = [{ keyword: idea.split(" ").slice(0, 3).join(" "), volume: "N/A", difficulty: "Medium", trend: "Stable" }];
+          }
+        }
+        if (!reportData.appStoreIntelligence) {
+          const apps = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
+          reportData.appStoreIntelligence = {
+            apps: apps.slice(0, 5).map((c: any) => ({ name: c.name, platform: "Both", rating: c.rating || "N/A", reviews: c.reviews || "N/A", downloads: c.downloads || "N/A", url: c.sourceUrl || null })),
+            insight: "Based on competitor data collected during analysis.",
+            confidence: apps.length > 0 ? "Medium" : "Low",
+            source: "Firecrawl + Perplexity Sonar",
+          };
+        }
+        if (!reportData.recommendedStrategy) {
+          reportData.recommendedStrategy = {
+            positioning: "Differentiate through a focused niche approach based on competitor weaknesses identified in this report.",
+            suggestedPricing: "Competitive with existing solutions — see Revenue Benchmark section.",
+            differentiators: (reportData.opportunity?.featureGaps || []).slice(0, 4),
+            primaryTarget: (reportData.opportunity?.underservedUsers || ["Early adopters"])[0],
+            channels: ["Product Hunt launch", "Relevant subreddits", "Content marketing"],
+            confidence: "Low",
+          };
+        }
+        if (!reportData.marketExploitMap) {
+          const sentimentCard = (reportData.signalCards || []).find((c: any) => c.title === "Sentiment & Pain Points");
+          reportData.marketExploitMap = {
+            competitorWeaknesses: (sentimentCard?.sentiment?.complaints || []).slice(0, 4),
+            competitorStrengths: (sentimentCard?.sentiment?.loves || []).slice(0, 3),
+            topComplaints: (sentimentCard?.sentiment?.complaints || []).slice(0, 3).map((c: string) => ({ complaint: c, frequency: "Medium" })),
+            topPraise: (sentimentCard?.sentiment?.loves || []).slice(0, 3).map((p: string) => ({ praise: p, frequency: "Medium" })),
+            whereToWin: (reportData.opportunity?.featureGaps || []).slice(0, 4),
+            attackAngle: reportData.opportunity?.positioning || "Focus on underserved user segments.",
+            confidence: "Low",
+          };
+        }
+        if (!reportData.competitorMatrix) {
+          const competitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
+          const features = ["Pricing", "UX Quality", "Feature Depth", "Market Presence"];
+          reportData.competitorMatrix = {
+            features,
+            competitors: [
+              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, "Medium"])) })),
+              { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, "Strong"])) },
+            ],
+            confidence: "Low",
+          };
+        }
+        if (!reportData.founderDecision) {
+          const score = reportData.overallScore || 65;
+          reportData.founderDecision = {
+            decision: score >= 75 ? "Build Now" : score >= 55 ? "Build, But Niche Down" : score >= 40 ? "Validate Further" : "Proceed with Caution",
+            reasoning: reportData.scoreExplanation || "See score breakdown for details.",
+            whyFactors: ["Review the full report sections for detailed reasoning."],
+            nextStep: "Validate with 10 potential users before building an MVP.",
+            riskLevel: score >= 70 ? "Low" : score >= 45 ? "Medium" : "High",
+            speedToMvp: "Medium",
+            commercialClarity: "Moderate",
+            confidence: "Low",
+          };
+        }
+        if (!reportData.killShotAnalysis) {
+          reportData.killShotAnalysis = {
+            risks: [
+              { risk: "Established competitors with large user bases", severity: "Medium" },
+              { risk: "Market may require significant user acquisition spend", severity: "Medium" },
+            ],
+            riskLevel: "Medium",
+            interpretation: "Standard market risks apply. Review competitor analysis and sentiment sections for specific threats.",
+            confidence: "Low",
+          };
+        }
+        if (!reportData.scoreExplanationData) {
+          const breakdown = reportData.scoreBreakdown || [];
+          reportData.scoreExplanationData = {
+            summary: reportData.scoreExplanation || "Score reflects the balance of demand signals, competition density, and market opportunity.",
+            factors: [
+              { category: "Demand Strength", explanation: `Trend score: ${breakdown.find((b: any) => b.label === "Trend Momentum")?.value ?? "N/A"}/20` },
+              { category: "Competition Density", explanation: `Saturation score: ${breakdown.find((b: any) => b.label === "Market Saturation")?.value ?? "N/A"}/20` },
+              { category: "User Sentiment", explanation: `Sentiment score: ${breakdown.find((b: any) => b.label === "Sentiment")?.value ?? "N/A"}/20` },
+              { category: "Market Growth", explanation: `Growth score: ${breakdown.find((b: any) => b.label === "Growth")?.value ?? "N/A"}/20` },
+              { category: "Opportunity Gap", explanation: `Opportunity score: ${breakdown.find((b: any) => b.label === "Opportunity")?.value ?? "N/A"}/20` },
+            ],
+            confidence: "Low",
+          };
+        }
       }
     } else {
       const errText = await aiResponse.text();
