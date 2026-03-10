@@ -19,6 +19,7 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   github_trending: 7,
   trending_searches: 9,
   growing_niches: 5,
+  app_store_trends: 11,
 };
 
 function scoreSignal(g: number, d: number, c: number, r: number, source?: string, timestamp?: string): number {
@@ -360,9 +361,68 @@ Return ONLY a JSON array, no other text.`
       }
     }
 
+    // ── Section 8: App Store Trends ──
+    if (section === "all" || section === "app_store_trends") {
+      try {
+        const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+        let apps: any[] = [];
+
+        if (firecrawlKey) {
+          // Scrape trending/top apps from App Store and Google Play via Firecrawl search
+          const [iosRes, androidRes] = await Promise.all([
+            fetch("https://api.firecrawl.dev/v1/search", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ query: "trending new apps 2026 site:apps.apple.com", limit: 5, scrapeOptions: { formats: ["markdown"] } }),
+            }).then(r => r.json()).catch(() => ({ data: [] })),
+            fetch("https://api.firecrawl.dev/v1/search", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ query: "trending new apps 2026 site:play.google.com", limit: 5, scrapeOptions: { formats: ["markdown"] } }),
+            }).then(r => r.json()).catch(() => ({ data: [] })),
+          ]);
+
+          const iosApps = (iosRes.data || []).map((r: any) => {
+            const title = r.title || r.metadata?.title || "";
+            const name = title.replace(/ on the App Store$/, "").replace(/ - Apple$/, "").trim();
+            return { name: name || "Unknown App", platform: "iOS", url: r.url || "", snippet: (r.description || r.metadata?.description || "").slice(0, 120), source: "firecrawl" };
+          });
+          const androidApps = (androidRes.data || []).map((r: any) => {
+            const title = r.title || r.metadata?.title || "";
+            const name = title.replace(/ - Apps on Google Play$/, "").replace(/ - Google Play$/, "").trim();
+            return { name: name || "Unknown App", platform: "Android", url: r.url || "", snippet: (r.description || r.metadata?.description || "").slice(0, 120), source: "firecrawl" };
+          });
+
+          apps = [...iosApps, ...androidApps].filter(a => a.name && a.name !== "Unknown App").slice(0, 8);
+        }
+
+        // Fallback to Perplexity if Firecrawl returned nothing
+        if (apps.length === 0 && pplxKey) {
+          const raw = await askPerplexity(
+            `What are the top 6 trending or fastest-rising apps on the App Store and Google Play right now in March 2026? For each, return a JSON object with: "name" (app name), "platform" ("iOS" or "Android" or "Both"), "snippet" (one sentence about what it does, max 100 chars), "category" (app category). Return ONLY a JSON array.`
+          );
+          apps = parseJsonArray(raw).slice(0, 6).map((a: any) => ({ ...a, source: "perplexity", url: "" }));
+        }
+
+        apps = addSignalMeta(apps, "app_store_trends", { keywordField: "name", defaultGrowth: 60, defaultVelocity: 55 });
+        apps = dedup(apps, "name");
+        apps = apps.filter((a: any) => (a._signalScore ?? 0) >= MIN_SIGNAL_SCORE);
+
+        if (apps.length > 0) {
+          await saveSnapshot(supabase, "app_store_trends", apps);
+          results.app_store_trends = apps;
+        } else {
+          results.app_store_trends = [];
+        }
+      } catch (e) {
+        console.error("app_store_trends error:", e);
+        results.app_store_trends = [];
+      }
+    }
+
     // ── Top Opportunities Aggregator (cross-feed merge) ──
     const allSignals: any[] = [];
-    for (const key of ["trending_searches", "product_hunt", "reddit_pain_points", "growing_niches", "hacker_news", "github_trending", "google_trends"]) {
+    for (const key of ["trending_searches", "product_hunt", "reddit_pain_points", "growing_niches", "hacker_news", "github_trending", "google_trends", "app_store_trends"]) {
       const arr = results[key];
       if (Array.isArray(arr)) allSignals.push(...arr);
     }

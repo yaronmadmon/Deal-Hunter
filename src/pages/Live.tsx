@@ -20,6 +20,7 @@ import {
   GitFork,
   Search,
   Newspaper,
+  Smartphone,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +83,14 @@ interface GoogleTrendItem {
   date?: string | null;
   type: "search" | "news";
 }
+interface AppStoreItem {
+  name: string;
+  platform: string;
+  snippet?: string;
+  category?: string;
+  url?: string;
+  source?: string;
+}
 
 const CACHE_HOURS = 4;
 
@@ -98,6 +107,7 @@ const Live = () => {
   const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
   const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
+  const [appStoreTrends, setAppStoreTrends] = useState<AppStoreItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
@@ -167,6 +177,9 @@ const Live = () => {
         case "google_trends":
           if (Array.isArray(payload)) setGoogleTrends(payload);
           break;
+        case "app_store_trends":
+          if (Array.isArray(payload)) setAppStoreTrends(payload);
+          break;
         case "breakout_idea":
           if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]);
           break;
@@ -222,10 +235,11 @@ const Live = () => {
       ...hackerNews.map((h) => ({ ...h, _key: h.title, _label: h.title })),
       ...githubTrending.map((g) => ({ ...g, _key: g.name, _label: g.name })),
       ...googleTrends.map((g) => ({ ...g, _key: g.title, _label: g.title })),
+      ...appStoreTrends.map((a) => ({ ...a, _key: a.name, _label: a.name })),
     ];
     all.sort((a, b) => ((b as any)._signalScore ?? 0) - ((a as any)._signalScore ?? 0));
     setTopOpportunities(all.slice(0, 5));
-  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends]);
+  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends, appStoreTrends]);
 
   const analyzeIdea = async (ideaText: string) => {
     if (!user) return;
@@ -894,6 +908,78 @@ const Live = () => {
                           variant="default"
                           className="text-xs h-7 px-2.5 shrink-0 ml-3"
                           onClick={() => analyzeIdea(item.title)}
+                        >
+                          Analyze <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              {/* ── Section 8: App Store Trends ── */}
+              <SectionCard
+                icon={<Smartphone className="w-5 h-5 text-indigo-500" />}
+                title="App Store Trends"
+                loading={loadingData}
+              >
+                {appStoreTrends.length === 0 ? (
+                  <EmptyCategory category="app store trends" />
+                ) : (
+                  <div className="space-y-3">
+                    {appStoreTrends.map((app, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {app.url ? (
+                              <a
+                                href={app.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-foreground text-sm hover:text-primary flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {app.name}
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            ) : (
+                              <p className="font-medium text-foreground text-sm">
+                                {app.name}
+                              </p>
+                            )}
+                            <SignalBadge score={(app as any)._signalScore} confidence={(app as any)._confidence} />
+                          </div>
+                          {app.snippet && (
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              {app.snippet}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-[9px]">
+                              {app.platform}
+                            </Badge>
+                            {app.category && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                {app.category}
+                              </Badge>
+                            )}
+                            {app.source && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {app.source === "firecrawl" ? "Live Data" : "AI Estimated"}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 px-2.5 shrink-0 ml-3"
+                          onClick={() =>
+                            analyzeIdea(`${app.name} style app`)
+                          }
                         >
                           Analyze <ArrowRight className="w-3 h-3 ml-1" />
                         </Button>
