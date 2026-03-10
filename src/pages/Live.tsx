@@ -99,6 +99,7 @@ const Live = () => {
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
   const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
+  const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
