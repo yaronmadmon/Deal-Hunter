@@ -164,17 +164,24 @@ Deno.serve(async (req) => {
   }
 
   async function askAI(prompt: string): Promise<string> {
-    if (!lovableKey) return "";
-    const res = await fetch("https://ai-gateway.lovable.dev/api/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    // Use Perplexity as the AI backend (Lovable AI gateway is not accessible from edge functions)
+    if (!pplxKey) return "";
+    try {
+      const res = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${pplxKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      if (!res.ok) { await res.text(); return ""; }
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || "";
+    } catch (e) {
+      console.error("askAI fallback error:", e);
+      return "";
+    }
   }
 
   function parseJsonArray(text: string): any[] {
