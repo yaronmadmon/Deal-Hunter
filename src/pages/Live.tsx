@@ -848,13 +848,31 @@ function SectionCard({
   );
 }
 
-function ErrorState() {
+function EmptyCategory({ category }: { category: string }) {
   return (
     <div className="text-center py-6">
       <p className="text-sm text-muted-foreground">
-        Signal unavailable — retrying next refresh cycle
+        No strong signals detected in {category} right now.
+      </p>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Will retry on next refresh cycle.
       </p>
     </div>
+  );
+}
+
+function SignalBadge({ score }: { score?: number }) {
+  if (score == null) return null;
+  const color =
+    score >= 65
+      ? "bg-success/20 text-green-600 border-success/30"
+      : score >= 35
+      ? "bg-warning/20 text-yellow-600 border-warning/30"
+      : "bg-muted text-muted-foreground";
+  return (
+    <Badge className={`text-[9px] px-1.5 py-0 ${color}`}>
+      {score}
+    </Badge>
   );
 }
 
