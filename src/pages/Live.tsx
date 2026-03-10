@@ -670,7 +670,7 @@ const Live = () => {
                 loading={loadingData}
               >
                 {githubTrending.length === 0 ? (
-                  <ErrorState />
+                  <EmptyCategory category="open source" />
                 ) : (
                   <div className="space-y-3">
                     {githubTrending.map((repo, i) => (
