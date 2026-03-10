@@ -21,6 +21,9 @@ import {
   Search,
   Newspaper,
   Smartphone,
+  Twitter,
+  Heart,
+  Repeat,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
