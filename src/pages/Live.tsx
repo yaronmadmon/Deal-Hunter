@@ -122,6 +122,7 @@ const Live = () => {
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
   const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
   const [appStoreTrends, setAppStoreTrends] = useState<AppStoreItem[]>([]);
+  const [twitterBuzz, setTwitterBuzz] = useState<TwitterBuzzItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
