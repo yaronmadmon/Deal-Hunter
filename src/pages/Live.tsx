@@ -133,8 +133,13 @@ const Live = () => {
     if (!data || data.length === 0) return null;
 
     let latestTime: Date | null = null;
+    const seen = new Set<string>();
 
     for (const row of data) {
+      // Only use the latest snapshot per section
+      if (seen.has(row.section_name)) continue;
+      seen.add(row.section_name);
+
       const payload = row.data_payload as any;
       const time = new Date(row.created_at);
       if (!latestTime || time > latestTime) latestTime = time;
@@ -441,7 +446,7 @@ const Live = () => {
                             <p className="font-medium text-foreground text-sm truncate">
                               {t.keyword}
                             </p>
-                            <SignalBadge score={(t as any)._signalScore} />
+                            <SignalBadge score={(t as any)._signalScore} confidence={(t as any)._confidence} />
                           </div>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {t.snippet}
@@ -861,7 +866,7 @@ function EmptyCategory({ category }: { category: string }) {
   );
 }
 
-function SignalBadge({ score }: { score?: number }) {
+function SignalBadge({ score, confidence }: { score?: number; confidence?: string }) {
   if (score == null) return null;
   const color =
     score >= 65
@@ -869,9 +874,10 @@ function SignalBadge({ score }: { score?: number }) {
       : score >= 35
       ? "bg-warning/20 text-yellow-600 border-warning/30"
       : "bg-muted text-muted-foreground";
+  const confLabel = confidence && confidence !== "undefined" ? ` · ${confidence}` : "";
   return (
     <Badge className={`text-[9px] px-1.5 py-0 ${color}`}>
-      {score}
+      {score}{confLabel}
     </Badge>
   );
 }
