@@ -19,6 +19,7 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   github_trending: 7,
   trending_searches: 9,
   growing_niches: 5,
+  app_store_trends: 11,
 };
 
 function scoreSignal(g: number, d: number, c: number, r: number, source?: string, timestamp?: string): number {
