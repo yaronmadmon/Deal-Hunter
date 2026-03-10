@@ -254,10 +254,11 @@ const Live = () => {
       ...githubTrending.map((g) => ({ ...g, _key: g.name, _label: g.name })),
       ...googleTrends.map((g) => ({ ...g, _key: g.title, _label: g.title })),
       ...appStoreTrends.map((a) => ({ ...a, _key: a.name, _label: a.name })),
+      ...twitterBuzz.map((t) => ({ ...t, _key: t.text.slice(0, 60), _label: t.topic || t.text.slice(0, 60) })),
     ];
     all.sort((a, b) => ((b as any)._signalScore ?? 0) - ((a as any)._signalScore ?? 0));
     setTopOpportunities(all.slice(0, 5));
-  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends, appStoreTrends]);
+  }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends, appStoreTrends, twitterBuzz]);
 
   const analyzeIdea = async (ideaText: string) => {
     if (!user) return;
