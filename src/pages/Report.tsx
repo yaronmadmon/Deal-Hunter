@@ -255,6 +255,9 @@ const Report = () => {
         {/* Build Complexity */}
         {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
 
+        {/* Score Explanation */}
+        {r.scoreExplanationData && <ScoreExplanation data={r.scoreExplanationData} score={r.overallScore} />}
+
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
