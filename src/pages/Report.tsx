@@ -229,6 +229,9 @@ const Report = () => {
           return extracted.slice(0, 5);
         })()} />
 
+        {/* App Store Intelligence */}
+        {r.appStoreIntelligence && <AppStoreIntelligence data={r.appStoreIntelligence} />}
+
         {/* Open Source Landscape */}
         {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
 
@@ -246,6 +249,7 @@ const Report = () => {
 
         {/* Build Complexity */}
         {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
+
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
@@ -253,6 +257,9 @@ const Report = () => {
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
         />
+
+        {/* Recommended Strategy */}
+        {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
 
         {/* Glossary */}
         <GlossarySection />
