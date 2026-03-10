@@ -266,6 +266,9 @@ const Report = () => {
           explanation={r.scoreExplanation}
         />
 
+        {/* Kill Shot Analysis */}
+        {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
+
         {/* Market Exploit Map */}
         {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
 

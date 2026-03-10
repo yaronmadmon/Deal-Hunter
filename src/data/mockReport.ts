@@ -364,6 +364,8 @@ export interface MockReportData {
   marketExploitMap?: MarketExploitMapData;
   competitorMatrix?: CompetitorMatrixData;
   founderDecision?: FounderDecisionData;
+  killShotAnalysis?: KillShotAnalysisData;
+  scoreExplanationData?: ScoreExplanationData;
 }
 
 export const mockReport: MockReportData = {
