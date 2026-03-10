@@ -246,17 +246,16 @@ const Live = () => {
       return;
     }
 
-    await supabase
-      .from("profiles")
-      .update({ credits: credits - 1 })
-      .eq("id", user.id);
-
-    await supabase.from("credits_log").insert({
-      user_id: user.id,
-      amount: -1,
-      reason: "analysis",
-      analysis_id: data.id,
-    });
+    // Use RPC to safely deduct credit with race-condition protection
+    const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
+    if (!deducted) {
+      toast.error("No credits remaining");
+      // Clean up the analysis row
+      await supabase.from("analyses").delete().eq("id", data.id);
+      navigate("/buy-credits");
+      return;
+    }
+    setCredits((c) => Math.max(0, c - 1));
 
     supabase.functions.invoke("run-pipeline", {
       body: { analysisId: data.id, idea: ideaText },
