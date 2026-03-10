@@ -1062,6 +1062,40 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
     "targetUsers": ["strings 3-4 items"],
     "monetization": ["strings 2-3 items"],
     "mvpPlan": ["strings 5-6 items"]
+  },
+  "marketExploitMap": {
+    "competitorWeaknesses": ["4-6 specific weaknesses from competitor data and user reviews — be concrete, not generic"],
+    "competitorStrengths": ["3-5 things competitors do well — be honest about what you're up against"],
+    "topComplaints": [
+      {"complaint": "specific user complaint from reviews/reddit", "frequency": "High" or "Medium" or "Low"},
+      {"complaint": "another complaint", "frequency": "High" or "Medium" or "Low"}
+    ],
+    "topPraise": [
+      {"praise": "specific thing users praise", "frequency": "High" or "Medium" or "Low"},
+      {"praise": "another praise point", "frequency": "High" or "Medium" or "Low"}
+    ],
+    "whereToWin": ["4-6 specific opportunities where this idea can beat incumbents — reference actual competitor gaps"],
+    "attackAngle": "A clear 1-2 sentence positioning statement for how to enter this market and win — be specific and actionable",
+    "confidence": "High" or "Medium" or "Low"
+  },
+  "competitorMatrix": {
+    "features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"],
+    "competitors": [
+      {"name": "Competitor 1 name", "isYou": false, "scores": {"Speed": "Strong", "Pricing": "Medium", "App Store Data": "No", ...}},
+      {"name": "Competitor 2 name", "isYou": false, "scores": {"Speed": "Weak", "Pricing": "Strong", ...}},
+      {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong", "Pricing": "Strong", "App Store Data": "Yes", ...}}
+    ],
+    "confidence": "Medium"
+  },
+  "founderDecision": {
+    "decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Proceed with Caution" or "Do Not Build",
+    "reasoning": "1-2 sentence data-backed explanation for the decision — reference specific scores, competitor gaps, and demand signals",
+    "whyFactors": ["3-5 specific data-backed reasons supporting the decision"],
+    "nextStep": "The single most important next action the founder should take",
+    "riskLevel": "Low" or "Medium" or "High",
+    "speedToMvp": "Fast" or "Medium" or "Slow",
+    "commercialClarity": "Clear" or "Moderate" or "Weak",
+    "confidence": "Medium"
   }
 }
 
@@ -1075,7 +1109,7 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
           },
         ],
         temperature: 0.3,
-        max_tokens: 8000,
+        max_tokens: 10000,
       }),
     });
 
