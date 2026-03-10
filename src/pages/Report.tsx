@@ -24,6 +24,8 @@ import { RecommendedStrategy } from "@/components/report/RecommendedStrategy";
 import { MarketExploitMap } from "@/components/report/MarketExploitMap";
 import { CompetitorMatrix } from "@/components/report/CompetitorMatrix";
 import { FounderDecision } from "@/components/report/FounderDecision";
+import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
+import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -253,6 +255,9 @@ const Report = () => {
         {/* Build Complexity */}
         {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
 
+        {/* Score Explanation */}
+        {r.scoreExplanationData && <ScoreExplanation data={r.scoreExplanationData} score={r.overallScore} />}
+
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
@@ -260,6 +265,9 @@ const Report = () => {
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
         />
+
+        {/* Kill Shot Analysis */}
+        {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
 
         {/* Market Exploit Map */}
         {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}

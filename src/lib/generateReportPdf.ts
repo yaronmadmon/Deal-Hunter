@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData } from "@/data/mockReport";
+import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
 
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
@@ -836,6 +836,51 @@ export function generateReportPdf(report: MockReportData) {
       doc.text("Go-to-Market Channels", m, y); y += 5;
       drawBulletList(rs.channels, C.teal, "▸");
     }
+  }
+
+  // ── Score Explanation ──
+  if (report.scoreExplanationData) {
+    const se = report.scoreExplanationData;
+    drawSectionTitle("Why This Score: " + report.overallScore + "/100");
+    if (se.summary) {
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      const sumLines = doc.splitTextToSize(se.summary, cw);
+      writeLines(sumLines, m, 4); y += 2;
+    }
+    for (const factor of se.factors) {
+      checkPage(12);
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.indigo);
+      doc.text(factor.category, m, y); y += 4;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const fLines = doc.splitTextToSize(factor.explanation, cw - 4);
+      writeLines(fLines, m + 2, 3.5); y += 2;
+    }
+  }
+
+  // ── Kill Shot Analysis ──
+  if (report.killShotAnalysis) {
+    const ks = report.killShotAnalysis;
+    drawSectionTitle("Kill Shot Analysis");
+
+    for (const risk of ks.risks) {
+      checkPage(8);
+      const sevColor = risk.severity === "High" ? C.danger : risk.severity === "Medium" ? C.gold : C.success;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      doc.text("⚠ " + risk.risk, m + 2, y);
+      if (risk.severity) {
+        doc.setFontSize(6); setColor(sevColor);
+        doc.text(`[${risk.severity}]`, m + 2 + doc.getTextWidth("⚠ " + risk.risk) + 2, y);
+      }
+      y += 5;
+    }
+
+    checkPage(14);
+    const rlColor = ks.riskLevel === "High" ? C.danger : ks.riskLevel === "Medium" ? C.gold : C.success;
+    doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(rlColor);
+    doc.text("Overall Risk: " + ks.riskLevel, m, y); y += 5;
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+    const intLines = doc.splitTextToSize(ks.interpretation, cw);
+    writeLines(intLines, m, 3.5); y += 3;
   }
 
   // ── Founder Decision Matrix ──

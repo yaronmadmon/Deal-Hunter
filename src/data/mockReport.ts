@@ -258,6 +258,29 @@ export interface CompetitorMatrixData {
   confidence?: "High" | "Medium" | "Low";
 }
 
+export interface KillShotRisk {
+  risk: string;
+  severity?: "Low" | "Medium" | "High";
+}
+
+export interface KillShotAnalysisData {
+  risks: KillShotRisk[];
+  riskLevel: "Low" | "Medium" | "High";
+  interpretation: string;
+  confidence?: "High" | "Medium" | "Low";
+}
+
+export interface ScoreExplanationFactor {
+  category: string;
+  explanation: string;
+}
+
+export interface ScoreExplanationData {
+  summary?: string;
+  factors: ScoreExplanationFactor[];
+  confidence?: "High" | "Medium" | "Low";
+}
+
 export interface FounderDecisionData {
   decision: "Build Now" | "Build, But Niche Down" | "Validate Further" | "Proceed with Caution" | "Do Not Build";
   reasoning: string;
@@ -341,6 +364,8 @@ export interface MockReportData {
   marketExploitMap?: MarketExploitMapData;
   competitorMatrix?: CompetitorMatrixData;
   founderDecision?: FounderDecisionData;
+  killShotAnalysis?: KillShotAnalysisData;
+  scoreExplanationData?: ScoreExplanationData;
 }
 
 export const mockReport: MockReportData = {
