@@ -227,6 +227,7 @@ const Live = () => {
     setTopOpportunities(all.slice(0, 5));
   }, [trending, productHunt, reddit, niches, hackerNews, githubTrending, googleTrends]);
 
+  const analyzeIdea = async (ideaText: string) => {
     if (!user) return;
     if (credits <= 0) {
       toast.error("No credits remaining");
