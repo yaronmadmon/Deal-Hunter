@@ -16,7 +16,7 @@ const SignalBlock = ({ icon: Icon, title, children, confidence }: { icon: React.
         <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
           <Icon className="w-3.5 h-3.5 text-primary" />
         </div>
-        <h4 className="text-xs font-heading font-semibold text-foreground uppercase tracking-wide">{title}</h4>
+        <h4 className="text-[13px] font-heading font-semibold text-foreground uppercase tracking-wide">{title}</h4>
         {confidence && <ConfidenceLabel level={confidence} />}
       </div>
       {children}
@@ -29,7 +29,7 @@ const MetricRow = ({ label, value, source }: { label: string; value: string; sou
     <span className="text-muted-foreground">{label}</span>
     <div className="text-right">
       <span className="font-semibold text-foreground">{value || "Data unavailable"}</span>
-      {source && <span className="text-[10px] text-muted-foreground block">{source}</span>}
+      {source && <span className="text-xs text-muted-foreground block">{source}</span>}
     </div>
   </div>
 );
@@ -39,7 +39,7 @@ export const ProofDashboard = ({ data }: Props) => {
     <div className="mb-12">
       <div className="flex items-center gap-3 mb-5">
         <h2 className="font-heading text-xl font-bold text-foreground">Proof Dashboard</h2>
-        <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-primary/5 text-primary border-primary/20">Evidence-Based</Badge>
+        <Badge variant="outline" className="text-xs px-2 py-0.5 bg-primary/5 text-primary border-primary/20">Evidence-Based</Badge>
       </div>
       <p className="text-sm text-muted-foreground mb-6">Immediate visual evidence that this opportunity is real — every signal backed by data.</p>
 
@@ -51,10 +51,10 @@ export const ProofDashboard = ({ data }: Props) => {
           <MetricRow label="Trend Direction" value={data.searchDemand?.trend || "Data unavailable"} />
           {data.searchDemand?.relatedKeywords && data.searchDemand.relatedKeywords.length > 0 && (
             <div className="mt-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Related Keywords</span>
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">Related Keywords</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {data.searchDemand.relatedKeywords.map(kw => (
-                  <Badge key={kw} variant="secondary" className="text-[10px] px-2 py-0">{kw}</Badge>
+                  <Badge key={kw} variant="secondary" className="text-xs px-2 py-0">{kw}</Badge>
                 ))}
               </div>
             </div>

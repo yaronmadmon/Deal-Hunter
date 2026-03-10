@@ -14,7 +14,7 @@ export const OpportunitySection = ({ opportunity }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Opportunity Gap</h2>
-          <p className="text-xs text-muted-foreground italic">Where you could win</p>
+          <p className="text-[13px] text-muted-foreground italic">Where you could win</p>
         </div>
       </div>
 
@@ -27,7 +27,7 @@ export const OpportunitySection = ({ opportunity }: Props) => {
           <ul className="space-y-1.5">
             {opportunity.featureGaps.map((g) => (
               <li key={g} className="text-sm text-muted-foreground flex items-start gap-2">
-                <span className="text-accent mt-0.5 text-xs">●</span> {g}
+                <span className="text-accent mt-0.5 text-[13px]">●</span> {g}
               </li>
             ))}
           </ul>
@@ -41,7 +41,7 @@ export const OpportunitySection = ({ opportunity }: Props) => {
           <ul className="space-y-1.5">
             {opportunity.underservedUsers.map((u) => (
               <li key={u} className="text-sm text-muted-foreground flex items-start gap-2">
-                <span className="text-accent mt-0.5 text-xs">●</span> {u}
+                <span className="text-accent mt-0.5 text-[13px]">●</span> {u}
               </li>
             ))}
           </ul>

@@ -15,7 +15,7 @@ export const NicheAnalysis = ({ data }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Niche Deep Dive</h2>
-          <p className="text-xs text-muted-foreground italic">Your specific slice of this market</p>
+          <p className="text-[13px] text-muted-foreground italic">Your specific slice of this market</p>
         </div>
       </div>
 
@@ -27,7 +27,7 @@ export const NicheAnalysis = ({ data }: Props) => {
             <h3 className="font-semibold text-sm text-foreground">Serviceable Market (SAM)</h3>
           </div>
           <p className="text-2xl font-bold text-foreground mb-1">{data.samEstimate}</p>
-          <p className="text-xs text-muted-foreground mb-2">{data.samPercentage} of total market</p>
+          <p className="text-[13px] text-muted-foreground mb-2">{data.samPercentage} of total market</p>
           <p className="text-sm text-muted-foreground">{data.samReasoning}</p>
         </div>
 
@@ -38,7 +38,7 @@ export const NicheAnalysis = ({ data }: Props) => {
             <h3 className="font-semibold text-sm text-foreground">Competitor Positioning</h3>
           </div>
           <p className="text-2xl font-bold text-foreground mb-1">{data.directCompetitors} direct</p>
-          <p className="text-xs text-muted-foreground mb-2">competitors in your exact niche</p>
+          <p className="text-[13px] text-muted-foreground mb-2">competitors in your exact niche</p>
           <p className="text-sm text-muted-foreground">{data.competitorClarity}</p>
           <p className="text-sm text-muted-foreground mt-2 italic">{data.competitorDetail}</p>
         </div>

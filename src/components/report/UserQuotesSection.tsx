@@ -24,7 +24,7 @@ export const UserQuotesSection = ({ quotes }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">What Real Users Are Saying</h2>
-          <p className="text-xs text-muted-foreground">{quotes.length} verified quotes from real discussions & reviews</p>
+          <p className="text-[13px] text-muted-foreground">{quotes.length} verified quotes from real discussions & reviews</p>
         </div>
       </div>
 
@@ -38,14 +38,14 @@ export const UserQuotesSection = ({ quotes }: Props) => {
               </p>
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badge.className}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.className}`}>
                     {badge.label}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-[13px] text-muted-foreground">
                     {q.source}
                   </span>
                   {q.upvotes && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       ▲ {q.upvotes}
                     </span>
                   )}
@@ -55,7 +55,7 @@ export const UserQuotesSection = ({ quotes }: Props) => {
                     href={q.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                    className="text-xs text-primary hover:underline flex items-center gap-0.5"
                   >
                     <ExternalLink className="w-2.5 h-2.5" /> view
                   </a>

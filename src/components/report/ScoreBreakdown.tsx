@@ -34,10 +34,10 @@ export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }
 
       {/* Weight explanation */}
       <div className="bg-secondary/30 rounded-lg px-4 py-3 mb-6">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">How the Score is Calculated</p>
+        <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">How the Score is Calculated</p>
         <div className="flex flex-wrap gap-3">
           {breakdown.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div key={item.label} className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <span className={`w-2 h-2 rounded-full ${colorForIndex(i)}`} />
               {item.label}: <span className="font-semibold text-foreground">{item.weight || defaultWeights[i]}</span>
             </div>

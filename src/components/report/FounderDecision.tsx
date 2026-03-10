@@ -18,7 +18,7 @@ const decisionConfig: Record<string, { color: string; bgColor: string; borderCol
 const RiskBadge = ({ level }: { level: string }) => {
   const lower = level.toLowerCase();
   const variant = lower.includes("low") ? "go" as const : lower.includes("high") ? "nogo" as const : "pivot" as const;
-  return <Badge variant={variant} className="text-xs px-2.5 py-0.5">{level}</Badge>;
+  return <Badge variant={variant} className="text-[13px] px-2.5 py-0.5">{level}</Badge>;
 };
 
 export const FounderDecision = ({ data }: Props) => {
@@ -33,7 +33,7 @@ export const FounderDecision = ({ data }: Props) => {
           </div>
           <div>
             <h2 className="font-heading text-xl font-bold text-foreground">Founder Decision Matrix</h2>
-            <p className="text-xs text-muted-foreground">Data-driven recommendation for your next move</p>
+            <p className="text-[13px] text-muted-foreground">Data-driven recommendation for your next move</p>
           </div>
         </div>
         <ConfidenceLabel level={data.confidence || "Medium"} />
@@ -66,7 +66,7 @@ export const FounderDecision = ({ data }: Props) => {
       {/* Suggested Next Step */}
       {data.nextStep && (
         <div className="bg-secondary/30 rounded-lg px-4 py-3 mb-6">
-          <h4 className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide mb-1">Suggested Next Step</h4>
+          <h4 className="text-[13px] font-heading font-semibold text-muted-foreground uppercase tracking-wide mb-1">Suggested Next Step</h4>
           <p className="text-sm text-foreground">{data.nextStep}</p>
         </div>
       )}
@@ -75,18 +75,18 @@ export const FounderDecision = ({ data }: Props) => {
       <div className="grid grid-cols-3 gap-4">
         <div className="text-center space-y-1.5">
           <AlertTriangle className="w-4 h-4 text-muted-foreground mx-auto" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Risk Level</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Risk Level</p>
           <RiskBadge level={data.riskLevel || "Medium"} />
         </div>
         <div className="text-center space-y-1.5">
           <Zap className="w-4 h-4 text-muted-foreground mx-auto" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Speed to MVP</p>
-          <Badge variant="secondary" className="text-xs px-2.5 py-0.5">{data.speedToMvp || "Medium"}</Badge>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Speed to MVP</p>
+          <Badge variant="secondary" className="text-[13px] px-2.5 py-0.5">{data.speedToMvp || "Medium"}</Badge>
         </div>
         <div className="text-center space-y-1.5">
           <DollarSign className="w-4 h-4 text-muted-foreground mx-auto" />
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Commercial Clarity</p>
-          <Badge variant="secondary" className="text-xs px-2.5 py-0.5">{data.commercialClarity || "Moderate"}</Badge>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Commercial Clarity</p>
+          <Badge variant="secondary" className="text-[13px] px-2.5 py-0.5">{data.commercialClarity || "Moderate"}</Badge>
         </div>
       </div>
     </div>

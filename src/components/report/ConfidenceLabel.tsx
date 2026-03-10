@@ -16,7 +16,7 @@ export const ConfidenceLabel = ({ level, showIcon = true }: Props) => {
   const { variant, icon: Icon, label } = config[level];
 
   return (
-    <Badge variant={variant} className="text-[9px] px-1.5 py-0 gap-0.5">
+    <Badge variant={variant} className="text-[11px] px-1.5 py-0 gap-0.5">
       {showIcon && <Icon className="w-2.5 h-2.5" />}
       {label}
     </Badge>

@@ -15,7 +15,7 @@ export const UnitEconomics = ({ data }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Unit Economics & Retention</h2>
-          <p className="text-xs text-muted-foreground italic">Will customers stay and pay?</p>
+          <p className="text-[13px] text-muted-foreground italic">Will customers stay and pay?</p>
         </div>
       </div>
 
@@ -32,7 +32,7 @@ export const UnitEconomics = ({ data }: Props) => {
                 <span className="text-sm text-foreground">{b.name}</span>
                 <div className="text-right">
                   <span className="text-sm font-bold text-foreground">{b.churnRate}</span>
-                  <span className="text-xs text-muted-foreground ml-1">monthly</span>
+                  <span className="text-[13px] text-muted-foreground ml-1">monthly</span>
                 </div>
               </div>
             ))}
@@ -48,16 +48,16 @@ export const UnitEconomics = ({ data }: Props) => {
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-muted-foreground">Realistic ARPU</p>
+              <p className="text-[13px] text-muted-foreground">Realistic ARPU</p>
               <p className="text-lg font-bold text-foreground">{data.realisticArpu}</p>
               <p className="text-sm text-muted-foreground">{data.arpuReasoning}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Privacy Premium</p>
+              <p className="text-[13px] text-muted-foreground">Privacy Premium</p>
               <p className="text-sm text-foreground font-medium">{data.privacyPremium}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Estimated LTV</p>
+              <p className="text-[13px] text-muted-foreground">Estimated LTV</p>
               <p className="text-lg font-bold text-foreground">{data.ltvEstimate}</p>
             </div>
           </div>

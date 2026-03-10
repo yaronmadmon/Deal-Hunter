@@ -50,7 +50,7 @@ export const GlossarySection = () => {
                 <div className="font-semibold text-sm text-foreground mb-1">{item.term}</div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.definition}</p>
                 {item.example && (
-                  <p className="text-xs text-muted-foreground/70 italic mt-1.5">{item.example}</p>
+                  <p className="text-[13px] text-muted-foreground/70 italic mt-1.5">{item.example}</p>
                 )}
               </div>
             ))}

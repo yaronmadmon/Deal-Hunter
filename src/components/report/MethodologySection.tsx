@@ -17,7 +17,7 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-lg font-bold text-foreground">How This Report Was Built</h2>
-          <p className="text-xs text-muted-foreground">Transparency into our data collection & analysis methodology</p>
+          <p className="text-[13px] text-muted-foreground">Transparency into our data collection & analysis methodology</p>
         </div>
       </div>
 
@@ -26,42 +26,42 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
           <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.totalSources ?? dataSources?.length ?? "—"}</div>
-            <div className="text-[11px] text-muted-foreground">Verified Sources</div>
+            <div className="text-[13px] text-muted-foreground">Verified Sources</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Search className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.perplexityQueries ?? 4}</div>
-            <div className="text-[11px] text-muted-foreground">AI Search Queries</div>
+            <div className="text-[13px] text-muted-foreground">AI Search Queries</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Globe className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.firecrawlScrapes ?? 10}</div>
-            <div className="text-[11px] text-muted-foreground">Pages Scraped</div>
+            <div className="text-[13px] text-muted-foreground">Pages Scraped</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Search className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.serperSearches ?? 3}</div>
-            <div className="text-[11px] text-muted-foreground">Google Searches</div>
+            <div className="text-[13px] text-muted-foreground">Google Searches</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Rocket className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.productHuntQueries ?? 1}</div>
-            <div className="text-[11px] text-muted-foreground">PH Searches</div>
+            <div className="text-[13px] text-muted-foreground">PH Searches</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Twitter className="w-4 h-4 text-[hsl(204,88%,53%)] mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.twitterSearches ?? 0}</div>
-            <div className="text-[11px] text-muted-foreground">X Searches</div>
+            <div className="text-[13px] text-muted-foreground">X Searches</div>
           </div>
         </div>
       </div>
@@ -71,14 +71,14 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
           <Calendar className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.analysisDate ? m.analysisDate : new Date().toISOString().split('T')[0]}</div>
-            <div className="text-[11px] text-muted-foreground">Analysis Date</div>
+            <div className="text-[13px] text-muted-foreground">Analysis Date</div>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <Database className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div>
             <div className="text-lg font-bold text-foreground">{m?.dataPoints ?? "—"}</div>
-            <div className="text-[11px] text-muted-foreground">Data Points Analyzed</div>
+            <div className="text-[13px] text-muted-foreground">Data Points Analyzed</div>
           </div>
         </div>
       </div>
@@ -103,13 +103,13 @@ export const MethodologySection = ({ methodology, dataSources }: Props) => {
             <span className="font-medium text-foreground">Analysis: </span>
             <span className="text-muted-foreground">
               All collected data is synthesized by AI grounded in the real sources. Data points are tagged as
-              <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">Live Search</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-[10px] font-medium">Google</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Scraped</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Product Hunt</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] rounded text-[10px] font-medium">X Live Search</span>,
-              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(25,95%,53%)]/10 text-[hsl(25,95%,40%)] dark:text-[hsl(25,95%,65%)] rounded text-[10px] font-medium">X Trending</span>, or
-              <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-[10px] font-medium">AI Estimated</span>
+              <span className="mx-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-xs font-medium">Live Search</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-xs font-medium">Google</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded text-xs font-medium">Scraped</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-orange-600/10 text-orange-600 dark:text-orange-400 rounded text-xs font-medium">Product Hunt</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(204,88%,53%)]/10 text-[hsl(204,88%,40%)] dark:text-[hsl(204,88%,65%)] rounded text-xs font-medium">X Live Search</span>,
+              <span className="mx-1 px-1.5 py-0.5 bg-[hsl(25,95%,53%)]/10 text-[hsl(25,95%,40%)] dark:text-[hsl(25,95%,65%)] rounded text-xs font-medium">X Trending</span>, or
+              <span className="mx-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded text-xs font-medium">AI Estimated</span>
               for full transparency.
             </span>
           </div>

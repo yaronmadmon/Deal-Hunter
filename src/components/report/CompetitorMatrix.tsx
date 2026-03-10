@@ -13,22 +13,22 @@ const CellValue = ({ value }: { value: string }) => {
   if (lower === "yes" || lower === "strong") return (
     <div className="flex items-center justify-center gap-1">
       <Check className="w-3.5 h-3.5 text-success" />
-      <span className="text-xs font-semibold text-success">{value}</span>
+      <span className="text-[13px] font-semibold text-success">{value}</span>
     </div>
   );
   if (lower === "no" || lower === "weak" || lower === "none") return (
     <div className="flex items-center justify-center gap-1">
       <X className="w-3.5 h-3.5 text-destructive" />
-      <span className="text-xs font-semibold text-destructive">{value}</span>
+      <span className="text-[13px] font-semibold text-destructive">{value}</span>
     </div>
   );
   if (lower === "medium" || lower === "partial") return (
     <div className="flex items-center justify-center gap-1">
       <Minus className="w-3.5 h-3.5 text-warning" />
-      <span className="text-xs font-semibold text-warning">{value}</span>
+      <span className="text-[13px] font-semibold text-warning">{value}</span>
     </div>
   );
-  return <span className="text-xs text-muted-foreground">{value}</span>;
+  return <span className="text-[13px] text-muted-foreground">{value}</span>;
 };
 
 export const CompetitorMatrix = ({ data }: Props) => {
@@ -43,7 +43,7 @@ export const CompetitorMatrix = ({ data }: Props) => {
           </div>
           <div>
             <h2 className="font-heading text-xl font-bold text-foreground">Competitor Comparison Matrix</h2>
-            <p className="text-xs text-muted-foreground">How your idea stacks up against the competition</p>
+            <p className="text-[13px] text-muted-foreground">How your idea stacks up against the competition</p>
           </div>
         </div>
         <ConfidenceLabel level={data.confidence || "Medium"} />
@@ -53,11 +53,11 @@ export const CompetitorMatrix = ({ data }: Props) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/30">
-              <TableHead className="h-9 text-[11px] font-semibold min-w-[140px]">Feature</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold min-w-[140px]">Feature</TableHead>
               {data.competitors.map((comp) => (
-                <TableHead key={comp.name} className="h-9 text-[11px] font-semibold text-center min-w-[100px]">
+                <TableHead key={comp.name} className="h-9 text-[13px] font-semibold text-center min-w-[100px]">
                   {comp.isYou ? (
-                    <Badge variant="go" className="text-[10px] px-2 py-0">{comp.name}</Badge>
+                    <Badge variant="go" className="text-xs px-2 py-0">{comp.name}</Badge>
                   ) : comp.name}
                 </TableHead>
               ))}

@@ -20,7 +20,7 @@ export const ScoreInterpretation = ({ score }: Props) => {
       <Badge variant="outline" className={`text-sm px-3 py-1 font-semibold ${className}`}>
         {label}
       </Badge>
-      <p className="text-xs text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
+      <p className="text-[13px] text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
         {description}
       </p>
     </div>

@@ -18,7 +18,7 @@ const TrendIcon = ({ direction }: { direction: string }) => {
 const DifficultyBadge = ({ level }: { level: string }) => {
   const lower = level.toLowerCase();
   const variant = lower.includes("low") ? "go" as const : lower.includes("high") ? "nogo" as const : "pivot" as const;
-  return <Badge variant={variant} className="text-[10px] px-2 py-0">{level}</Badge>;
+  return <Badge variant={variant} className="text-xs px-2 py-0">{level}</Badge>;
 };
 
 export const KeywordDemand = ({ data }: Props) => {
@@ -33,7 +33,7 @@ export const KeywordDemand = ({ data }: Props) => {
           </div>
           <div>
             <h2 className="font-heading text-xl font-bold text-foreground">Keyword Demand</h2>
-            <p className="text-xs text-muted-foreground">Real search volume data for related keywords</p>
+            <p className="text-[13px] text-muted-foreground">Real search volume data for related keywords</p>
           </div>
         </div>
         <ConfidenceLabel level={data.confidence || "Medium"} />
@@ -43,10 +43,10 @@ export const KeywordDemand = ({ data }: Props) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/30">
-              <TableHead className="h-9 text-[11px] font-semibold">Keyword</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-right">Monthly Volume</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-center">Difficulty</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-center">Trend</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold">Keyword</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-right">Monthly Volume</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-center">Difficulty</TableHead>
+              <TableHead className="h-9 text-[13px] font-semibold text-center">Trend</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -58,7 +58,7 @@ export const KeywordDemand = ({ data }: Props) => {
                 <TableCell className="py-2.5">
                   <div className="flex items-center justify-center gap-1.5">
                     <TrendIcon direction={kw.trend} />
-                    <span className="text-xs text-muted-foreground">{kw.trend}</span>
+                    <span className="text-[13px] text-muted-foreground">{kw.trend}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -68,7 +68,7 @@ export const KeywordDemand = ({ data }: Props) => {
       </div>
 
       {data.source && (
-        <p className="text-[10px] text-muted-foreground mt-3">Source: {data.source}</p>
+        <p className="text-xs text-muted-foreground mt-3">Source: {data.source}</p>
       )}
     </div>
   );

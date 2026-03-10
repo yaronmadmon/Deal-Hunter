@@ -13,7 +13,7 @@ export const EvidenceLink = ({ href, label }: Props) => {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground border border-border rounded-md px-2 py-0.5 transition-colors"
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2 py-0.5 transition-colors"
     >
       {label}
       <ExternalLink className="w-2.5 h-2.5" />

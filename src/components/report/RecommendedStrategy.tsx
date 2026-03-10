@@ -17,7 +17,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
           </div>
           <div>
             <h2 className="font-heading text-xl font-bold text-foreground">Recommended Strategy</h2>
-            <p className="text-xs text-muted-foreground">Actionable advice based on the data above</p>
+            <p className="text-[13px] text-muted-foreground">Actionable advice based on the data above</p>
           </div>
         </div>
         <ConfidenceLabel level={data.confidence || "Medium"} />
@@ -76,7 +76,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
             <h3 className="text-sm font-heading font-semibold text-foreground">Go-to-Market Channels</h3>
             <div className="flex flex-wrap gap-2">
               {data.channels.map((ch, i) => (
-                <Badge key={i} variant="secondary" className="text-xs px-3 py-1">{ch}</Badge>
+                <Badge key={i} variant="secondary" className="text-[13px] px-3 py-1">{ch}</Badge>
               ))}
             </div>
           </div>
