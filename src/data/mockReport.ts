@@ -338,6 +338,9 @@ export interface MockReportData {
   keywordDemand?: KeywordDemandData;
   appStoreIntelligence?: AppStoreIntelligenceData;
   recommendedStrategy?: RecommendedStrategyData;
+  marketExploitMap?: MarketExploitMapData;
+  competitorMatrix?: CompetitorMatrixData;
+  founderDecision?: FounderDecisionData;
 }
 
 export const mockReport: MockReportData = {
