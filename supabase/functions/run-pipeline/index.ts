@@ -933,6 +933,64 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   ],
   "opportunity": {"featureGaps": ["strings"], "underservedUsers": ["strings"], "positioning": "string"},
   "revenueBenchmark": {"summary": "string", "range": "string", "basis": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
+  "proofDashboard": {
+    "searchDemand": {
+      "keyword": "primary search keyword for this idea",
+      "monthlySearches": "estimated monthly search volume — use real data from Perplexity/Serper",
+      "trend": "Rising / Stable / Declining",
+      "confidence": "High" or "Medium" or "Low",
+      "source": "Perplexity Sonar / Serper.dev",
+      "relatedKeywords": ["5 related search terms from autocomplete data"]
+    },
+    "developerActivity": {
+      "repoCount": "number of related GitHub repos found",
+      "totalStars": "sum of stars across top repos",
+      "recentCommits": "recent push activity assessment",
+      "trend": "Increasing / Stable / Declining",
+      "confidence": "High" or "Medium" or "Low"
+    },
+    "socialActivity": {
+      "twitterMentions": "tweet count from X data — use real volume data",
+      "redditThreads": "number of Reddit discussions found",
+      "sentimentScore": "Positive / Mixed / Negative — based on sentiment analysis",
+      "hnPhLaunches": "number of related PH launches",
+      "confidence": "High" or "Medium" or "Low"
+    },
+    "appStoreSignals": {
+      "relatedApps": "number of competing apps found",
+      "avgRating": "average rating across competitors",
+      "downloadEstimate": "combined download estimate",
+      "marketGap": "brief description of the gap — e.g. 'No privacy-first option exists'",
+      "confidence": "High" or "Medium" or "Low"
+    }
+  },
+  "keywordDemand": {
+    "keywords": [
+      {"keyword": "primary keyword", "volume": "monthly volume estimate", "difficulty": "Low / Medium / High", "trend": "Rising / Stable / Declining"},
+      {"keyword": "related keyword 2", "volume": "volume", "difficulty": "difficulty", "trend": "trend"},
+      {"keyword": "related keyword 3", "volume": "volume", "difficulty": "difficulty", "trend": "trend"},
+      {"keyword": "related keyword 4", "volume": "volume", "difficulty": "difficulty", "trend": "trend"},
+      {"keyword": "related keyword 5", "volume": "volume", "difficulty": "difficulty", "trend": "trend"}
+    ],
+    "confidence": "High" or "Medium" or "Low",
+    "source": "Perplexity Sonar + Serper.dev"
+  },
+  "appStoreIntelligence": {
+    "apps": [
+      {"name": "REAL app name", "platform": "iOS / Android / Both", "rating": "4.2", "reviews": "18k", "downloads": "500k+", "url": "app store URL or null"}
+    ],
+    "insight": "What this competitive landscape means for a new entrant",
+    "confidence": "High" or "Medium" or "Low",
+    "source": "Firecrawl + Perplexity Sonar"
+  },
+  "recommendedStrategy": {
+    "positioning": "How to position this product against incumbents — be specific",
+    "suggestedPricing": "Pricing recommendation with reasoning — e.g. '$19-29/mo SaaS based on competitor pricing and value-add'",
+    "differentiators": ["4-6 specific differentiation opportunities based on competitor weaknesses and opportunity gaps"],
+    "primaryTarget": "The ONE primary user segment to focus on for launch and why",
+    "channels": ["3-5 go-to-market channels — e.g. 'r/fitness', 'Privacy-focused forums', 'Product Hunt launch'"],
+    "confidence": "Medium"
+  },
   "nicheAnalysis": {
     "samEstimate": "dollar amount — the Serviceable Addressable Market for THIS SPECIFIC niche positioning (not the whole TAM). Calculate what % of the total market actually wants the user's specific angle (e.g. voice-first, privacy-conscious). Be specific with a dollar range.",
     "samPercentage": "X-Y% of TAM — the realistic percentage slice",
@@ -952,9 +1010,9 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
       {"name": "Category Average", "churnRate": "X%/mo", "source": "source"}
     ],
     "churnImplication": "What does this churn rate mean for the user's business? If churn is 70%, explain how that changes unit economics.",
-    "realisticArpu": "$X/mo — realistic ARPU for privacy-first positioning",
-    "arpuReasoning": "Explain: privacy-first means no ads, so subscription must cover all costs. What price point is realistic given willingness-to-pay data?",
-    "privacyPremium": "Can you charge MORE for privacy? How much more? Reference examples like Signal vs WhatsApp, ProtonMail vs Gmail.",
+    "realisticArpu": "$X/mo — realistic ARPU for this positioning",
+    "arpuReasoning": "Explain pricing rationale given the competitive landscape.",
+    "privacyPremium": "Can you charge MORE for premium positioning? How much more? Reference examples.",
     "ltvEstimate": "$X — based on realistic ARPU × expected retention period given churn data",
     "dataSource": "perplexity" or "ai_estimated",
     "sourceUrls": ["urls"]
@@ -962,19 +1020,19 @@ Return a JSON object with this EXACT structure (no markdown, pure JSON):
   "buildComplexity": {
     "mvpTimeline": "X-Y weeks — realistic for a solo founder or small team",
     "mvpScope": ["list of 4-5 MVP features with brief scope notes"],
-    "techChallenges": ["list of 3-4 technical challenges specific to this idea — e.g. voice API latency, on-device ML model size, privacy-compliant data handling"],
+    "techChallenges": ["list of 3-4 technical challenges specific to this idea"],
     "estimatedCost": "$X-Y — MVP development cost range including API costs for first 3 months",
-    "voiceApiCosts": "Explain voice API pricing (Whisper, Deepgram, etc.) per minute of audio. What does 1000 users cost?",
-    "onDeviceNote": "Is on-device processing feasible for privacy? What are the tradeoffs (model size, battery, accuracy)?",
+    "voiceApiCosts": "Relevant API pricing breakdown per user/month",
+    "onDeviceNote": "Technical feasibility notes for the specific idea",
     "dataSource": "ai_estimated",
     "sourceUrls": []
   },
   "scoreBreakdown": [
-    {"label": "Trend Momentum", "value": 0-20},
-    {"label": "Market Saturation", "value": 0-20},
-    {"label": "Sentiment", "value": 0-20},
-    {"label": "Growth", "value": 0-20},
-    {"label": "Opportunity", "value": 0-20}
+    {"label": "Trend Momentum", "value": 0-20, "weight": "20%"},
+    {"label": "Market Saturation", "value": 0-20, "weight": "20%"},
+    {"label": "Sentiment", "value": 0-20, "weight": "20%"},
+    {"label": "Growth", "value": 0-20, "weight": "20%"},
+    {"label": "Opportunity", "value": 0-20, "weight": "20%"}
    ],
   "keyStats": [
     {"value": "bold number", "label": "short description", "change": "+X% or null", "sentiment": "positive or negative or neutral"}
@@ -1017,7 +1075,7 @@ Score honestly based on the real data. Return ONLY the JSON, no markdown formatt
           },
         ],
         temperature: 0.3,
-        max_tokens: 6000,
+        max_tokens: 8000,
       }),
     });
 

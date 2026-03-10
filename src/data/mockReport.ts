@@ -161,6 +161,81 @@ export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthun
 export interface ScoreBreakdownItem {
   label: string;
   value: number;
+  weight?: string;
+}
+
+export interface ProofDashboardData {
+  searchDemand?: {
+    keyword: string;
+    monthlySearches: string;
+    trend: string;
+    confidence?: "High" | "Medium" | "Low";
+    source?: string;
+    relatedKeywords?: string[];
+  };
+  developerActivity?: {
+    repoCount: string;
+    totalStars: string;
+    recentCommits: string;
+    trend: string;
+    confidence?: "High" | "Medium" | "Low";
+  };
+  socialActivity?: {
+    twitterMentions: string;
+    redditThreads: string;
+    sentimentScore: string;
+    hnPhLaunches: string;
+    confidence?: "High" | "Medium" | "Low";
+  };
+  appStoreSignals?: {
+    relatedApps: string;
+    avgRating: string;
+    downloadEstimate: string;
+    marketGap: string;
+    confidence?: "High" | "Medium" | "Low";
+  };
+}
+
+export interface KeywordDemandData {
+  keywords: {
+    keyword: string;
+    volume: string;
+    difficulty: string;
+    trend: string;
+  }[];
+  confidence?: "High" | "Medium" | "Low";
+  source?: string;
+}
+
+export interface AppStoreIntelligenceData {
+  apps: {
+    name: string;
+    platform: string;
+    rating: string;
+    reviews: string;
+    downloads: string;
+    url?: string;
+  }[];
+  insight?: string;
+  confidence?: "High" | "Medium" | "Low";
+  source?: string;
+}
+
+export interface RecommendedStrategyData {
+  positioning: string;
+  suggestedPricing: string;
+  differentiators: string[];
+  primaryTarget?: string;
+  channels?: string[];
+  confidence?: "High" | "Medium" | "Low";
+}
+
+export interface EnhancedCompetitorEntry extends CompetitorEntry {
+  type?: string;
+  trafficEstimate?: string;
+  pricingModel?: string;
+  targetUser?: string;
+  strengths?: string;
 }
 
 export interface BlueprintData {
@@ -228,6 +303,10 @@ export interface MockReportData {
   userQuotes?: UserQuote[];
   methodology?: MethodologyInfo;
   githubRepos?: GitHubRepoData[];
+  proofDashboard?: ProofDashboardData;
+  keywordDemand?: KeywordDemandData;
+  appStoreIntelligence?: AppStoreIntelligenceData;
+  recommendedStrategy?: RecommendedStrategyData;
 }
 
 export const mockReport: MockReportData = {

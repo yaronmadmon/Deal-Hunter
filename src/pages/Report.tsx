@@ -17,6 +17,10 @@ import { KeyStatsBar } from "@/components/report/KeyStatsBar";
 import { UserQuotesSection } from "@/components/report/UserQuotesSection";
 import { MethodologySection } from "@/components/report/MethodologySection";
 import { GlossarySection } from "@/components/report/GlossarySection";
+import { ProofDashboard } from "@/components/report/ProofDashboard";
+import { KeywordDemand } from "@/components/report/KeywordDemand";
+import { AppStoreIntelligence } from "@/components/report/AppStoreIntelligence";
+import { RecommendedStrategy } from "@/components/report/RecommendedStrategy";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -193,6 +197,12 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
+        {/* Proof Dashboard — immediate evidence */}
+        {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
+
+        {/* Keyword Demand */}
+        {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
+
         {/* Signal Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
           {r.signalCards.map((card) => (
@@ -219,6 +229,9 @@ const Report = () => {
           return extracted.slice(0, 5);
         })()} />
 
+        {/* App Store Intelligence */}
+        {r.appStoreIntelligence && <AppStoreIntelligence data={r.appStoreIntelligence} />}
+
         {/* Open Source Landscape */}
         {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
 
@@ -236,6 +249,7 @@ const Report = () => {
 
         {/* Build Complexity */}
         {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
+
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
@@ -243,6 +257,9 @@ const Report = () => {
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
         />
+
+        {/* Recommended Strategy */}
+        {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
 
         {/* Glossary */}
         <GlossarySection />
