@@ -27,6 +27,7 @@ import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
+import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +48,7 @@ const sectionSubtitles: Record<string, string> = {
 /** Safely display a value — never show null, undefined, NaN, or N/A */
 const safeValue = (val: any): string => {
   if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Data unavailable";
+    return "Insufficient data";
   }
   return String(val);
 };
@@ -219,6 +220,9 @@ const Report = () => {
 
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
+
+        {/* Evidence Strength — tier-ranked signals */}
+        <EvidenceStrength proofDashboard={r.proofDashboard} />
 
         {/* Keyword Demand */}
         {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
