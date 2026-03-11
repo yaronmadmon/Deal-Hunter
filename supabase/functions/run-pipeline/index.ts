@@ -561,9 +561,12 @@ Deno.serve(async (req) => {
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
+      // Extract shorter keywords for better Serper hit rate
+      const serperKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 4).join(" ");
+
       serperPromises.push(
         trackSource("serper_trends", async () => {
-          const r = await serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 10);
           rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -571,7 +574,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
-          const r = await serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} market size demand`, "search", 10);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -579,7 +582,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_news", async () => {
-          const r = await serperSearch(serperKey, `${idea}`, "news", 10);
+          const r = await serperSearch(serperKey, serperKeywords, "news", 10);
           rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -587,7 +590,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_reddit", async () => {
-          const r = await serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 10);
           rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -674,11 +677,12 @@ Deno.serve(async (req) => {
     // Run Twitter/X searches in parallel
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
-      
+      // Use broader keyword without quotes for better Twitter coverage
+      const twitterKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
-          const r = await twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50);
+          const r = await twitterSearch(twitterBearerToken, twitterKeywords, 50);
           rawData.twitterSentiment = r;
           rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
           return r.tweets.length;
@@ -687,13 +691,13 @@ Deno.serve(async (req) => {
       
       twitterPromises.push(
         trackSource("twitter_counts", async () => {
-          const r = await twitterTweetCounts(twitterBearerToken, twitterKeyword);
+          const r = await twitterTweetCounts(twitterBearerToken, twitterKeywords);
           rawData.twitterCounts = r;
           return r.total_count;
         })
       );
 
-      rawData.twitterInfluencerNicheQuery = twitterKeyword;
+      rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
     const fetchStart = Date.now();
@@ -739,6 +743,59 @@ Deno.serve(async (req) => {
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
     console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
     console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
+
+    // ── Source Failure Alerting: notify admins if >2 sources failed ──
+    if (failedSources.length > 2) {
+      try {
+        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
+        if (adminEmails && adminEmails.length > 0) {
+          // Look up admin user IDs from profiles
+          const adminEmailList = adminEmails.map((a: any) => a.email);
+          const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("email", adminEmailList);
+
+          if (adminProfiles && adminProfiles.length > 0) {
+            const notifications = adminProfiles.map((p: any) => ({
+              user_id: p.id,
+              title: `Pipeline Alert: ${failedSources.length} sources failed`,
+              message: `Analysis "${idea.slice(0, 50)}..." had ${failedSources.length} source failures: ${failedSources.join(", ")}. Total signals: ${totalSignals}. Review in Admin > Pipeline.`,
+            }));
+            await supabase.from("notifications").insert(notifications);
+            console.log(`[ALERT] Notified ${adminProfiles.length} admin(s) about ${failedSources.length} source failures`);
+          }
+        }
+      } catch (alertErr) {
+        console.error("[ALERT] Failed to send failure notification:", alertErr);
+      }
+    }
+
+    // ── Zero-signal warning: alert if total signals are critically low ──
+    if (totalSignals < 10) {
+      try {
+        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
+        if (adminEmails && adminEmails.length > 0) {
+          const adminEmailList = adminEmails.map((a: any) => a.email);
+          const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("email", adminEmailList);
+
+          if (adminProfiles && adminProfiles.length > 0) {
+            const notifications = adminProfiles.map((p: any) => ({
+              user_id: p.id,
+              title: `Low Signal Alert: only ${totalSignals} signals collected`,
+              message: `Analysis "${idea.slice(0, 50)}..." collected only ${totalSignals} signals across all sources. This may produce a low-quality report. Review in Admin > Pipeline.`,
+            }));
+            await supabase.from("notifications").insert(notifications);
+            console.log(`[ALERT] Notified admin(s) about low signal count: ${totalSignals}`);
+          }
+        }
+      } catch (alertErr) {
+        console.error("[ALERT] Failed to send low-signal notification:", alertErr);
+      }
+    }
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
