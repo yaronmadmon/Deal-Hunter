@@ -49,24 +49,34 @@ Deno.serve(async (req) => {
         const customerId = session.customer as string;
 
         if (userId && credits > 0) {
-          // Add credits
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("credits")
-            .eq("id", userId)
-            .single();
+          // Idempotency check — skip if already granted for this session
+          const { data: existingLog } = await supabase
+            .from("credits_log")
+            .select("id")
+            .eq("user_id", userId)
+            .like("reason", `%${session.id}%`)
+            .limit(1);
 
-          if (profile) {
-            await supabase
+          if (existingLog && existingLog.length > 0) {
+            console.log(`[stripe-webhook] Credits already granted for session ${session.id}, skipping.`);
+          } else {
+            const { data: profile } = await supabase
               .from("profiles")
-              .update({ credits: profile.credits + credits })
-              .eq("id", userId);
+              .select("credits")
+              .eq("id", userId)
+              .single();
 
-            await supabase.from("credits_log").insert({
-              user_id: userId,
-              amount: credits,
-              reason: `Stripe webhook: purchased ${credits} credits`,
-            });
+            if (profile) {
+              await supabase
+                .from("profiles")
+                .update({ credits: profile.credits + credits })
+                .eq("id", userId);
+
+              await supabase.from("credits_log").insert({
+                user_id: userId,
+                amount: credits,
+                reason: `Stripe webhook: purchased ${credits} credits (session: ${session.id})`,
+              });
 
             // Log analytics
             await supabase.from("analytics_events").insert({
