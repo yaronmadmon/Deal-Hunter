@@ -497,15 +497,15 @@ Deno.serve(async (req) => {
           .catch(e => console.error("Perplexity revenue error:", e))
       );
 
-      // Niche-specific: churn rates, ARPU, and build complexity data
+      // Niche-specific: churn rates, ARPU, and build complexity data — dynamic based on idea
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What are the monthly subscription churn rates for fitness and coaching apps like Peloton, Fitbit Premium, Nike Training Club, and similar? Include specific churn percentages and retention data. Also what is the average ARPU for fitness subscription apps?`, { recency: "year" })
+        perplexitySearch(perplexityKey, `What are the monthly subscription churn rates for apps and products in the "${idea}" category? Include specific churn percentages, retention data, and average revenue per user (ARPU) for subscription-based products in this space.`, { recency: "year" })
           .then(r => { rawData.perplexityChurn = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
           .catch(e => console.error("Perplexity churn error:", e))
       );
 
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `Voice API pricing comparison: Whisper API, Deepgram, Google Speech-to-Text, AssemblyAI. Cost per minute of audio processing. On-device speech recognition options for mobile apps (Apple Speech, Android MLKit). Privacy-first voice processing feasibility.`)
+        perplexitySearch(perplexityKey, `What are the typical technology costs and infrastructure requirements to build a product like "${idea}"? Include API costs, hosting costs, third-party service pricing, and any specialized technology needed. What are the main technical challenges and cost drivers?`)
           .then(r => { rawData.perplexityBuildCosts = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
           .catch(e => console.error("Perplexity build costs error:", e))
       );

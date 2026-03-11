@@ -119,7 +119,7 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
 
   "monetizationValidation": [
     "How will you test pricing before launch? (surveys, beta tiers, willingness-to-pay tests)",
-    "Unit economics: cost of voice inference per user per month, storage costs, margin analysis",
+    "Unit economics: key cost drivers per user per month, infrastructure costs, margin analysis",
     "Is any premium tier validated or just a guess? How to test demand for it",
     "What metrics prove pricing works? (conversion rate targets, churn thresholds)"
   ],
@@ -140,26 +140,25 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
   },
 
   "techStack": [
-    "Voice API: [specific choice, e.g. ElevenLabs, Deepgram, Whisper] — why this one",
-    "LLM: [specific model, e.g. GPT-4o-mini, Claude Haiku, open-source] — for conversational logic",
-    "Storage: [SQLite local, encrypted cloud, etc.] — for user data",
-    "Fitness APIs: [HealthKit, Google Fit] — for integration",
-    "Inference: [cloud vs on-device] — be specific about which framework",
-    "Backend: [Supabase, Firebase, etc.] — for auth and sync"
+    "Frontend: [specific framework/platform choice] — why this one for this product",
+    "Backend: [specific choice, e.g. Supabase, Firebase, custom] — for auth, data, and sync",
+    "Key APIs/Services: [specific third-party APIs relevant to this idea] — what they provide",
+    "Storage: [database choice and why] — for user data and content",
+    "Hosting/Infrastructure: [specific platform] — cost and scaling considerations"
   ],
 
   "techTradeoffs": [
-    "If claiming local/on-device processing: which inference framework (TF Lite, Core ML, ONNX)? What's the compute cost? Is it actually feasible on mobile?",
-    "If cloud inference for MVP: be honest that data leaves the device. Recommend cloud for MVP, optimize local in Phase 2.",
-    "For any 'vibe-matching' or mood detection: specify the approach (voice check-in, user toggle, or real-time sentiment). Each has different complexity. Pick one for MVP.",
-    "Any other honest tradeoff the founder needs to know"
+    "What is the hardest technical challenge for this specific product? Be honest about complexity.",
+    "Build vs buy decisions: which components should use third-party services vs custom code?",
+    "Performance vs cost tradeoffs specific to this product category",
+    "Any other honest tradeoff the founder needs to know about building this"
   ],
 
   "goToMarket": [
-    "Where to find early users: specific subreddits, forums, communities, influencers",
-    "How to communicate the privacy angle: specific messaging, comparisons (your data handling vs Peloton/Fitbit)",
-    "Retention hooks: weekly challenges, community features, persona unlocks, streaks",
-    "Launch strategy: beta invite, Product Hunt, specific channels"
+    "Where to find early users: specific subreddits, forums, communities, influencers relevant to this idea",
+    "How to communicate the key differentiator: specific messaging and positioning vs named competitors",
+    "Retention hooks: what keeps users coming back for this specific product type",
+    "Launch strategy: beta invite, Product Hunt, specific channels relevant to this market"
   ],
 
   "competitiveResponse": [
