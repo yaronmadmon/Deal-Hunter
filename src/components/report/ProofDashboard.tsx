@@ -24,11 +24,16 @@ const SignalBlock = ({ icon: Icon, title, children, confidence }: { icon: React.
   </Card>
 );
 
+const safeFallback = (val?: string) => {
+  if (!val || val.toLowerCase() === "unknown" || val.toLowerCase() === "data unavailable") return "Insufficient data";
+  return val;
+};
+
 const MetricRow = ({ label, value, source }: { label: string; value: string; source?: string }) => (
   <div className="flex justify-between items-baseline text-sm py-1.5 border-b border-border/30 last:border-0">
     <span className="text-muted-foreground">{label}</span>
     <div className="text-right">
-      <span className="font-semibold text-foreground">{value || "Data unavailable"}</span>
+      <span className="font-semibold text-foreground">{safeFallback(value)}</span>
       {source && <span className="text-xs text-muted-foreground block">{source}</span>}
     </div>
   </div>
