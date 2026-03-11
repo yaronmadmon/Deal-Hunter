@@ -1092,6 +1092,13 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
 
+--- DEDICATED COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries) ---
+${rawData.serperCompetitors?.allResults?.length > 0
+  ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
+  : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
+IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
+${rawData.relevanceFilterApplied ? `\n[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, and Product Hunt before this analysis.` : ""}
+
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
   ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
