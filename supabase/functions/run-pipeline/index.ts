@@ -1398,6 +1398,164 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
+    // ══════════════════════════════════════════════════════════════════
+    // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
+    // Only verified, categorized signals reach the AI — no narratives.
+    // ══════════════════════════════════════════════════════════════════
+    const evidenceBlock = {
+      demandSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" | "estimated" }[],
+      competitors: [] as { name: string; rating: string | null; downloads: string | null; evidenceType: string; validationScore: number; sources: string[]; url: string | null; weakness: string | null; tier: "verified" | "reported" }[],
+      pricingSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" | "estimated" }[],
+      productLaunchSignals: [] as { name: string; tagline: string; upvotes: number; launchDate: string; url: string; source: string; tier: "verified" }[],
+      developerSignals: [] as { repo: string; stars: number; forks: number; language: string; url: string; lastPush: string; tier: "verified" }[],
+      sentimentSignals: [] as { text: string; source: string; sourceUrl: string | null; platform: string; engagement: number; tier: "verified" | "reported" }[],
+      trendSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" }[],
+      technicalSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "reported" | "estimated" }[],
+    };
+
+    // ── Populate demand signals ──
+    (rawData.serperTrends?.organic || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Google Search", sourceUrl: r.link, tier: "verified" });
+    });
+    (rawData.serperAutoComplete?.suggestions || []).forEach((s: string) => {
+      evidenceBlock.demandSignals.push({ signal: "Google Autocomplete", value: s, source: "Serper Autocomplete", sourceUrl: null, tier: "verified" });
+    });
+    (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: "App Store Listing", value: r.title || r.url, source: "Firecrawl App Store", sourceUrl: r.url, tier: "verified" });
+    });
+    if (rawData.twitterCounts?.total_count > 0) {
+      evidenceBlock.demandSignals.push({ signal: "X/Twitter Volume (7d)", value: `${rawData.twitterCounts.total_count} tweets, ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}% change`, source: "X API v2", sourceUrl: null, tier: "verified" });
+    }
+    (rawData.serperNews?.organic || []).forEach((r: any) => {
+      evidenceBlock.trendSignals.push({ signal: r.title, value: r.date || "recent", source: "Serper News", sourceUrl: r.link, tier: "verified" });
+    });
+    (rawData.serperTrendsMonthly?.organic || []).forEach((r: any) => {
+      evidenceBlock.trendSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Monthly Trends", sourceUrl: r.link, tier: "verified" });
+    });
+
+    // ── Populate competitors from validated pipeline ──
+    (rawData.validatedCompetitors || []).forEach((c: any) => {
+      evidenceBlock.competitors.push({
+        name: c.name,
+        rating: c.rating || null,
+        downloads: c.downloads || null,
+        evidenceType: c.evidenceType,
+        validationScore: c.validationScore,
+        sources: c.sources,
+        url: c.url || null,
+        weakness: (c.weaknesses || [])[0] || null,
+        tier: c.validationScore >= 3 ? "verified" : "reported",
+      });
+    });
+
+    // ── Populate Product Hunt signals ──
+    (rawData.productHunt?.products || []).forEach((p: any) => {
+      evidenceBlock.productLaunchSignals.push({
+        name: p.name, tagline: p.tagline || "", upvotes: p.upvotes || 0,
+        launchDate: p.launchDate || "", url: p.url || "", source: "Product Hunt API", tier: "verified",
+      });
+    });
+
+    // ── Populate developer signals ──
+    (rawData.github?.repos || []).forEach((r: any) => {
+      evidenceBlock.developerSignals.push({
+        repo: r.name, stars: r.stars || 0, forks: r.forks || 0,
+        language: r.language || "unknown", url: r.url, lastPush: r.pushedAt || "", tier: "verified",
+      });
+    });
+
+    // ── Populate sentiment signals ──
+    (rawData.twitterSentiment?.tweets || []).forEach((t: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: t.text, source: `@${t.author_username} (${t.author_followers} followers)`,
+        sourceUrl: `https://x.com/${t.author_username}/status/${t.id}`,
+        platform: "twitter", engagement: (t.like_count || 0) + (t.retweet_count || 0) * 2, tier: "verified",
+      });
+    });
+    (rawData.firecrawlReddit?.results || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: (r.markdown || "").slice(0, 500), source: r.title || "Reddit",
+        sourceUrl: r.url, platform: "reddit", engagement: 0, tier: "verified",
+      });
+    });
+    (rawData.serperReddit?.organic || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: r.snippet || "", source: r.title || "Reddit via Google",
+        sourceUrl: r.link, platform: "reddit", engagement: 0, tier: "reported",
+      });
+    });
+    (rawData.hackerNews?.hits || []).forEach((h: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: h.title, source: `HN (${h.points} points, ${h.comments} comments)`,
+        sourceUrl: h.hnUrl, platform: "hackernews", engagement: (h.points || 0) + (h.comments || 0), tier: "verified",
+      });
+    });
+
+    // ── Populate pricing/revenue signals (from Perplexity — tier: reported) ──
+    if (rawData.perplexityRevenue?.content) {
+      evidenceBlock.pricingSignals.push({ signal: "Revenue Benchmarks", value: rawData.perplexityRevenue.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityRevenue.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityChurn?.content) {
+      evidenceBlock.pricingSignals.push({ signal: "Churn Benchmarks", value: rawData.perplexityChurn.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityChurn.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Populate technical signals ──
+    if (rawData.perplexityBuildCosts?.content) {
+      evidenceBlock.technicalSignals.push({ signal: "Build Cost Analysis", value: rawData.perplexityBuildCosts.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityBuildCosts.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Populate from Perplexity market/VC/trends as supplementary (tier: reported) ──
+    if (rawData.perplexityTrends?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Search Trends Summary", value: rawData.perplexityTrends.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityTrends.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityVC?.content) {
+      evidenceBlock.trendSignals.push({ signal: "VC Funding Activity", value: rawData.perplexityVC.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityVC.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityMarket?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Market Overview", value: rawData.perplexityMarket.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityMarket.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityCompetitors?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Competitor Overview", value: rawData.perplexityCompetitors.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityCompetitors.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Evidence coverage scoring ──
+    const evidenceCoverage = {
+      demand: evidenceBlock.demandSignals.length,
+      competitors: evidenceBlock.competitors.length,
+      pricing: evidenceBlock.pricingSignals.length,
+      launches: evidenceBlock.productLaunchSignals.length,
+      developer: evidenceBlock.developerSignals.length,
+      sentiment: evidenceBlock.sentimentSignals.length,
+      trends: evidenceBlock.trendSignals.length,
+      technical: evidenceBlock.technicalSignals.length,
+    };
+    const totalEvidence = Object.values(evidenceCoverage).reduce((s, v) => s + v, 0);
+
+    const sectionConfidence = (count: number): "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT" => {
+      if (count >= 3) return "HIGH";
+      if (count === 2) return "MEDIUM";
+      if (count === 1) return "LOW";
+      return "INSUFFICIENT";
+    };
+
+    const evidenceConfidences = {
+      demand: sectionConfidence(evidenceCoverage.demand),
+      competitors: sectionConfidence(evidenceCoverage.competitors),
+      pricing: sectionConfidence(evidenceCoverage.pricing),
+      launches: sectionConfidence(evidenceCoverage.launches),
+      developer: sectionConfidence(evidenceCoverage.developer),
+      sentiment: sectionConfidence(evidenceCoverage.sentiment),
+      trends: sectionConfidence(evidenceCoverage.trends),
+      technical: sectionConfidence(evidenceCoverage.technical),
+    };
+
+    rawData.evidenceBlock = evidenceBlock;
+    rawData.evidenceCoverage = evidenceCoverage;
+    rawData.evidenceConfidences = evidenceConfidences;
+
+    console.log(`[EVIDENCE LOCK] Demand signals: ${evidenceCoverage.demand} | Competitors validated: ${evidenceCoverage.competitors} | Pricing signals: ${evidenceCoverage.pricing} | Sentiment signals: ${evidenceCoverage.sentiment} | Trend signals: ${evidenceCoverage.trends} | Developer signals: ${evidenceCoverage.developer} | Launch signals: ${evidenceCoverage.launches} | Technical signals: ${evidenceCoverage.technical}`);
+    console.log(`[EVIDENCE LOCK] Evidence coverage score: ${totalEvidence} | Confidences: ${JSON.stringify(evidenceConfidences)}`);
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
@@ -1482,119 +1640,61 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
 
-    // Build context from real data
-    const realDataContext = `
-=== REAL MARKET DATA COLLECTED ===
+    // ══════════════════════════════════════════════════════════════════
+    // EVIDENCE-LOCKED CONTEXT: Pass structured evidence block to AI
+    // instead of raw narrative summaries.
+    // ══════════════════════════════════════════════════════════════════
+    const evidenceContext = `
+=== STRUCTURED EVIDENCE BLOCK ===
+You may ONLY reference data from this evidence block. Do NOT infer, speculate, or fabricate data beyond what is listed here.
 
---- TREND & SEARCH DATA (from Perplexity Sonar with citations) ---
-${rawData.perplexityTrends ? rawData.perplexityTrends.content : "No trend data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityTrends?.citations?.join(", ") || "none"}
+--- EVIDENCE CONFIDENCE LEVELS ---
+${Object.entries(evidenceConfidences).map(([k, v]) => `${k}: ${v} (${(evidenceCoverage as any)[k]} signals)`).join("\n")}
+Total evidence items: ${totalEvidence}
 
---- MARKET & COMPETITOR DATA (from Perplexity Sonar with citations) ---
-${rawData.perplexityMarket ? rawData.perplexityMarket.content : "No market data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityMarket?.citations?.join(", ") || "none"}
+--- DEMAND SIGNALS (${evidenceBlock.demandSignals.length} items) ---
+${evidenceBlock.demandSignals.length > 0
+  ? evidenceBlock.demandSignals.map((s: any) => `[${s.tier.toUpperCase()}] ${s.signal}: ${s.value}\n  Source: ${s.source} | URL: ${s.sourceUrl || "none"}`).join("\n")
+  : "NO DEMAND SIGNALS COLLECTED. You must state: 'Insufficient data to assess demand.'"}
 
---- APP STORE LISTINGS (from Firecrawl web scraping) ---
-${rawData.firecrawlAppStore?.results?.map((r: any) => `URL: ${r.url}\nTitle: ${r.title || "N/A"}\nContent: ${(r.markdown || "").slice(0, 1500)}`).join("\n---\n") || "No app store data scraped — mark competitor data as AI Estimated"}
+--- TREND SIGNALS (${evidenceBlock.trendSignals.length} items) ---
+${evidenceBlock.trendSignals.length > 0
+  ? evidenceBlock.trendSignals.map((s: any) => `[${s.tier.toUpperCase()}] ${s.signal}: ${s.value.slice(0, 500)}\n  Source: ${s.source} | URL: ${s.sourceUrl || "none"}`).join("\n")
+  : "NO TREND SIGNALS COLLECTED. You must state: 'Insufficient data to assess trends.'"}
 
---- REDDIT DISCUSSIONS (from Firecrawl web scraping) ---
-${rawData.firecrawlReddit?.results?.map((r: any) => `URL: ${r.url}\nTitle: ${r.title || "N/A"}\nContent: ${(r.markdown || "").slice(0, 1500)}`).join("\n---\n") || "No Reddit data scraped — mark sentiment data as AI Estimated"}
+--- VALIDATED COMPETITORS (${evidenceBlock.competitors.length} items) ---
+${evidenceBlock.competitors.length > 0
+  ? evidenceBlock.competitors.map((c: any) => `[${c.tier.toUpperCase()}] ${c.name}\n  Evidence: ${c.evidenceType} (score ${c.validationScore}/5)\n  Sources: ${c.sources.join(", ")}\n  Rating: ${c.rating || "N/A"} | Downloads: ${c.downloads || "N/A"}\n  URL: ${c.url || "N/A"}\n  Weakness: ${c.weakness || "N/A"}`).join("\n")
+  : "NO VALIDATED COMPETITORS FOUND. You must state: 'No verified competitors identified. This may indicate a very niche or very new market.'"}
 
---- VC FUNDING DATA (from Perplexity Sonar with citations) ---
-${rawData.perplexityVC ? rawData.perplexityVC.content : "No VC data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityVC?.citations?.join(", ") || "none"}
+--- PRODUCT HUNT LAUNCHES (${evidenceBlock.productLaunchSignals.length} items) ---
+${evidenceBlock.productLaunchSignals.length > 0
+  ? evidenceBlock.productLaunchSignals.map((p: any) => `[VERIFIED] ${p.name}: ${p.tagline}\n  Upvotes: ${p.upvotes} | Launch: ${p.launchDate} | URL: ${p.url}`).join("\n")
+  : "NO PRODUCT HUNT LAUNCHES FOUND."}
 
---- REVENUE BENCHMARK DATA (from Perplexity Sonar with citations) ---
-${rawData.perplexityRevenue ? rawData.perplexityRevenue.content : "No revenue data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityRevenue?.citations?.join(", ") || "none"}
+--- DEVELOPER SIGNALS (${evidenceBlock.developerSignals.length} items) ---
+${evidenceBlock.developerSignals.length > 0
+  ? evidenceBlock.developerSignals.map((r: any) => `[VERIFIED] ${r.repo}: ${r.stars} stars, ${r.forks} forks\n  Language: ${r.language} | Last push: ${r.lastPush} | URL: ${r.url}`).join("\n")
+  : "NO GITHUB REPOS FOUND."}
 
---- GOOGLE SEARCH & TRENDS DATA (from Serper.dev — real Google results) ---
-${rawData.serperTrends?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper trends data available"}
-${rawData.serperTrends?.knowledgeGraph ? `Knowledge Graph: ${JSON.stringify(rawData.serperTrends.knowledgeGraph)}` : ""}
+--- SENTIMENT SIGNALS (${evidenceBlock.sentimentSignals.length} items) ---
+${evidenceBlock.sentimentSignals.length > 0
+  ? evidenceBlock.sentimentSignals.map((s: any) => `[${s.tier.toUpperCase()}] (${s.platform}) ${s.text.slice(0, 300)}\n  Source: ${s.source} | Engagement: ${s.engagement} | URL: ${s.sourceUrl || "none"}`).join("\n")
+  : "NO SENTIMENT SIGNALS COLLECTED. You must state: 'Insufficient data to assess user sentiment.'"}
 
---- MONTHLY SEARCH INTEREST TREND (from Serper.dev — Google search data for month-over-month interest) ---
-${rawData.serperTrendsMonthly?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No monthly trend data available"}
+--- PRICING / REVENUE SIGNALS (${evidenceBlock.pricingSignals.length} items) ---
+${evidenceBlock.pricingSignals.length > 0
+  ? evidenceBlock.pricingSignals.map((s: any) => `[${s.tier.toUpperCase()}] ${s.signal}: ${s.value.slice(0, 500)}\n  Source: ${s.source} | URL: ${s.sourceUrl || "none"}`).join("\n")
+  : "NO PRICING SIGNALS COLLECTED. You must state: 'Insufficient data to estimate revenue.'"}
 
---- NEWS COVERAGE TIMELINE (from Serper.dev — recent news articles with dates for temporal interest mapping) ---
-${rawData.serperNews?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nDate: ${r.date || "N/A"}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No news coverage data available"}
-
---- GOOGLE AUTOCOMPLETE SUGGESTIONS (from Serper.dev) ---
-${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data available"}
-
---- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
-${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
-
---- VALIDATED COMPETITORS (normalized, deduplicated, verified as real products) ---
-${rawData.validatedCompetitors?.length > 0
-  ? `${rawData.validatedCompetitors.length} validated competitors found:\n${rawData.validatedCompetitors.map((c: any) => `Name: ${c.name}\nEvidence Type: ${c.evidenceType}\nValidation Score: ${c.validationScore}/5\nConfidence: ${c.confidenceScore}\nSources: ${c.sources.join(", ")}\nRating: ${c.rating || "N/A"}\nDownloads: ${c.downloads || "N/A"}\nURL: ${c.url || "N/A"}\nDescription: ${c.description || "N/A"}`).join("\n---\n")}`
-  : "No validated competitors found — this strongly suggests a very new or niche market"}
-IMPORTANT: Use this VALIDATED competitor list as the primary source for competitor counts and competitor analysis. These are deduplicated, verified real products. Do NOT report 0 competitors if this list contains entries.
-
---- RAW COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries, pre-validation) ---
-${rawData.serperCompetitors?.allResults?.length > 0
-  ? `${rawData.serperCompetitors.allResults.length} raw competitor search results (before validation):\n${rawData.serperCompetitors.allResults.slice(0, 10).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n")}`
-  : "No competitor discovery results found"}
-
---- PERPLEXITY COMPETITOR LIST (from Perplexity Sonar — dedicated competitor query) ---
-${rawData.perplexityCompetitors ? rawData.perplexityCompetitors.content : "No Perplexity competitor data available"}
-Citations: ${rawData.perplexityCompetitors?.citations?.join(", ") || "none"}
-IMPORTANT: Cross-reference this list with the VALIDATED competitors above. Competitors appearing in BOTH sources are high-confidence.
-
-${rawData.relevanceFilterApplied ? `[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, Product Hunt, and competitor results before this analysis.` : ""}
-[COMPETITOR PIPELINE] Raw: ${rawData.rawCompetitors?.length ?? 0} → Normalized: ${rawData.normalizedCompetitors?.length ?? 0} → Validated: ${rawData.validatedCompetitors?.length ?? 0}
-
---- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
-${rawData.productHunt?.products?.length > 0
-  ? rawData.productHunt.products.map((p: any) => `Name: ${p.name}\nTagline: ${p.tagline}\nUpvotes: ${p.upvotes}\nLaunch Date: ${p.launchDate}\nURL: ${p.url}`).join("\n---\n")
-  : "No similar products found on Product Hunt — this could indicate a blue ocean opportunity"}
-Total PH products found: ${rawData.productHunt?.products?.length ?? 0}
-
---- GITHUB REPOSITORIES (from GitHub API — real open-source data) ---
-${rawData.github?.repos?.length > 0
-  ? rawData.github.repos.map((r: any) => `Repo: ${r.name}\nStars: ${r.stars}\nForks: ${r.forks}\nOpen Issues: ${r.openIssues}\nLanguage: ${r.language}\nLast Push: ${r.pushedAt}\nURL: ${r.url}\nTopics: ${(r.topics || []).join(", ")}`).join("\n---\n")
-  : "No relevant GitHub repositories found — limited open-source competition"}
-Total GitHub repos found: ${rawData.github?.repos?.length ?? 0}
-
---- X/TWITTER SENTIMENT DATA (from X API v2 — real public posts) ---
-${rawData.twitterSentiment?.tweets?.length > 0
-  ? rawData.twitterSentiment.tweets.map((t: any) => `Tweet: "${t.text}"\nAuthor: @${t.author_username} (${t.author_name}, ${t.author_followers.toLocaleString()} followers)\nLikes: ${t.like_count} | Retweets: ${t.retweet_count} | Replies: ${t.reply_count}\nDate: ${t.created_at}\nURL: https://x.com/${t.author_username}/status/${t.id}`).join("\n---\n")
-  : "No X/Twitter sentiment data available — X API not configured or returned no results"}
-Total tweets analyzed: ${rawData.twitterSentiment?.total_fetched ?? 0}
-High-engagement tweets (10+ likes): ${rawData.twitterSentiment?.tweets?.length ?? 0}
-
---- X/TWITTER TWEET VOLUME (from X API v2 — daily tweet counts over 7 days) ---
-${rawData.twitterCounts?.counts?.length > 0
-  ? `Daily counts: ${rawData.twitterCounts.counts.map((c: any) => `${c.start?.split("T")[0]}: ${c.tweet_count}`).join(", ")}
-Total tweets in 7 days: ${rawData.twitterCounts.total_count}
-Volume change (week-over-week): ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}%`
-  : "No X/Twitter volume data available"}
-
---- X/TWITTER INFLUENCER & FOUNDER SIGNALS (from X API v2 — real founder profiles and tweets) ---
-${rawData.twitterInfluencers?.influencers?.length > 0
-  ? rawData.twitterInfluencers.influencers.map((inf: any) => `Founder: ${inf.name} (@${inf.username})\nFollowers: ${inf.followers_count?.toLocaleString()}\nBio: ${inf.description}\nLatest Niche Tweet: "${inf.latest_niche_tweet?.text || 'N/A'}"\nLikes: ${inf.latest_niche_tweet?.like_count || 0} | Retweets: ${inf.latest_niche_tweet?.retweet_count || 0}\nTweet URL: ${inf.latest_niche_tweet?.id ? `https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}` : 'N/A'}`).join("\n---\n")
-  : "No influencer/founder signals found — no relevant X accounts identified"}
-Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
-
---- HACKER NEWS DISCUSSIONS (from HN Algolia API — developer buzz signals) ---
-${rawData.hackerNews?.hits?.length > 0
-  ? rawData.hackerNews.hits.map((h: any) => `Title: ${h.title}\nPoints: ${h.points}\nComments: ${h.comments}\nAuthor: ${h.author}\nDate: ${h.createdAt}\nHN URL: ${h.hnUrl}\nLink: ${h.url || "self-post"}`).join("\n---\n")
-  : "No Hacker News discussions found — limited developer community buzz"}
-Total HN stories found: ${rawData.hackerNews?.hits?.length ?? 0}
-
---- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — category-specific retention data) ---
-${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
-
---- BUILD COMPLEXITY & TECHNOLOGY COSTS (from Perplexity Sonar — technical feasibility data) ---
-${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
-Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
-
---- SEMANTIC QUERIES USED FOR THIS ANALYSIS ---
-${semanticQueries.join(", ")}
+--- TECHNICAL / BUILD SIGNALS (${evidenceBlock.technicalSignals.length} items) ---
+${evidenceBlock.technicalSignals.length > 0
+  ? evidenceBlock.technicalSignals.map((s: any) => `[${s.tier.toUpperCase()}] ${s.signal}: ${s.value.slice(0, 500)}\n  Source: ${s.source} | URL: ${s.sourceUrl || "none"}`).join("\n")
+  : "NO TECHNICAL SIGNALS COLLECTED."}
 
 --- SEARCH QUERIES USED ---
 Primary keywords: "${primaryKeywords}"
-All semantic queries: ${JSON.stringify(semanticQueries)}
+Semantic queries: ${JSON.stringify(semanticQueries)}
 `;
 
     // ── PERPLEXITY DOMINANCE CHECK ──
@@ -1633,7 +1733,7 @@ You MUST:
       console.warn(`[PERPLEXITY DOMINANCE] Only ${tier1SourcesWithData} Tier 1 sources vs ${perplexitySourcesWithData} Perplexity sources. Injecting dominance warning.`);
     }
 
-    const fullContext = realDataContext + perplexityDominanceWarning;
+    const fullContext = evidenceContext + perplexityDominanceWarning;
 
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
@@ -1655,6 +1755,35 @@ Your job is to produce a structured JSON report that is:
 - Brutally honest (do not hype ideas)
 - Simple enough for a non-technical founder to act on immediately
 - 100% grounded in the real data provided — never invent statistics
+
+═══════════════════════════════════════
+EVIDENCE-LOCKED ANALYSIS RULES (HIGHEST PRIORITY)
+═══════════════════════════════════════
+
+You are receiving a STRUCTURED EVIDENCE BLOCK containing only verified and reported signals collected from real data sources.
+
+MANDATORY RULES:
+1. You may ONLY make claims supported by evidence in the provided evidence block.
+2. If evidence does not exist for a claim, you MUST respond with: "Insufficient data to support this conclusion."
+3. Do NOT infer beyond what the evidence shows.
+4. Do NOT speculate about market size, revenue, or competitors beyond what is provided.
+5. Do NOT estimate metrics when no evidence exists — use "Insufficient data" instead.
+6. Do NOT fabricate competitor names, ratings, downloads, or any product data.
+7. Only reference signals that appear in the evidence block.
+
+CITED INSIGHTS RULE:
+Every insight you generate MUST reference specific evidence from the block. Format:
+- Insight: "[Your conclusion]"
+- Evidence: "[Specific signal from the evidence block]"
+If no evidence supports an insight, write: "Evidence: Insufficient data."
+
+SECTION CONFIDENCE RULES (enforced by evidence counts):
+- HIGH confidence → 3+ evidence signals available
+- MEDIUM confidence → 2 signals available
+- LOW confidence → 1 signal available
+- INSUFFICIENT → 0 signals → section must explicitly state "Insufficient data to assess [topic]"
+
+The evidence block header shows confidence levels per category. You MUST respect these. Do NOT assign HIGH confidence to a section with INSUFFICIENT evidence.
 
 Your role is to interpret signals of demand, competition, user pain, and opportunity using the evidence provided. Never exaggerate trends. Never fill gaps with optimistic assumptions.
 
@@ -1895,11 +2024,19 @@ Produce the JSON report with this EXACT structure:
 }
 
 CRITICAL REMINDERS:
-- If real data is not available, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "AI estimate — no primary source confirmed."
+- If evidence does not exist for a section, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "Insufficient data — no evidence collected for this metric."
 - Never present estimated data as if from a real source.
 - Score honestly. Narrative MUST match scores. Bullish text under low scores is forbidden.
 - If BOTH search demand AND pain signals are weak (<5 corroborating signals), cap Opportunity at 10/20.
 - Return ONLY the JSON, no markdown formatting.
+- If a section has 0 evidence signals, its confidence MUST be "Low" and insights must state "Insufficient data."
+
+EVIDENCE-LOCKED SECTION RULES:
+- Competitor Snapshot: If evidence.competitors is empty → competitors array must be empty, insight must say "No verified competitors identified."
+- Sentiment & Pain Points: If evidence.sentimentSignals is empty → complaints and loves must be empty, insight must say "Insufficient sentiment data."
+- Growth Signals: If evidence.productLaunchSignals AND evidence.developerSignals are both empty → metrics must show "N/A", insight must say "Insufficient growth data."
+- Trend Momentum: If evidence.demandSignals AND evidence.trendSignals are both empty → metrics must show "N/A", insight must say "Insufficient trend data."
+- Revenue / Unit Economics: If evidence.pricingSignals is empty → mark all values as "Insufficient data", dataSource as "ai_estimated".
 
 SOURCE CREDIBILITY WEIGHTING (apply when analyzing evidence):
 Weight evidence in this order of trust:
@@ -1915,7 +2052,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
           {
             role: "user",
-            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${fullContext}`,
+            content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
         ],
         temperature: 0.2,
@@ -2149,8 +2286,76 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // EVIDENCE-LOCKED SECTION VALIDATION
+        // Enforce that sections without evidence are properly flagged.
+        // This runs AFTER AI generation to catch any hallucinations.
+        // ══════════════════════════════════════════════════════════════
+        const evidenceValidations: string[] = [];
+
+        // Validate Competitor Snapshot against evidence
+        const compCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        if (compCard && evidenceBlock.competitors.length === 0) {
+          if (compCard.competitors?.length > 0) {
+            evidenceValidations.push(`Competitor Snapshot: AI generated ${compCard.competitors.length} competitors but evidence block has 0. Flagging as Low confidence.`);
+            compCard.confidence = "Low";
+            compCard.insight = "Insufficient verified competitor data. Listed competitors may not be validated. " + (compCard.insight || "");
+          }
+        }
+
+        // Validate Sentiment section
+        const sentCard = (reportData.signalCards || []).find((c: any) => c.title === "Sentiment & Pain Points");
+        if (sentCard && evidenceBlock.sentimentSignals.length === 0) {
+          sentCard.confidence = "Low";
+          sentCard.insight = "Insufficient sentiment data collected. " + (sentCard.insight || "");
+          if (sentCard.sentiment) {
+            sentCard.sentiment.emotion = "Insufficient data";
+          }
+          evidenceValidations.push("Sentiment: 0 evidence signals — forced Low confidence.");
+        }
+
+        // Validate Growth Signals
+        const growthCard = (reportData.signalCards || []).find((c: any) => c.title === "Growth Signals");
+        if (growthCard && evidenceBlock.productLaunchSignals.length === 0 && evidenceBlock.developerSignals.length === 0) {
+          growthCard.confidence = "Low";
+          growthCard.insight = "Insufficient growth data. " + (growthCard.insight || "");
+          evidenceValidations.push("Growth: 0 launch + 0 developer signals — forced Low confidence.");
+        }
+
+        // Validate Trend Momentum
+        const trendCard = (reportData.signalCards || []).find((c: any) => c.title === "Trend Momentum");
+        if (trendCard && evidenceBlock.demandSignals.length === 0 && evidenceBlock.trendSignals.length === 0) {
+          trendCard.confidence = "Low";
+          trendCard.insight = "Insufficient trend data. " + (trendCard.insight || "");
+          evidenceValidations.push("Trends: 0 demand + 0 trend signals — forced Low confidence.");
+        }
+
+        // Validate Revenue / Unit Economics
+        if (reportData.unitEconomics && evidenceBlock.pricingSignals.length === 0) {
+          reportData.unitEconomics.dataSource = "ai_estimated";
+          reportData.unitEconomics.sourceUrls = [];
+          evidenceValidations.push("Unit Economics: 0 pricing signals — marked as ai_estimated.");
+        }
+        if (reportData.revenueBenchmark && evidenceBlock.pricingSignals.length === 0) {
+          reportData.revenueBenchmark.dataSource = "ai_estimated";
+          reportData.revenueBenchmark.sourceUrls = [];
+          evidenceValidations.push("Revenue Benchmark: 0 pricing signals — marked as ai_estimated.");
+        }
+
+        // Inject evidence lock metadata into report
+        reportData.evidenceLock = {
+          coverage: evidenceCoverage,
+          confidences: evidenceConfidences,
+          totalEvidence,
+          validations: evidenceValidations,
+        };
+
+        if (evidenceValidations.length > 0) {
+          console.warn(`[EVIDENCE LOCK] Post-AI validations applied: ${evidenceValidations.join(" | ")}`);
+        }
+
         // Log validation summary
-        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
+        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}`);
 
         overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
@@ -2284,6 +2489,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             confidenceScore: c.confidenceScore,
             sources: c.sources,
           })),
+        },
+        evidenceLock: {
+          coverage: evidenceCoverage,
+          confidences: evidenceConfidences,
+          totalEvidence,
         },
         timestamp: new Date().toISOString(),
       };
