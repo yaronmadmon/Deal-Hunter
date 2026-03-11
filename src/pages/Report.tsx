@@ -26,6 +26,7 @@ import { CompetitorMatrix } from "@/components/report/CompetitorMatrix";
 import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
+import { DataQualitySummary } from "@/components/report/DataQualitySummary";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,8 +80,19 @@ const Report = () => {
             signalStrength: (data.signal_strength as MockReportData["signalStrength"]) ?? rd.signalStrength,
             blueprint: data.blueprint_data as unknown as MockReportData["blueprint"] ?? rd.blueprint,
           });
+        } else if (data?.status === "failed") {
+          const reportError = (data.report_data as any)?.error;
+          if (reportError === "insufficient_data") {
+            setReport(null);
+            toast.error((data.report_data as any)?.message || "Insufficient data to analyze this idea.");
+            navigate("/dashboard");
+          } else {
+            setReport(null);
+            toast.error("Analysis failed. Please try again.");
+            navigate("/dashboard");
+          }
         } else {
-          setReport({ ...mockReport, idea: data?.idea ?? mockReport.idea });
+          setReport(null);
         }
       });
 
@@ -201,6 +213,9 @@ const Report = () => {
           { value: safeValue(r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value), label: "Interest Change (90d)", change: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
+
+        {/* Data Quality Summary */}
+        {r.dataQualitySummary && <DataQualitySummary data={r.dataQualitySummary} />}
 
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}

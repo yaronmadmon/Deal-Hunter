@@ -183,7 +183,7 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
             }
           ],
           temperature: 0.4,
-          max_tokens: 5000,
+          max_tokens: 8000,
         }),
       });
 

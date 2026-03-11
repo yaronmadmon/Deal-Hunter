@@ -269,58 +269,104 @@ async function twitterInfluencerSignals(
 ): Promise<{ influencers: any[] }> {
   try {
     const limitedUsernames = usernames.slice(0, 3);
-    const influencers: any[] = [];
     const headers = { Authorization: `Bearer ${bearerToken}` };
+    const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
 
-    for (const uname of limitedUsernames) {
-      try {
-        const userRes = await fetch(
-          `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
-          { headers }
-        );
-        if (!userRes.ok) continue;
-        const userData = await userRes.json();
-        const user = userData.data;
-        if (!user) continue;
-
-        const tweetsRes = await fetch(
-          `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
-          { headers }
-        );
-        let nicheTweet = null;
-        if (tweetsRes.ok) {
-          const tweetsData = await tweetsRes.json();
-          const tweets = tweetsData.data || [];
-          const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
-          const matched = tweets.filter((t: any) =>
-            nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+    // Parallelize influencer lookups instead of sequential
+    const results = await Promise.all(
+      limitedUsernames.map(async (uname) => {
+        try {
+          const userRes = await fetch(
+            `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
+            { headers }
           );
-          nicheTweet = matched.length > 0
-            ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
-            : tweets[0];
-        }
+          if (!userRes.ok) return null;
+          const userData = await userRes.json();
+          const user = userData.data;
+          if (!user) return null;
 
-        influencers.push({
-          name: user.name,
-          username: user.username,
-          description: user.description || '',
-          followers_count: user.public_metrics?.followers_count || 0,
-          latest_niche_tweet: nicheTweet ? {
-            text: nicheTweet.text,
-            created_at: nicheTweet.created_at,
-            like_count: nicheTweet.public_metrics?.like_count || 0,
-            retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
-            id: nicheTweet.id,
-          } : null,
-        });
-      } catch (e) {
-        console.error(`Influencer lookup error for @${uname}:`, e);
-      }
-    }
-    return { influencers };
+          const tweetsRes = await fetch(
+            `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
+            { headers }
+          );
+          let nicheTweet = null;
+          if (tweetsRes.ok) {
+            const tweetsData = await tweetsRes.json();
+            const tweets = tweetsData.data || [];
+            const matched = tweets.filter((t: any) =>
+              nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+            );
+            nicheTweet = matched.length > 0
+              ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
+              : tweets[0];
+          }
+
+          return {
+            name: user.name,
+            username: user.username,
+            description: user.description || '',
+            followers_count: user.public_metrics?.followers_count || 0,
+            latest_niche_tweet: nicheTweet ? {
+              text: nicheTweet.text,
+              created_at: nicheTweet.created_at,
+              like_count: nicheTweet.public_metrics?.like_count || 0,
+              retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
+              id: nicheTweet.id,
+            } : null,
+          };
+        } catch (e) {
+          console.error(`Influencer lookup error for @${uname}:`, e);
+          return null;
+        }
+      })
+    );
+
+    return { influencers: results.filter(Boolean) as any[] };
   } catch (e) {
     console.error("Twitter influencer signals error:", e);
     return { influencers: [] };
+  }
+}
+
+// ── Hacker News helper ──────────────────────────────────────────────
+async function hackerNewsSearch(
+  query: string,
+  limit = 10
+): Promise<{ hits: any[] }> {
+  try {
+    const res = await fetch(
+      `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=${limit}`
+    );
+    if (!res.ok) return { hits: [] };
+    const data = await res.json();
+    return {
+      hits: (data.hits || []).map((h: any) => ({
+        title: h.title,
+        url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+        points: h.points || 0,
+        comments: h.num_comments || 0,
+        author: h.author,
+        createdAt: h.created_at,
+        hnUrl: `https://news.ycombinator.com/item?id=${h.objectID}`,
+      })),
+    };
+  } catch (e) {
+    console.error("Hacker News search error:", e);
+    return { hits: [] };
+  }
+}
+
+// ── Retry wrapper ───────────────────────────────────────────────────
+async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (retries > 0) {
+      console.warn(`Retrying after ${delayMs}ms...`);
+      await new Promise(r => setTimeout(r, delayMs));
+      return withRetry(fn, retries - 1, delayMs);
+    }
+    throw e;
   }
 }
 
@@ -437,6 +483,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing analysisId or idea" }), { status: 400, headers: corsHeaders });
     }
 
+    // ── Input validation ──
+    const trimmedIdea = idea.trim();
+    if (trimmedIdea.length < 10) {
+      return new Response(JSON.stringify({ error: "Idea must be at least 10 characters" }), { status: 400, headers: corsHeaders });
+    }
+    if (trimmedIdea.length > 500) {
+      return new Response(JSON.stringify({ error: "Idea must be under 500 characters" }), { status: 400, headers: corsHeaders });
+    }
+    // Strip HTML/script tags
+    const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
+
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
@@ -463,6 +520,7 @@ Deno.serve(async (req) => {
       serperAutoComplete: null,
       productHunt: null,
       github: null,
+      hackerNews: null,
       twitterSentiment: null,
       twitterCounts: null,
       twitterInfluencers: null,
@@ -542,7 +600,7 @@ Deno.serve(async (req) => {
     if (firecrawlKey) {
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5);
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} app site:apps.apple.com OR site:play.google.com`, 5));
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -550,7 +608,7 @@ Deno.serve(async (req) => {
 
       firecrawlPromises.push(
         trackSource("firecrawl_reddit", async () => {
-          const r = await firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5);
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} reviews complaints pain points site:reddit.com`, 5));
           rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -700,8 +758,20 @@ Deno.serve(async (req) => {
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
+    // Run Hacker News search
+    const hnPromises: Promise<void>[] = [];
+    const hnKeywords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+    hnPromises.push(
+      trackSource("hackernews", async () => {
+        const r = await hackerNewsSearch(hnKeywords, 10);
+        rawData.hackerNews = r;
+        rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
+        return r.hits.length;
+      })
+    );
+
     const fetchStart = Date.now();
-    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
+    await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
     const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
@@ -797,6 +867,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Data sufficiency check ──
+    const sourcesWithData = Object.values(pipelineMetrics).filter(m => m.status === "ok" && m.signalCount > 0).length;
+    if (sourcesWithData < 2) {
+      console.warn(`[DATA SUFFICIENCY] Only ${sourcesWithData} sources returned data. Skipping AI — insufficient data.`);
+      await supabase.from("analyses").update({
+        status: "failed",
+        report_data: {
+          error: "insufficient_data",
+          message: "Too few data sources returned results to produce a reliable analysis. Try a different idea or rephrase your concept.",
+          pipelineMetrics: { totalFetchDurationMs, totalSignals, failedSources, sources: pipelineMetrics, timestamp: new Date().toISOString() },
+        },
+        updated_at: new Date().toISOString(),
+      }).eq("id", analysisId);
+      return new Response(JSON.stringify({ error: "Insufficient data to analyze" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
@@ -879,6 +965,12 @@ ${rawData.twitterInfluencers?.influencers?.length > 0
   ? rawData.twitterInfluencers.influencers.map((inf: any) => `Founder: ${inf.name} (@${inf.username})\nFollowers: ${inf.followers_count?.toLocaleString()}\nBio: ${inf.description}\nLatest Niche Tweet: "${inf.latest_niche_tweet?.text || 'N/A'}"\nLikes: ${inf.latest_niche_tweet?.like_count || 0} | Retweets: ${inf.latest_niche_tweet?.retweet_count || 0}\nTweet URL: ${inf.latest_niche_tweet?.id ? `https://x.com/${inf.username}/status/${inf.latest_niche_tweet.id}` : 'N/A'}`).join("\n---\n")
   : "No influencer/founder signals found — no relevant X accounts identified"}
 Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
+
+--- HACKER NEWS DISCUSSIONS (from HN Algolia API — developer buzz signals) ---
+${rawData.hackerNews?.hits?.length > 0
+  ? rawData.hackerNews.hits.map((h: any) => `Title: ${h.title}\nPoints: ${h.points}\nComments: ${h.comments}\nAuthor: ${h.author}\nDate: ${h.createdAt}\nHN URL: ${h.hnUrl}\nLink: ${h.url || "self-post"}`).join("\n---\n")
+  : "No Hacker News discussions found — limited developer community buzz"}
+Total HN stories found: ${rawData.hackerNews?.hits?.length ?? 0}
 
 --- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — category-specific retention data) ---
 ${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
@@ -1166,8 +1258,8 @@ CRITICAL REMINDERS:
     });
 
     let reportData = null;
-    let overallScore = 65;
-    let signalStrength = "Moderate";
+    let overallScore = 0;
+    let signalStrength = "Weak";
 
     if (aiResponse.ok) {
       const aiResult = await aiResponse.json();
