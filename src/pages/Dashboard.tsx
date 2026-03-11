@@ -38,8 +38,9 @@ const Dashboard = () => {
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
   const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, subscription, checkSubscription } = useAuth();
   const { isAdmin } = useAdmin();
 
   useEffect(() => {
@@ -47,6 +48,27 @@ const Dashboard = () => {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Handle redirect from Stripe subscription checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("subscription") === "success") {
+      setSubscriptionSuccess(true);
+      toast.success("🎉 Subscription activated! Welcome aboard!");
+      // Aggressively refresh subscription status
+      const refresh = async () => {
+        for (let i = 0; i < 5; i++) {
+          await checkSubscription();
+          if (subscription.subscribed) break;
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      };
+      refresh();
+      window.history.replaceState({}, "", "/dashboard");
+      // Auto-dismiss banner after 15s
+      setTimeout(() => setSubscriptionSuccess(false), 15000);
+    }
+  }, [checkSubscription]);
 
   const fetchData = () => {
     if (!user) return;
