@@ -758,6 +758,18 @@ Deno.serve(async (req) => {
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
+    // Run Hacker News search
+    const hnPromises: Promise<void>[] = [];
+    const hnKeywords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+    hnPromises.push(
+      trackSource("hackernews", async () => {
+        const r = await hackerNewsSearch(hnKeywords, 10);
+        rawData.hackerNews = r;
+        rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
+        return r.hits.length;
+      })
+    );
+
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
     const totalFetchDurationMs = Date.now() - fetchStart;
