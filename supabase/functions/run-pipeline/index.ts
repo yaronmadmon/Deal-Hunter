@@ -1258,8 +1258,8 @@ CRITICAL REMINDERS:
     });
 
     let reportData = null;
-    let overallScore = 65;
-    let signalStrength = "Moderate";
+    let overallScore = 0;
+    let signalStrength = "Weak";
 
     if (aiResponse.ok) {
       const aiResult = await aiResponse.json();
