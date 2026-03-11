@@ -2042,22 +2042,23 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // PHASE 1 FIX 3: COMPETITOR COUNT VALIDATION
-        // Cross-check: if AI says 0 competitors but competitor discovery
-        // found results, flag inconsistency and lower confidence.
+        // COMPETITOR COUNT VALIDATION (uses validated competitors)
+        // Cross-check: if AI says 0 competitors but validated pipeline
+        // found real products, flag inconsistency and lower confidence.
         // ══════════════════════════════════════════════════════════════
+        const validatedCount = rawData.validatedCompetitors?.length ?? 0;
         const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
         const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
         const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
         const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
 
-        if (aiCompetitorCount === 0 && (competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
-          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but competitor discovery found ${competitorDiscoveryCount} results and competitor snapshot has ${aiCompetitorListCount} entries. Correcting.`);
+        if (aiCompetitorCount === 0 && (validatedCount >= 1 || competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but validated pipeline found ${validatedCount} real products (discovery: ${competitorDiscoveryCount}, snapshot: ${aiCompetitorListCount}). Correcting.`);
 
-          // Fix the niche analysis competitor count
+          // Fix the niche analysis competitor count — use validated count as ground truth
           if (reportData.nicheAnalysis) {
-            reportData.nicheAnalysis.directCompetitors = Math.max(aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
-            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${competitorDiscoveryCount} competitor search results were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+            reportData.nicheAnalysis.directCompetitors = Math.max(validatedCount, aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${validatedCount} validated real products were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
           }
 
           // Lower confidence on the competitor snapshot card
@@ -2075,16 +2076,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Also validate: if competitor discovery found many results but AI only lists 1-2
-        if (competitorDiscoveryCount >= 10 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
-          console.warn(`[COMPETITOR VALIDATION] Competitor discovery found ${competitorDiscoveryCount} results but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+        // Also validate: if validated competitors found many but AI only lists 1-2
+        if (validatedCount >= 5 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Validated pipeline found ${validatedCount} real products but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
           if (competitorSnapshotCard.confidence !== "Low") {
             competitorSnapshotCard.confidence = "Medium";
           }
-          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${competitorDiscoveryCount} competitor search results were found — more competitors may exist than listed.]`.trim();
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
         }
 
-        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
 
         // ══════════════════════════════════════════════════════════════
         // DATA QUALITY PENALTY
