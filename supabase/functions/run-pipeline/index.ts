@@ -561,9 +561,12 @@ Deno.serve(async (req) => {
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
+      // Extract shorter keywords for better Serper hit rate
+      const serperKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 4).join(" ");
+
       serperPromises.push(
         trackSource("serper_trends", async () => {
-          const r = await serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 10);
           rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -571,7 +574,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
-          const r = await serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} market size demand`, "search", 10);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -579,7 +582,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_news", async () => {
-          const r = await serperSearch(serperKey, `${idea}`, "news", 10);
+          const r = await serperSearch(serperKey, serperKeywords, "news", 10);
           rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -587,7 +590,7 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_reddit", async () => {
-          const r = await serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 10);
           rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
