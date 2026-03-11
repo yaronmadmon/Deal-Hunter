@@ -1398,6 +1398,164 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
+    // ══════════════════════════════════════════════════════════════════
+    // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
+    // Only verified, categorized signals reach the AI — no narratives.
+    // ══════════════════════════════════════════════════════════════════
+    const evidenceBlock = {
+      demandSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" | "estimated" }[],
+      competitors: [] as { name: string; rating: string | null; downloads: string | null; evidenceType: string; validationScore: number; sources: string[]; url: string | null; weakness: string | null; tier: "verified" | "reported" }[],
+      pricingSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" | "estimated" }[],
+      productLaunchSignals: [] as { name: string; tagline: string; upvotes: number; launchDate: string; url: string; source: string; tier: "verified" }[],
+      developerSignals: [] as { repo: string; stars: number; forks: number; language: string; url: string; lastPush: string; tier: "verified" }[],
+      sentimentSignals: [] as { text: string; source: string; sourceUrl: string | null; platform: string; engagement: number; tier: "verified" | "reported" }[],
+      trendSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "verified" | "reported" }[],
+      technicalSignals: [] as { signal: string; value: string; source: string; sourceUrl: string | null; tier: "reported" | "estimated" }[],
+    };
+
+    // ── Populate demand signals ──
+    (rawData.serperTrends?.organic || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Google Search", sourceUrl: r.link, tier: "verified" });
+    });
+    (rawData.serperAutoComplete?.suggestions || []).forEach((s: string) => {
+      evidenceBlock.demandSignals.push({ signal: "Google Autocomplete", value: s, source: "Serper Autocomplete", sourceUrl: null, tier: "verified" });
+    });
+    (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: "App Store Listing", value: r.title || r.url, source: "Firecrawl App Store", sourceUrl: r.url, tier: "verified" });
+    });
+    if (rawData.twitterCounts?.total_count > 0) {
+      evidenceBlock.demandSignals.push({ signal: "X/Twitter Volume (7d)", value: `${rawData.twitterCounts.total_count} tweets, ${rawData.twitterCounts.volume_change_pct > 0 ? "+" : ""}${rawData.twitterCounts.volume_change_pct}% change`, source: "X API v2", sourceUrl: null, tier: "verified" });
+    }
+    (rawData.serperNews?.organic || []).forEach((r: any) => {
+      evidenceBlock.trendSignals.push({ signal: r.title, value: r.date || "recent", source: "Serper News", sourceUrl: r.link, tier: "verified" });
+    });
+    (rawData.serperTrendsMonthly?.organic || []).forEach((r: any) => {
+      evidenceBlock.trendSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Monthly Trends", sourceUrl: r.link, tier: "verified" });
+    });
+
+    // ── Populate competitors from validated pipeline ──
+    (rawData.validatedCompetitors || []).forEach((c: any) => {
+      evidenceBlock.competitors.push({
+        name: c.name,
+        rating: c.rating || null,
+        downloads: c.downloads || null,
+        evidenceType: c.evidenceType,
+        validationScore: c.validationScore,
+        sources: c.sources,
+        url: c.url || null,
+        weakness: (c.weaknesses || [])[0] || null,
+        tier: c.validationScore >= 3 ? "verified" : "reported",
+      });
+    });
+
+    // ── Populate Product Hunt signals ──
+    (rawData.productHunt?.products || []).forEach((p: any) => {
+      evidenceBlock.productLaunchSignals.push({
+        name: p.name, tagline: p.tagline || "", upvotes: p.upvotes || 0,
+        launchDate: p.launchDate || "", url: p.url || "", source: "Product Hunt API", tier: "verified",
+      });
+    });
+
+    // ── Populate developer signals ──
+    (rawData.github?.repos || []).forEach((r: any) => {
+      evidenceBlock.developerSignals.push({
+        repo: r.name, stars: r.stars || 0, forks: r.forks || 0,
+        language: r.language || "unknown", url: r.url, lastPush: r.pushedAt || "", tier: "verified",
+      });
+    });
+
+    // ── Populate sentiment signals ──
+    (rawData.twitterSentiment?.tweets || []).forEach((t: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: t.text, source: `@${t.author_username} (${t.author_followers} followers)`,
+        sourceUrl: `https://x.com/${t.author_username}/status/${t.id}`,
+        platform: "twitter", engagement: (t.like_count || 0) + (t.retweet_count || 0) * 2, tier: "verified",
+      });
+    });
+    (rawData.firecrawlReddit?.results || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: (r.markdown || "").slice(0, 500), source: r.title || "Reddit",
+        sourceUrl: r.url, platform: "reddit", engagement: 0, tier: "verified",
+      });
+    });
+    (rawData.serperReddit?.organic || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: r.snippet || "", source: r.title || "Reddit via Google",
+        sourceUrl: r.link, platform: "reddit", engagement: 0, tier: "reported",
+      });
+    });
+    (rawData.hackerNews?.hits || []).forEach((h: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: h.title, source: `HN (${h.points} points, ${h.comments} comments)`,
+        sourceUrl: h.hnUrl, platform: "hackernews", engagement: (h.points || 0) + (h.comments || 0), tier: "verified",
+      });
+    });
+
+    // ── Populate pricing/revenue signals (from Perplexity — tier: reported) ──
+    if (rawData.perplexityRevenue?.content) {
+      evidenceBlock.pricingSignals.push({ signal: "Revenue Benchmarks", value: rawData.perplexityRevenue.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityRevenue.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityChurn?.content) {
+      evidenceBlock.pricingSignals.push({ signal: "Churn Benchmarks", value: rawData.perplexityChurn.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityChurn.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Populate technical signals ──
+    if (rawData.perplexityBuildCosts?.content) {
+      evidenceBlock.technicalSignals.push({ signal: "Build Cost Analysis", value: rawData.perplexityBuildCosts.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityBuildCosts.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Populate from Perplexity market/VC/trends as supplementary (tier: reported) ──
+    if (rawData.perplexityTrends?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Search Trends Summary", value: rawData.perplexityTrends.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityTrends.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityVC?.content) {
+      evidenceBlock.trendSignals.push({ signal: "VC Funding Activity", value: rawData.perplexityVC.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityVC.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityMarket?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Market Overview", value: rawData.perplexityMarket.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityMarket.citations?.[0] || null, tier: "reported" });
+    }
+    if (rawData.perplexityCompetitors?.content) {
+      evidenceBlock.trendSignals.push({ signal: "Competitor Overview", value: rawData.perplexityCompetitors.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityCompetitors.citations?.[0] || null, tier: "reported" });
+    }
+
+    // ── Evidence coverage scoring ──
+    const evidenceCoverage = {
+      demand: evidenceBlock.demandSignals.length,
+      competitors: evidenceBlock.competitors.length,
+      pricing: evidenceBlock.pricingSignals.length,
+      launches: evidenceBlock.productLaunchSignals.length,
+      developer: evidenceBlock.developerSignals.length,
+      sentiment: evidenceBlock.sentimentSignals.length,
+      trends: evidenceBlock.trendSignals.length,
+      technical: evidenceBlock.technicalSignals.length,
+    };
+    const totalEvidence = Object.values(evidenceCoverage).reduce((s, v) => s + v, 0);
+
+    const sectionConfidence = (count: number): "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT" => {
+      if (count >= 3) return "HIGH";
+      if (count === 2) return "MEDIUM";
+      if (count === 1) return "LOW";
+      return "INSUFFICIENT";
+    };
+
+    const evidenceConfidences = {
+      demand: sectionConfidence(evidenceCoverage.demand),
+      competitors: sectionConfidence(evidenceCoverage.competitors),
+      pricing: sectionConfidence(evidenceCoverage.pricing),
+      launches: sectionConfidence(evidenceCoverage.launches),
+      developer: sectionConfidence(evidenceCoverage.developer),
+      sentiment: sectionConfidence(evidenceCoverage.sentiment),
+      trends: sectionConfidence(evidenceCoverage.trends),
+      technical: sectionConfidence(evidenceCoverage.technical),
+    };
+
+    rawData.evidenceBlock = evidenceBlock;
+    rawData.evidenceCoverage = evidenceCoverage;
+    rawData.evidenceConfidences = evidenceConfidences;
+
+    console.log(`[EVIDENCE LOCK] Demand signals: ${evidenceCoverage.demand} | Competitors validated: ${evidenceCoverage.competitors} | Pricing signals: ${evidenceCoverage.pricing} | Sentiment signals: ${evidenceCoverage.sentiment} | Trend signals: ${evidenceCoverage.trends} | Developer signals: ${evidenceCoverage.developer} | Launch signals: ${evidenceCoverage.launches} | Technical signals: ${evidenceCoverage.technical}`);
+    console.log(`[EVIDENCE LOCK] Evidence coverage score: ${totalEvidence} | Confidences: ${JSON.stringify(evidenceConfidences)}`);
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
