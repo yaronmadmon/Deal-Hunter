@@ -717,13 +717,13 @@ export function generateReportPdf(report: MockReportData) {
       if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
       doc.setFont("helvetica", "bold");
-      doc.text(doc.splitTextToSize(app.name, 42)[0], cols[0], y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(app.name), 42)[0], cols[0], y + 1);
       doc.setFont("helvetica", "normal");
       setColor(C.muted);
-      doc.text(app.platform, cols[1], y + 1);
-      doc.text(app.rating, cols[2], y + 1);
-      doc.text(app.reviews, cols[3], y + 1);
-      doc.text(app.downloads, cols[4], y + 1);
+      doc.text(safePdfText(app.platform), cols[1], y + 1);
+      doc.text(safePdfText(app.rating), cols[2], y + 1);
+      doc.text(safePdfText(app.reviews), cols[3], y + 1);
+      doc.text(safePdfText(app.downloads), cols[4], y + 1);
       y += 6;
     });
     if (report.appStoreIntelligence.insight) {
