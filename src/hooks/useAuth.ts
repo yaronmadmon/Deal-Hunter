@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { trackEvent } from "@/lib/analytics";
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -9,10 +10,28 @@ export const useAuth = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Fire-and-forget: track signup + send welcome email
+        if (event === "SIGNED_IN" && session?.user) {
+          // Check if this is a brand new user (created within last 60s)
+          const createdAt = new Date(session.user.created_at).getTime();
+          const now = Date.now();
+          if (now - createdAt < 60_000) {
+            trackEvent("user_signup", session.user.id, { email: session.user.email });
+            // Send welcome email (fire-and-forget)
+            supabase.functions.invoke("send-transactional-email", {
+              body: {
+                type: "welcome",
+                to: session.user.email,
+                data: { credits: 2, appUrl: window.location.origin },
+              },
+            }).catch(() => {});
+          }
+        }
       }
     );
 

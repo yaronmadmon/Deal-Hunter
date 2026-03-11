@@ -4,12 +4,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Trash2, RotateCcw } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { trackEvent } from "@/lib/analytics";
 
 interface AnalysisRow {
   id: string;
@@ -25,6 +37,7 @@ const Dashboard = () => {
   const [credits, setCredits] = useState<number>(2);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
   const { isAdmin } = useAdmin();
@@ -35,18 +48,26 @@ const Dashboard = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
+  const fetchData = () => {
     if (!user) return;
+    supabase.from("profiles").select("credits, suspended").eq("id", user.id).single()
+      .then(({ data }) => {
+        if (data) {
+          setCredits(data.credits);
+          if ((data as any).suspended) {
+            toast.error("Your account has been suspended. Contact support.");
+          }
+        }
+      });
 
-    // Fetch profile credits
-    supabase.from("profiles").select("credits").eq("id", user.id).single()
-      .then(({ data }) => { if (data) setCredits(data.credits); });
-
-    // Fetch analyses
     supabase.from("analyses").select("id, idea, status, overall_score, signal_strength, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => { if (data) setAnalyses(data); });
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [user]);
 
   const handleSubmit = async () => {
@@ -77,6 +98,8 @@ const Dashboard = () => {
         return;
       }
 
+      trackEvent("analysis_created", user.id, { idea_length: idea.length });
+
       // Kick off pipeline
       supabase.functions.invoke("run-pipeline", {
         body: { analysisId: data.id, idea },
@@ -85,6 +108,58 @@ const Dashboard = () => {
       navigate(`/processing/${data.id}`);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, analysisId: string) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase.from("analyses").delete().eq("id", analysisId);
+      if (error) throw error;
+      setAnalyses((prev) => prev.filter((a) => a.id !== analysisId));
+      toast.success("Analysis deleted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete analysis");
+    }
+  };
+
+  const handleRetry = async (e: React.MouseEvent, item: AnalysisRow) => {
+    e.stopPropagation();
+    if (!user || credits <= 0) {
+      toast.error("No credits remaining.");
+      return;
+    }
+
+    setRetryingId(item.id);
+    try {
+      // Create new analysis with same idea
+      const { data, error } = await supabase.from("analyses")
+        .insert({ user_id: user.id, idea: item.idea, status: "pending" })
+        .select("id")
+        .single();
+
+      if (error || !data) {
+        toast.error("Failed to retry analysis");
+        return;
+      }
+
+      const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
+      if (!deducted) {
+        toast.error("Failed to deduct credit");
+        return;
+      }
+
+      setCredits((c) => Math.max(0, c - 1));
+      trackEvent("analysis_created", user.id, { retry: true, original_id: item.id });
+
+      supabase.functions.invoke("run-pipeline", {
+        body: { analysisId: data.id, idea: item.idea },
+      });
+
+      toast.success("Retrying analysis…");
+      navigate(`/processing/${data.id}`);
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -138,19 +213,63 @@ const Dashboard = () => {
                   onClick={() => item.status === "complete" ? navigate(`/report/${item.id}`) : item.status !== "failed" ? navigate(`/processing/${item.id}`) : null}
                 >
                   <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground text-sm">{item.idea}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground text-sm truncate">{item.idea}</p>
                       <p className="text-xs text-muted-foreground mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
                       {item.status === "complete" && item.overall_score !== null ? (
                         <>
                           <span className="font-heading text-lg font-bold text-foreground">{item.overall_score}</span>
                           <Badge variant={strengthVariant(item.signal_strength)}>{item.signal_strength}</Badge>
                         </>
+                      ) : item.status === "failed" ? (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="destructive">Failed</Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => handleRetry(e, item)}
+                            disabled={retryingId === item.id}
+                            className="h-7 text-xs"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Retry
+                          </Button>
+                        </div>
                       ) : (
                         <Badge variant="secondary">{item.status}</Badge>
                       )}
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Analysis</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete this analysis and its report. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={(e) => handleDelete(e, item.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>
