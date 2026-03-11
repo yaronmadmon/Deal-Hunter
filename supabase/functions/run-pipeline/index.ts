@@ -1750,6 +1750,68 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
 
+        // ══════════════════════════════════════════════════════════════
+        // DATA QUALITY PENALTY
+        // If >50% of metrics in a scoring category are "estimated",
+        // reduce that category's score by 30%.
+        // ══════════════════════════════════════════════════════════════
+        const categoryToCardTitle: Record<string, string> = {
+          "Trend Momentum": "Trend Momentum",
+          "Market Saturation": "Market Saturation",
+          "Sentiment": "Sentiment & Pain Points",
+          "Growth": "Growth Signals",
+          "Opportunity": "Competitor Snapshot",
+        };
+
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          let penaltyApplied = false;
+          for (const category of reportData.scoreBreakdown) {
+            const cardTitle = categoryToCardTitle[category.label];
+            const card = (reportData.signalCards || []).find((c: any) => c.title === cardTitle);
+            if (!card) continue;
+
+            const metrics = card.metrics || card.competitors || [];
+            const totalMetrics = metrics.length;
+            if (totalMetrics === 0) continue;
+
+            const estimatedCount = metrics.filter((m: any) => 
+              m.dataTier === "estimated" || m.dataSource === "ai_estimated"
+            ).length;
+
+            if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
+              const originalValue = Number(category.value) || 0;
+              const penalty = Math.round(originalValue * 0.3);
+              category.value = originalValue - penalty;
+              penaltyApplied = true;
+              console.warn(`[DATA QUALITY PENALTY] ${category.label}: ${estimatedCount}/${totalMetrics} metrics estimated. Score reduced by ${penalty} (${originalValue} -> ${category.value})`);
+              if (card.confidence !== "Low") {
+                card.confidence = "Low";
+              }
+            }
+          }
+
+          if (penaltyApplied) {
+            const newSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
+            console.warn(`[DATA QUALITY PENALTY] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
+            reportData.overallScore = newSum;
+
+            const penaltyScore = reportData.overallScore;
+            const penaltyVerdict = penaltyScore >= 75 ? "Build Now"
+              : penaltyScore >= 55 ? "Build, But Niche Down"
+              : penaltyScore >= 40 ? "Validate Further"
+              : "Do Not Build Yet";
+            if (reportData.founderDecision) {
+              reportData.founderDecision.decision = penaltyVerdict;
+            }
+            reportData.signalStrength = penaltyScore >= 70 ? "Strong" : penaltyScore >= 45 ? "Moderate" : "Weak";
+          }
+        }
+
+        // Perplexity dominance: flag low confidence if triggered
+        if (perplexityDominanceWarning && reportData.methodology) {
+          reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
+        }
+
         // Log validation summary
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
 
