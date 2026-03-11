@@ -814,7 +814,7 @@ export function generateReportPdf(report: MockReportData) {
         else if (lower === "no" || lower === "weak" || lower === "none") setColor(C.danger);
         else if (lower === "medium" || lower === "partial") setColor(C.warning);
         else setColor(C.muted);
-        doc.text(val, cx, y + 1, { align: "center" });
+        doc.text(safePdfText(val), cx, y + 1, { align: "center" });
       });
       y += 6;
     });
