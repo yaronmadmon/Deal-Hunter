@@ -84,10 +84,10 @@ export const ProofDashboard = ({ data }: Props) => {
 
         {/* App Store Signals */}
         <SignalBlock icon={Smartphone} title="App Store Signals" confidence={data.appStoreSignals?.confidence}>
-          <MetricRow label="Related Apps" value={data.appStoreSignals?.relatedApps || "Data unavailable"} />
-          <MetricRow label="Average Rating" value={data.appStoreSignals?.avgRating || "Data unavailable"} source="App Store / Play Store" />
-          <MetricRow label="Download Estimates" value={data.appStoreSignals?.downloadEstimate || "Data unavailable"} />
-          <MetricRow label="Market Gap" value={data.appStoreSignals?.marketGap || "Data unavailable"} />
+          <MetricRow label="Related Apps" value={data.appStoreSignals?.relatedApps || "Insufficient data"} />
+          <MetricRow label="Average Rating" value={data.appStoreSignals?.avgRating || "Insufficient data"} source="App Store / Play Store" />
+          <MetricRow label="Download Estimates" value={data.appStoreSignals?.downloadEstimate || "Insufficient data"} />
+          <MetricRow label="Market Gap" value={data.appStoreSignals?.marketGap || "Insufficient data"} />
         </SignalBlock>
       </div>
     </div>

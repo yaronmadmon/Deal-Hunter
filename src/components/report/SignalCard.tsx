@@ -29,12 +29,16 @@ const confidenceBadge = (c: string) => {
 /** Safely display a value — never show null, undefined, NaN, or N/A */
 const safeVal = (val: any): string => {
   if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Data unavailable";
+    return "Insufficient data";
   }
-  return String(val);
+  const s = String(val);
+  if (s.toLowerCase() === "unknown" || s.toLowerCase() === "data unavailable") {
+    return "Insufficient data";
+  }
+  return s;
 };
 
-const isMutedValue = (val: string) => val === "Data unavailable";
+const isMutedValue = (val: string) => val === "Insufficient data";
 
 const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => {
   const maxUpvotes = Math.max(...launches.map(l => l.upvotes));

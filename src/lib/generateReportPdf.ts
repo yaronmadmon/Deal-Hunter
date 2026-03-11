@@ -46,7 +46,7 @@ export function generateReportPdf(report: MockReportData) {
   const writeLines = (lines: string[], x: number, lh: number) => {
     for (const line of lines) {
       checkPage(lh);
-      doc.text(line, x, y);
+      doc.text(sanitizeForPdf(line), x, y);
       y += lh;
     }
   };
