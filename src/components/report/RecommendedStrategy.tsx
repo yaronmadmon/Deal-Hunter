@@ -30,7 +30,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
             <Crosshair className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-heading font-semibold text-foreground">Positioning</h3>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">{data.positioning || "Data unavailable"}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{data.positioning || "Insufficient data"}</p>
         </div>
 
         {/* Pricing */}
