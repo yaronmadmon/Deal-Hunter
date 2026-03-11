@@ -728,8 +728,8 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Extract shorter keywords for better Serper hit rate
-      const serperKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 4).join(" ");
+      // Use semantic keywords for all Serper queries
+      const serperKeywords = primaryKeywords;
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
@@ -741,7 +741,8 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
 
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} market size demand`, "search", 10);
+          const trendQuery = semanticQueries.length > 2 ? semanticQueries[2] : serperKeywords;
+          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 10);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -771,21 +772,23 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
         })
       );
 
-      // ── PHASE 1 FIX 1: Dedicated Competitor Discovery Queries ──
-      // Run 5 targeted competitor queries to ensure we find real alternatives
+      // ── COMPETITOR DISCOVERY: Use semantic queries for targeted competitor search ──
       rawData.serperCompetitors = { allResults: [] as any[] };
 
+      // Build competitor queries from SEMANTIC keywords, not naive splits
       const competitorQueryTemplates = [
         `${serperKeywords} competitors alternatives`,
-        `apps like ${serperKeywords}`,
+        `best ${serperKeywords} apps`,
         `${serperKeywords} vs`,
-        `${serperKeywords} alternative`,
-        `${serperKeywords} review comparison`,
-      ];
+        `${serperKeywords} alternative 2024 2025`,
+        ...(semanticQueries.length > 1 ? [`${semanticQueries[1]} competitors`] : []),
+        ...(semanticQueries.length > 2 ? [`best ${semanticQueries[2]} apps`] : []),
+      ].slice(0, 6); // max 6 competitor queries
 
-      for (const cq of competitorQueryTemplates) {
+      for (let i = 0; i < competitorQueryTemplates.length; i++) {
+        const cq = competitorQueryTemplates[i];
         serperPromises.push(
-          trackSource(`serper_competitor_${competitorQueryTemplates.indexOf(cq)}`, async () => {
+          trackSource(`serper_competitor_${i}`, async () => {
             const r = await serperSearch(serperKey, cq, "search", 10);
             rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
               ...o,
