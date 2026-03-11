@@ -214,6 +214,9 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
+        {/* Data Quality Summary */}
+        {r.dataQualitySummary && <DataQualitySummary data={r.dataQualitySummary} />}
+
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
 
