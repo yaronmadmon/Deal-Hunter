@@ -469,6 +469,20 @@ Deno.serve(async (req) => {
       sources: [],
     };
 
+    // ── Pipeline metrics tracker ──
+    const pipelineMetrics: Record<string, { status: string; durationMs: number; signalCount: number; error?: string }> = {};
+
+    async function trackSource(name: string, fn: () => Promise<number>): Promise<void> {
+      const start = Date.now();
+      try {
+        const signalCount = await fn();
+        pipelineMetrics[name] = { status: "ok", durationMs: Date.now() - start, signalCount };
+      } catch (e: any) {
+        pipelineMetrics[name] = { status: "error", durationMs: Date.now() - start, signalCount: 0, error: e?.message || String(e) };
+        console.error(`[PIPELINE] ${name} error:`, e);
+      }
+    }
+
     // Run Perplexity searches in parallel
     const perplexityPromises: Promise<void>[] = [];
 
