@@ -310,11 +310,17 @@ export function generateReportPdf(report: MockReportData) {
   drawHRule();
 
   // ── Key Stats Bar ──
-  const statsRow = report.keyStats || [
+  const defaultStats = [
     { value: `${report.overallScore}/100`, label: "Signal Score" },
     { value: `${report.signalCards.reduce((s, c) => s + (c.evidenceCount || 0), 0)}+`, label: "Data Points" },
-    { value: report.revenueBenchmark.range, label: "Revenue Est." },
+    { value: report.revenueBenchmark?.range || "N/A", label: "Revenue Est." },
+    { value: `${report.signalCards.length}`, label: "Sources Analyzed" },
   ];
+  const rawStats = report.keyStats && report.keyStats.length > 0 ? report.keyStats : defaultStats;
+  // Ensure exactly 4 stats — pad with defaults if pipeline returned fewer
+  const statsRow = rawStats.length >= 4
+    ? rawStats.slice(0, 4)
+    : [...rawStats, ...defaultStats.slice(rawStats.length)].slice(0, 4);
   const statW = cw / statsRow.length;
   doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
@@ -955,6 +961,78 @@ export function generateReportPdf(report: MockReportData) {
     y += 10;
   }
 
+
+  // ── Evidence Strength ──
+  if (report.proofDashboard) {
+    const pd = report.proofDashboard;
+    drawSectionTitle("Evidence Strength", "Signals ranked by reliability tier");
+
+    const tiers = [
+      {
+        tier: 1, title: "Hard Market Evidence", description: "Verified search volume, downloads, revenue data",
+        items: [
+          ...(pd.searchDemand ? [
+            { label: "Search volume", value: pd.searchDemand.monthlySearches || "Insufficient data" },
+            { label: "Trend direction", value: pd.searchDemand.trend || "Insufficient data" },
+          ] : []),
+          ...(pd.appStoreSignals ? [
+            { label: "App downloads", value: pd.appStoreSignals.downloadEstimate || "Insufficient data" },
+            { label: "App store rating", value: pd.appStoreSignals.avgRating || "Insufficient data" },
+          ] : []),
+        ],
+      },
+      {
+        tier: 2, title: "Market Activity", description: "Developer adoption, product launches, startup activity",
+        items: pd.developerActivity ? [
+          { label: "GitHub repos", value: pd.developerActivity.repoCount || "Insufficient data" },
+          { label: "Total stars", value: pd.developerActivity.totalStars || "Insufficient data" },
+          { label: "Recent commits (30d)", value: pd.developerActivity.recentCommits || "Insufficient data" },
+        ] : [],
+      },
+      {
+        tier: 3, title: "Social Signals", description: "Community chatter, social mentions, forum discussions",
+        items: pd.socialActivity ? [
+          { label: "X/Twitter mentions (7d)", value: pd.socialActivity.twitterMentions || "Insufficient data" },
+          { label: "Reddit threads", value: pd.socialActivity.redditThreads || "Insufficient data" },
+          { label: "HN / PH launches", value: pd.socialActivity.hnPhLaunches || "Insufficient data" },
+        ] : [],
+      },
+    ];
+
+    const tierColors: [number, number, number][] = [C.success, C.indigo, C.gold];
+
+    tiers.forEach((tier, ti) => {
+      if (tier.items.length === 0) return;
+      checkPage(12 + tier.items.length * 5);
+      const tc = tierColors[ti];
+
+      // Tier header
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(tc);
+      doc.text(`Tier ${tier.tier}: ${tier.title}`, m + 2, y);
+      doc.setFontSize(6); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(tier.description, m + 2 + doc.getTextWidth(`Tier ${tier.tier}: ${tier.title}`) + 3, y);
+      y += 5;
+
+      // Items
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+      tier.items.forEach((item) => {
+        checkPage(5);
+        const val = safePdfText(item.value);
+        const isAvailable = val !== "Insufficient data";
+        setColor(isAvailable ? tc : C.muted);
+        doc.text(isAvailable ? "+" : "o", m + 4, y);
+        setColor(C.muted);
+        doc.text(`${item.label}: `, m + 8, y);
+        setColor(isAvailable ? C.text : C.muted);
+        doc.setFont("helvetica", isAvailable ? "bold" : "italic");
+        doc.text(val, m + 8 + doc.getTextWidth(`${item.label}: `), y);
+        doc.setFont("helvetica", "normal");
+        y += 4.5;
+      });
+      y += 3;
+    });
+    y += 2;
+  }
 
   // ── Footer on every page ──
   const totalPages = doc.getNumberOfPages();
