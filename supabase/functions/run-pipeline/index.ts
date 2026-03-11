@@ -1932,6 +1932,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         totalSignals,
         failedSources,
         sources: pipelineMetrics,
+        semanticQueries,
+        primaryKeywords,
+        perplexityDominance: perplexityDominanceWarning ? { tier1Sources: tier1SourcesWithData, perplexitySources: perplexitySourcesWithData, warning: true } : null,
+        relevanceFilter: rawData.relevanceFilterStats || null,
         timestamp: new Date().toISOString(),
       };
     }
