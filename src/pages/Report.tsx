@@ -47,7 +47,7 @@ const sectionSubtitles: Record<string, string> = {
 /** Safely display a value — never show null, undefined, NaN, or N/A */
 const safeValue = (val: any): string => {
   if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Data unavailable";
+    return "Insufficient data";
   }
   return String(val);
 };
