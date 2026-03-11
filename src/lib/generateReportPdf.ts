@@ -915,9 +915,9 @@ export function generateReportPdf(report: MockReportData) {
     setFill(lightDecColor);
     doc.roundedRect(m, y - 2, cw, 14, 2, 2, "F");
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(decColor);
-    doc.text(fd.decision, m + 4, y + 4);
+    doc.text(safePdfText(fd.decision), m + 4, y + 4);
     doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-    const rLines = doc.splitTextToSize(fd.reasoning, cw - 8);
+    const rLines = doc.splitTextToSize(safePdfText(fd.reasoning), cw - 8);
     doc.text(rLines[0] || "", m + 4, y + 9);
     y += 17;
 
