@@ -222,7 +222,7 @@ export function generateReportPdf(report: MockReportData) {
       }
       setColor(C.text);
       doc.setFont("helvetica", "bold");
-      doc.text(c.name, cols[0], y + 1);
+      doc.text(sanitizeForPdf(c.name), cols[0], y + 1);
       doc.setFont("helvetica", "normal");
       setColor(C.muted);
       doc.text(c.rating, cols[1], y + 1);
