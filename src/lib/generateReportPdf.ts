@@ -880,10 +880,11 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(8);
       const sevColor = risk.severity === "High" ? C.danger : risk.severity === "Medium" ? C.gold : C.success;
       doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-      doc.text("⚠ " + risk.risk, m + 2, y);
+      const riskText = safePdfText(risk.risk);
+      doc.text("- " + riskText, m + 2, y);
       if (risk.severity) {
         doc.setFontSize(6); setColor(sevColor);
-        doc.text(`[${risk.severity}]`, m + 2 + doc.getTextWidth("⚠ " + risk.risk) + 2, y);
+        doc.text(`[${risk.severity}]`, m + 2 + doc.getTextWidth("- " + riskText) + 2, y);
       }
       y += 5;
     }
