@@ -51,6 +51,23 @@ serve(async (req) => {
     if (userId !== user.id) throw new Error("User mismatch");
     if (credits <= 0) throw new Error("Invalid credits amount");
 
+    // ── IDEMPOTENCY CHECK ──
+    // Check if credits were already granted for this Stripe session (by webhook or prior verify call)
+    const { data: existingLog } = await supabaseAdmin
+      .from("credits_log")
+      .select("id")
+      .eq("user_id", userId)
+      .like("reason", `%${sessionId}%`)
+      .limit(1);
+
+    if (existingLog && existingLog.length > 0) {
+      console.log(`[verify-payment] Credits already granted for session ${sessionId}, skipping.`);
+      return new Response(JSON.stringify({ success: true, credits, alreadyGranted: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Add credits using service role (bypasses RLS)
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -65,14 +82,16 @@ serve(async (req) => {
       .update({ credits: profile.credits + credits })
       .eq("id", userId);
 
-    // Log the credit addition
+    // Log the credit addition — include sessionId for idempotency
     await supabaseAdmin
       .from("credits_log")
       .insert({
         user_id: userId,
         amount: credits,
-        reason: `Purchased ${credits} credits via Stripe`,
+        reason: `Purchased ${credits} credits via Stripe (session: ${sessionId})`,
       });
+
+    console.log(`[verify-payment] Granted ${credits} credits to ${userId} for session ${sessionId}`);
 
     return new Response(JSON.stringify({ success: true, credits }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
