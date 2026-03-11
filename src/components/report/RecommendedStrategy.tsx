@@ -58,7 +58,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground italic">Data unavailable</p>
+            <p className="text-sm text-muted-foreground italic">Insufficient data</p>
           )}
         </div>
 
