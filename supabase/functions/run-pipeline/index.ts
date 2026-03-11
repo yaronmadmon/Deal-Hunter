@@ -269,58 +269,104 @@ async function twitterInfluencerSignals(
 ): Promise<{ influencers: any[] }> {
   try {
     const limitedUsernames = usernames.slice(0, 3);
-    const influencers: any[] = [];
     const headers = { Authorization: `Bearer ${bearerToken}` };
+    const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
 
-    for (const uname of limitedUsernames) {
-      try {
-        const userRes = await fetch(
-          `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
-          { headers }
-        );
-        if (!userRes.ok) continue;
-        const userData = await userRes.json();
-        const user = userData.data;
-        if (!user) continue;
-
-        const tweetsRes = await fetch(
-          `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
-          { headers }
-        );
-        let nicheTweet = null;
-        if (tweetsRes.ok) {
-          const tweetsData = await tweetsRes.json();
-          const tweets = tweetsData.data || [];
-          const nicheWords = nicheQuery.toLowerCase().split(/\s+/);
-          const matched = tweets.filter((t: any) =>
-            nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+    // Parallelize influencer lookups instead of sequential
+    const results = await Promise.all(
+      limitedUsernames.map(async (uname) => {
+        try {
+          const userRes = await fetch(
+            `https://api.x.com/2/users/by/username/${encodeURIComponent(uname)}?user.fields=public_metrics,description`,
+            { headers }
           );
-          nicheTweet = matched.length > 0
-            ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
-            : tweets[0];
-        }
+          if (!userRes.ok) return null;
+          const userData = await userRes.json();
+          const user = userData.data;
+          if (!user) return null;
 
-        influencers.push({
-          name: user.name,
-          username: user.username,
-          description: user.description || '',
-          followers_count: user.public_metrics?.followers_count || 0,
-          latest_niche_tweet: nicheTweet ? {
-            text: nicheTweet.text,
-            created_at: nicheTweet.created_at,
-            like_count: nicheTweet.public_metrics?.like_count || 0,
-            retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
-            id: nicheTweet.id,
-          } : null,
-        });
-      } catch (e) {
-        console.error(`Influencer lookup error for @${uname}:`, e);
-      }
-    }
-    return { influencers };
+          const tweetsRes = await fetch(
+            `https://api.x.com/2/users/${user.id}/tweets?max_results=10&tweet.fields=created_at,public_metrics`,
+            { headers }
+          );
+          let nicheTweet = null;
+          if (tweetsRes.ok) {
+            const tweetsData = await tweetsRes.json();
+            const tweets = tweetsData.data || [];
+            const matched = tweets.filter((t: any) =>
+              nicheWords.some((w: string) => t.text.toLowerCase().includes(w))
+            );
+            nicheTweet = matched.length > 0
+              ? matched.sort((a: any, b: any) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0))[0]
+              : tweets[0];
+          }
+
+          return {
+            name: user.name,
+            username: user.username,
+            description: user.description || '',
+            followers_count: user.public_metrics?.followers_count || 0,
+            latest_niche_tweet: nicheTweet ? {
+              text: nicheTweet.text,
+              created_at: nicheTweet.created_at,
+              like_count: nicheTweet.public_metrics?.like_count || 0,
+              retweet_count: nicheTweet.public_metrics?.retweet_count || 0,
+              id: nicheTweet.id,
+            } : null,
+          };
+        } catch (e) {
+          console.error(`Influencer lookup error for @${uname}:`, e);
+          return null;
+        }
+      })
+    );
+
+    return { influencers: results.filter(Boolean) as any[] };
   } catch (e) {
     console.error("Twitter influencer signals error:", e);
     return { influencers: [] };
+  }
+}
+
+// ── Hacker News helper ──────────────────────────────────────────────
+async function hackerNewsSearch(
+  query: string,
+  limit = 10
+): Promise<{ hits: any[] }> {
+  try {
+    const res = await fetch(
+      `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=${limit}`
+    );
+    if (!res.ok) return { hits: [] };
+    const data = await res.json();
+    return {
+      hits: (data.hits || []).map((h: any) => ({
+        title: h.title,
+        url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+        points: h.points || 0,
+        comments: h.num_comments || 0,
+        author: h.author,
+        createdAt: h.created_at,
+        hnUrl: `https://news.ycombinator.com/item?id=${h.objectID}`,
+      })),
+    };
+  } catch (e) {
+    console.error("Hacker News search error:", e);
+    return { hits: [] };
+  }
+}
+
+// ── Retry wrapper ───────────────────────────────────────────────────
+async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (retries > 0) {
+      console.warn(`Retrying after ${delayMs}ms...`);
+      await new Promise(r => setTimeout(r, delayMs));
+      return withRetry(fn, retries - 1, delayMs);
+    }
+    throw e;
   }
 }
 
