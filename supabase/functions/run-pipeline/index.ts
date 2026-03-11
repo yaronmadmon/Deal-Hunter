@@ -1339,6 +1339,17 @@ CRITICAL REMINDERS:
       console.error("AI gateway error:", aiResponse.status, errText);
     }
 
+    // ── Inject pipeline metrics into report for debugging ──
+    if (reportData) {
+      reportData.pipelineMetrics = {
+        totalFetchDurationMs,
+        totalSignals,
+        failedSources,
+        sources: pipelineMetrics,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
     // ── Step 3: Complete ──
     await supabase.from("analyses").update({
       status: "complete",
