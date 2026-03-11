@@ -2490,6 +2490,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             sources: c.sources,
           })),
         },
+        evidenceLock: {
+          coverage: evidenceCoverage,
+          confidences: evidenceConfidences,
+          totalEvidence,
+        },
         timestamp: new Date().toISOString(),
       };
     }
