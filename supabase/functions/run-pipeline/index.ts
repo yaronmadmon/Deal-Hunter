@@ -469,45 +469,70 @@ Deno.serve(async (req) => {
       sources: [],
     };
 
+    // ── Pipeline metrics tracker ──
+    const pipelineMetrics: Record<string, { status: string; durationMs: number; signalCount: number; error?: string }> = {};
+
+    async function trackSource(name: string, fn: () => Promise<number>): Promise<void> {
+      const start = Date.now();
+      try {
+        const signalCount = await fn();
+        pipelineMetrics[name] = { status: "ok", durationMs: Date.now() - start, signalCount };
+      } catch (e: any) {
+        pipelineMetrics[name] = { status: "error", durationMs: Date.now() - start, signalCount: 0, error: e?.message || String(e) };
+        console.error(`[PIPELINE] ${name} error:`, e);
+      }
+    }
+
     // Run Perplexity searches in parallel
     const perplexityPromises: Promise<void>[] = [];
 
     if (perplexityKey) {
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What are the current search trends and growth data for "${idea}"? Include Google Trends data, YoY search volume changes, trending keywords, and social media discussion volume. Provide specific numbers and percentages.`, { recency: "month" })
-          .then(r => { rawData.perplexityTrends = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity trends error:", e))
+        trackSource("perplexity_trends", async () => {
+          const r = await perplexitySearch(perplexityKey, `What are the current search trends and growth data for "${idea}"? Include Google Trends data, YoY search volume changes, trending keywords, and social media discussion volume. Provide specific numbers and percentages.`, { recency: "month" });
+          rawData.perplexityTrends = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
       );
 
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `Market analysis for "${idea}": How many competitors exist? What is the market saturation? Who are the top 5 competitors by market share? What are their ratings, review counts, and approximate downloads on app stores? What are their main weaknesses according to user reviews?`)
-          .then(r => { rawData.perplexityMarket = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity market error:", e))
+        trackSource("perplexity_market", async () => {
+          const r = await perplexitySearch(perplexityKey, `Market analysis for "${idea}": How many competitors exist? What is the market saturation? Who are the top 5 competitors by market share? What are their ratings, review counts, and approximate downloads on app stores? What are their main weaknesses according to user reviews?`);
+          rawData.perplexityMarket = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
       );
 
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What is the recent VC funding and investment activity in the "${idea}" space? Include total funding amounts, notable rounds, number of startups, and any accelerator activity (YC, etc). Provide specific dollar amounts and dates.`, { recency: "year" })
-          .then(r => { rawData.perplexityVC = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity VC error:", e))
+        trackSource("perplexity_vc", async () => {
+          const r = await perplexitySearch(perplexityKey, `What is the recent VC funding and investment activity in the "${idea}" space? Include total funding amounts, notable rounds, number of startups, and any accelerator activity (YC, etc). Provide specific dollar amounts and dates.`, { recency: "year" });
+          rawData.perplexityVC = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
       );
 
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What is the typical revenue and pricing for apps/products in the "${idea}" category? Include MRR ranges, pricing tiers, conversion rates, and revenue benchmarks for apps with 10K+ users. Provide specific dollar amounts.`)
-          .then(r => { rawData.perplexityRevenue = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity revenue error:", e))
-      );
-
-      // Niche-specific: churn rates, ARPU, and build complexity data — dynamic based on idea
-      perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What are the monthly subscription churn rates for apps and products in the "${idea}" category? Include specific churn percentages, retention data, and average revenue per user (ARPU) for subscription-based products in this space.`, { recency: "year" })
-          .then(r => { rawData.perplexityChurn = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity churn error:", e))
+        trackSource("perplexity_revenue", async () => {
+          const r = await perplexitySearch(perplexityKey, `What is the typical revenue and pricing for apps/products in the "${idea}" category? Include MRR ranges, pricing tiers, conversion rates, and revenue benchmarks for apps with 10K+ users. Provide specific dollar amounts.`);
+          rawData.perplexityRevenue = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
       );
 
       perplexityPromises.push(
-        perplexitySearch(perplexityKey, `What are the typical technology costs and infrastructure requirements to build a product like "${idea}"? Include API costs, hosting costs, third-party service pricing, and any specialized technology needed. What are the main technical challenges and cost drivers?`)
-          .then(r => { rawData.perplexityBuildCosts = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" }))); })
-          .catch(e => console.error("Perplexity build costs error:", e))
+        trackSource("perplexity_churn", async () => {
+          const r = await perplexitySearch(perplexityKey, `What are the monthly subscription churn rates for apps and products in the "${idea}" category? Include specific churn percentages, retention data, and average revenue per user (ARPU) for subscription-based products in this space.`, { recency: "year" });
+          rawData.perplexityChurn = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
+      );
+
+      perplexityPromises.push(
+        trackSource("perplexity_build_costs", async () => {
+          const r = await perplexitySearch(perplexityKey, `What are the typical technology costs and infrastructure requirements to build a product like "${idea}"? Include API costs, hosting costs, third-party service pricing, and any specialized technology needed. What are the main technical challenges and cost drivers?`);
+          rawData.perplexityBuildCosts = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+          return r.citations.length;
+        })
       );
     }
 
@@ -516,15 +541,19 @@ Deno.serve(async (req) => {
 
     if (firecrawlKey) {
       firecrawlPromises.push(
-        firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5)
-          .then(r => { rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" }))); })
-          .catch(e => console.error("Firecrawl app store error:", e))
+        trackSource("firecrawl_appstore", async () => {
+          const r = await firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5);
+          rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
+          return r.results.length;
+        })
       );
 
       firecrawlPromises.push(
-        firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5)
-          .then(r => { rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" }))); })
-          .catch(e => console.error("Firecrawl reddit error:", e))
+        trackSource("firecrawl_reddit", async () => {
+          const r = await firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5);
+          rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
+          return r.results.length;
+        })
       );
     }
 
@@ -532,51 +561,44 @@ Deno.serve(async (req) => {
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Google search for trends & search volume data
       serperPromises.push(
-        serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10)
-          .then(r => {
-            rawData.serperTrends = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper trends error:", e))
+        trackSource("serper_trends", async () => {
+          const r = await serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10);
+          rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Monthly search interest trend data - search for monthly mentions over the past year
       serperPromises.push(
-        serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10)
-          .then(r => {
-            rawData.serperTrendsMonthly = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper monthly trends error:", e))
+        trackSource("serper_trends_monthly", async () => {
+          const r = await serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10);
+          rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // News coverage timeline - shows real temporal interest
       serperPromises.push(
-        serperSearch(serperKey, `${idea}`, "news", 10)
-          .then(r => {
-            rawData.serperNews = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper news error:", e))
+        trackSource("serper_news", async () => {
+          const r = await serperSearch(serperKey, `${idea}`, "news", 10);
+          rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Reddit fallback via Serper site:reddit.com search
       serperPromises.push(
-        serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10)
-          .then(r => {
-            rawData.serperReddit = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper reddit error:", e))
+        trackSource("serper_reddit", async () => {
+          const r = await serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10);
+          rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Autocomplete for trending keyword suggestions
       serperPromises.push(
-        serperAutoComplete(serperKey, idea)
-          .then(r => { rawData.serperAutoComplete = r; })
-          .catch(e => console.error("Serper autocomplete error:", e))
+        trackSource("serper_autocomplete", async () => {
+          const r = await serperAutoComplete(serperKey, idea);
+          rawData.serperAutoComplete = r;
+          return r.suggestions.length;
+        })
       );
     }
 
@@ -584,10 +606,8 @@ Deno.serve(async (req) => {
     const productHuntPromises: Promise<void>[] = [];
 
     if (productHuntKey) {
-      // Extract 2-3 core keywords from the idea
       const ideaWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
       const coreKeywords = ideaWords.slice(0, 3);
-      // Run multiple keyword combos and deduplicate
       const phSearches = [
         coreKeywords.join(" "),
         coreKeywords.slice(0, 2).join(" "),
@@ -598,16 +618,13 @@ Deno.serve(async (req) => {
       for (const kw of phSearches) {
         productHuntPromises.push(
           productHuntSearch(productHuntKey, kw, 5)
-            .then(r => {
-              phResults.push(...r.products);
-            })
+            .then(r => { phResults.push(...r.products); })
             .catch(e => console.error("Product Hunt error:", e))
         );
       }
-      // Merge after all resolve
       productHuntPromises.push(
-        Promise.all(productHuntPromises.slice()).then(() => {
-          // Deduplicate by name
+        trackSource("producthunt", async () => {
+          await Promise.all(productHuntPromises.slice(0, -1));
           const seen = new Set<string>();
           const unique = phResults.filter(p => {
             if (seen.has(p.name)) return false;
@@ -616,6 +633,7 @@ Deno.serve(async (req) => {
           }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
           rawData.productHunt = { products: unique };
           rawData.sources.push(...unique.map((p: any) => ({ url: p.url, type: "producthunt" })));
+          return unique.length;
         })
       );
     }
@@ -634,14 +652,13 @@ Deno.serve(async (req) => {
     for (const kw of ghSearches) {
       githubPromises.push(
         githubSearch(kw, 5)
-          .then(r => {
-            ghResults.push(...r.repos);
-          })
+          .then(r => { ghResults.push(...r.repos); })
           .catch(e => console.error("GitHub error:", e))
       );
     }
     githubPromises.push(
-      Promise.all(githubPromises.slice()).then(() => {
+      trackSource("github", async () => {
+        await Promise.all(githubPromises.slice(0, -1));
         const seen = new Set<string>();
         const unique = ghResults.filter(r => {
           if (seen.has(r.name)) return false;
@@ -650,6 +667,7 @@ Deno.serve(async (req) => {
         }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 10);
         rawData.github = { repos: unique };
         rawData.sources.push(...unique.map((repo: any) => ({ url: repo.url, type: "github" })));
+        return unique.length;
       })
     );
 
@@ -658,33 +676,33 @@ Deno.serve(async (req) => {
     if (twitterBearerToken) {
       const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
       
-      // Sentiment search — top engaged tweets about the niche
       twitterPromises.push(
-        twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50)
-          .then(r => {
-            rawData.twitterSentiment = r;
-            rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
-          })
-          .catch(e => console.error("Twitter sentiment error:", e))
+        trackSource("twitter_sentiment", async () => {
+          const r = await twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50);
+          rawData.twitterSentiment = r;
+          rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
+          return r.tweets.length;
+        })
       );
       
-      // Tweet volume counts over 7 days
       twitterPromises.push(
-        twitterTweetCounts(twitterBearerToken, twitterKeyword)
-          .then(r => { rawData.twitterCounts = r; })
-          .catch(e => console.error("Twitter counts error:", e))
+        trackSource("twitter_counts", async () => {
+          const r = await twitterTweetCounts(twitterBearerToken, twitterKeyword);
+          rawData.twitterCounts = r;
+          return r.total_count;
+        })
       );
 
-      // Influencer / founder signals — AI will provide usernames from competitor data
-      // For now, we pass the niche query so the AI prompt can instruct including influencer data
       rawData.twitterInfluencerNicheQuery = twitterKeyword;
     }
 
+    const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
+    const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
     if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
-      try {
+      await trackSource("twitter_influencers", async () => {
         const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
@@ -698,24 +716,29 @@ Deno.serve(async (req) => {
             max_tokens: 200,
           }),
         });
-        if (extractRes.ok) {
-          const extractData = await extractRes.json();
-          const content = extractData.choices?.[0]?.message?.content || "[]";
-          const jsonMatch = content.match(/\[[\s\S]*?\]/);
-          if (jsonMatch) {
-            const usernames: string[] = JSON.parse(jsonMatch[0]);
-            if (usernames.length > 0) {
-              const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
-              const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
-              rawData.twitterInfluencers = influencerResult;
-              rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
-            }
+        if (!extractRes.ok) return 0;
+        const extractData = await extractRes.json();
+        const content = extractData.choices?.[0]?.message?.content || "[]";
+        const jsonMatch = content.match(/\[[\s\S]*?\]/);
+        if (jsonMatch) {
+          const usernames: string[] = JSON.parse(jsonMatch[0]);
+          if (usernames.length > 0) {
+            const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
+            const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
+            rawData.twitterInfluencers = influencerResult;
+            rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
+            return influencerResult.influencers.length;
           }
         }
-      } catch (e) {
-        console.error("Influencer extraction error:", e);
-      }
+        return 0;
+      });
     }
+
+    // Log pipeline metrics summary
+    const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
+    const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
+    console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
+    console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
@@ -1314,6 +1337,17 @@ CRITICAL REMINDERS:
     } else {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
+    }
+
+    // ── Inject pipeline metrics into report for debugging ──
+    if (reportData) {
+      reportData.pipelineMetrics = {
+        totalFetchDurationMs,
+        totalSignals,
+        failedSources,
+        sources: pipelineMetrics,
+        timestamp: new Date().toISOString(),
+      };
     }
 
     // ── Step 3: Complete ──
