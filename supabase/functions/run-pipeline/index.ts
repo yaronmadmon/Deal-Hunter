@@ -541,15 +541,19 @@ Deno.serve(async (req) => {
 
     if (firecrawlKey) {
       firecrawlPromises.push(
-        firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5)
-          .then(r => { rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" }))); })
-          .catch(e => console.error("Firecrawl app store error:", e))
+        trackSource("firecrawl_appstore", async () => {
+          const r = await firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5);
+          rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
+          return r.results.length;
+        })
       );
 
       firecrawlPromises.push(
-        firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5)
-          .then(r => { rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" }))); })
-          .catch(e => console.error("Firecrawl reddit error:", e))
+        trackSource("firecrawl_reddit", async () => {
+          const r = await firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5);
+          rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
+          return r.results.length;
+        })
       );
     }
 
@@ -557,51 +561,44 @@ Deno.serve(async (req) => {
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Google search for trends & search volume data
       serperPromises.push(
-        serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10)
-          .then(r => {
-            rawData.serperTrends = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper trends error:", e))
+        trackSource("serper_trends", async () => {
+          const r = await serperSearch(serperKey, `"${idea}" Google Trends search volume growth 2025 2026`, "search", 10);
+          rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Monthly search interest trend data - search for monthly mentions over the past year
       serperPromises.push(
-        serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10)
-          .then(r => {
-            rawData.serperTrendsMonthly = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper monthly trends error:", e))
+        trackSource("serper_trends_monthly", async () => {
+          const r = await serperSearch(serperKey, `"${idea}" trend interest popularity month over month 2025 2026`, "search", 10);
+          rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // News coverage timeline - shows real temporal interest
       serperPromises.push(
-        serperSearch(serperKey, `${idea}`, "news", 10)
-          .then(r => {
-            rawData.serperNews = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper news error:", e))
+        trackSource("serper_news", async () => {
+          const r = await serperSearch(serperKey, `${idea}`, "news", 10);
+          rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Reddit fallback via Serper site:reddit.com search
       serperPromises.push(
-        serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10)
-          .then(r => {
-            rawData.serperReddit = r;
-            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          })
-          .catch(e => console.error("Serper reddit error:", e))
+        trackSource("serper_reddit", async () => {
+          const r = await serperSearch(serperKey, `${idea} site:reddit.com reviews opinions`, "search", 10);
+          rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
       );
 
-      // Autocomplete for trending keyword suggestions
       serperPromises.push(
-        serperAutoComplete(serperKey, idea)
-          .then(r => { rawData.serperAutoComplete = r; })
-          .catch(e => console.error("Serper autocomplete error:", e))
+        trackSource("serper_autocomplete", async () => {
+          const r = await serperAutoComplete(serperKey, idea);
+          rawData.serperAutoComplete = r;
+          return r.suggestions.length;
+        })
       );
     }
 
@@ -609,10 +606,8 @@ Deno.serve(async (req) => {
     const productHuntPromises: Promise<void>[] = [];
 
     if (productHuntKey) {
-      // Extract 2-3 core keywords from the idea
       const ideaWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
       const coreKeywords = ideaWords.slice(0, 3);
-      // Run multiple keyword combos and deduplicate
       const phSearches = [
         coreKeywords.join(" "),
         coreKeywords.slice(0, 2).join(" "),
@@ -623,16 +618,13 @@ Deno.serve(async (req) => {
       for (const kw of phSearches) {
         productHuntPromises.push(
           productHuntSearch(productHuntKey, kw, 5)
-            .then(r => {
-              phResults.push(...r.products);
-            })
+            .then(r => { phResults.push(...r.products); })
             .catch(e => console.error("Product Hunt error:", e))
         );
       }
-      // Merge after all resolve
       productHuntPromises.push(
-        Promise.all(productHuntPromises.slice()).then(() => {
-          // Deduplicate by name
+        trackSource("producthunt", async () => {
+          await Promise.all(productHuntPromises.slice(0, -1));
           const seen = new Set<string>();
           const unique = phResults.filter(p => {
             if (seen.has(p.name)) return false;
@@ -641,6 +633,7 @@ Deno.serve(async (req) => {
           }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
           rawData.productHunt = { products: unique };
           rawData.sources.push(...unique.map((p: any) => ({ url: p.url, type: "producthunt" })));
+          return unique.length;
         })
       );
     }
@@ -659,14 +652,13 @@ Deno.serve(async (req) => {
     for (const kw of ghSearches) {
       githubPromises.push(
         githubSearch(kw, 5)
-          .then(r => {
-            ghResults.push(...r.repos);
-          })
+          .then(r => { ghResults.push(...r.repos); })
           .catch(e => console.error("GitHub error:", e))
       );
     }
     githubPromises.push(
-      Promise.all(githubPromises.slice()).then(() => {
+      trackSource("github", async () => {
+        await Promise.all(githubPromises.slice(0, -1));
         const seen = new Set<string>();
         const unique = ghResults.filter(r => {
           if (seen.has(r.name)) return false;
@@ -675,6 +667,7 @@ Deno.serve(async (req) => {
         }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 10);
         rawData.github = { repos: unique };
         rawData.sources.push(...unique.map((repo: any) => ({ url: repo.url, type: "github" })));
+        return unique.length;
       })
     );
 
@@ -683,25 +676,23 @@ Deno.serve(async (req) => {
     if (twitterBearerToken) {
       const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
       
-      // Sentiment search — top engaged tweets about the niche
       twitterPromises.push(
-        twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50)
-          .then(r => {
-            rawData.twitterSentiment = r;
-            rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
-          })
-          .catch(e => console.error("Twitter sentiment error:", e))
+        trackSource("twitter_sentiment", async () => {
+          const r = await twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50);
+          rawData.twitterSentiment = r;
+          rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
+          return r.tweets.length;
+        })
       );
       
-      // Tweet volume counts over 7 days
       twitterPromises.push(
-        twitterTweetCounts(twitterBearerToken, twitterKeyword)
-          .then(r => { rawData.twitterCounts = r; })
-          .catch(e => console.error("Twitter counts error:", e))
+        trackSource("twitter_counts", async () => {
+          const r = await twitterTweetCounts(twitterBearerToken, twitterKeyword);
+          rawData.twitterCounts = r;
+          return r.total_count;
+        })
       );
 
-      // Influencer / founder signals — AI will provide usernames from competitor data
-      // For now, we pass the niche query so the AI prompt can instruct including influencer data
       rawData.twitterInfluencerNicheQuery = twitterKeyword;
     }
 
