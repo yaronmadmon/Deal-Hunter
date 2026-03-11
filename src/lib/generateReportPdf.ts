@@ -793,10 +793,10 @@ export function generateReportPdf(report: MockReportData) {
     doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
     doc.setFontSize(6); doc.setFont("helvetica", "bold"); setColor(C.muted);
     doc.text("Feature", m + 2, y + 3);
-    cm.competitors.forEach((comp, i) => {
+      cm.competitors.forEach((comp, i) => {
       const cx = m + fColW + colW * i + colW / 2;
       setColor(comp.isYou ? C.indigo : C.muted);
-      doc.text(comp.name, cx, y + 3, { align: "center" });
+      doc.text(safePdfText(comp.name), cx, y + 3, { align: "center" });
     });
     y += 8;
 
@@ -805,7 +805,7 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(6);
       if (fi % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
-      doc.text(doc.splitTextToSize(feature, fColW - 4)[0], m + 2, y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(feature), fColW - 4)[0], m + 2, y + 1);
       cm.competitors.forEach((comp, ci) => {
         const val = comp.scores[feature] || "—";
         const cx = m + fColW + colW * ci + colW / 2;
