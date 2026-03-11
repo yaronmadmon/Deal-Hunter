@@ -1524,18 +1524,24 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
 
---- DEDICATED COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries) ---
+--- VALIDATED COMPETITORS (normalized, deduplicated, verified as real products) ---
+${rawData.validatedCompetitors?.length > 0
+  ? `${rawData.validatedCompetitors.length} validated competitors found:\n${rawData.validatedCompetitors.map((c: any) => `Name: ${c.name}\nEvidence Type: ${c.evidenceType}\nValidation Score: ${c.validationScore}/5\nConfidence: ${c.confidenceScore}\nSources: ${c.sources.join(", ")}\nRating: ${c.rating || "N/A"}\nDownloads: ${c.downloads || "N/A"}\nURL: ${c.url || "N/A"}\nDescription: ${c.description || "N/A"}`).join("\n---\n")}`
+  : "No validated competitors found — this strongly suggests a very new or niche market"}
+IMPORTANT: Use this VALIDATED competitor list as the primary source for competitor counts and competitor analysis. These are deduplicated, verified real products. Do NOT report 0 competitors if this list contains entries.
+
+--- RAW COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries, pre-validation) ---
 ${rawData.serperCompetitors?.allResults?.length > 0
-  ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
-  : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
-IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
+  ? `${rawData.serperCompetitors.allResults.length} raw competitor search results (before validation):\n${rawData.serperCompetitors.allResults.slice(0, 10).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n")}`
+  : "No competitor discovery results found"}
 
 --- PERPLEXITY COMPETITOR LIST (from Perplexity Sonar — dedicated competitor query) ---
 ${rawData.perplexityCompetitors ? rawData.perplexityCompetitors.content : "No Perplexity competitor data available"}
 Citations: ${rawData.perplexityCompetitors?.citations?.join(", ") || "none"}
-IMPORTANT: Cross-reference this list with Serper competitor discovery above. Competitors appearing in BOTH sources are high-confidence.
+IMPORTANT: Cross-reference this list with the VALIDATED competitors above. Competitors appearing in BOTH sources are high-confidence.
 
 ${rawData.relevanceFilterApplied ? `[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, Product Hunt, and competitor results before this analysis.` : ""}
+[COMPETITOR PIPELINE] Raw: ${rawData.rawCompetitors?.length ?? 0} → Normalized: ${rawData.normalizedCompetitors?.length ?? 0} → Validated: ${rawData.validatedCompetitors?.length ?? 0}
 
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
