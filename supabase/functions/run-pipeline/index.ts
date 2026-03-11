@@ -867,6 +867,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Data sufficiency check ──
+    const sourcesWithData = Object.values(pipelineMetrics).filter(m => m.status === "ok" && m.signalCount > 0).length;
+    if (sourcesWithData < 2) {
+      console.warn(`[DATA SUFFICIENCY] Only ${sourcesWithData} sources returned data. Skipping AI — insufficient data.`);
+      await supabase.from("analyses").update({
+        status: "failed",
+        report_data: {
+          error: "insufficient_data",
+          message: "Too few data sources returned results to produce a reliable analysis. Try a different idea or rephrase your concept.",
+          pipelineMetrics: { totalFetchDurationMs, totalSignals, failedSources, sources: pipelineMetrics, timestamp: new Date().toISOString() },
+        },
+        updated_at: new Date().toISOString(),
+      }).eq("id", analysisId);
+      return new Response(JSON.stringify({ error: "Insufficient data to analyze" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
