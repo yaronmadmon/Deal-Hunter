@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
+import { sanitizeForPdf } from "./pdfSanitize";
 
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
