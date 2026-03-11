@@ -221,6 +221,9 @@ const Report = () => {
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
 
+        {/* Evidence Strength — tier-ranked signals */}
+        <EvidenceStrength proofDashboard={r.proofDashboard} />
+
         {/* Keyword Demand */}
         {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
 
