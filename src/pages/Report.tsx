@@ -27,6 +27,7 @@ import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
+import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
