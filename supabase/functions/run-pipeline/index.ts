@@ -800,11 +800,11 @@ ${rawData.twitterInfluencers?.influencers?.length > 0
   : "No influencer/founder signals found — no relevant X accounts identified"}
 Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
 
---- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — fitness app retention data) ---
+--- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — category-specific retention data) ---
 ${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
 
---- BUILD COMPLEXITY & VOICE API COSTS (from Perplexity Sonar — technical feasibility data) ---
+--- BUILD COMPLEXITY & TECHNOLOGY COSTS (from Perplexity Sonar — technical feasibility data) ---
 ${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
 `;
@@ -1118,7 +1118,95 @@ CRITICAL REMINDERS:
         if (reportData.methodology) {
           reportData.methodology.analysisDate = new Date().toISOString().split('T')[0];
         }
-        overallScore = reportData.overallScore || 65;
+
+        // ══════════════════════════════════════════════════════════════
+        // DETERMINISTIC POST-AI VALIDATION
+        // These checks enforce scoring rules in CODE, not just the prompt.
+        // ══════════════════════════════════════════════════════════════
+
+        // 1. Enforce overallScore = sum of scoreBreakdown values
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown) && reportData.scoreBreakdown.length === 5) {
+          const computedSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
+          if (reportData.overallScore !== computedSum) {
+            console.warn(`[SCORE VALIDATION] overallScore mismatch: AI returned ${reportData.overallScore}, computed sum is ${computedSum}. Correcting.`);
+            reportData.overallScore = computedSum;
+          }
+        }
+
+        // 2. Enforce verdict thresholds deterministically
+        const finalScore = reportData.overallScore || 0;
+        const correctVerdict = finalScore >= 75 ? "Build Now"
+          : finalScore >= 55 ? "Build, But Niche Down"
+          : finalScore >= 40 ? "Validate Further"
+          : "Do Not Build Yet";
+
+        if (reportData.founderDecision) {
+          if (reportData.founderDecision.decision !== correctVerdict) {
+            console.warn(`[VERDICT VALIDATION] AI verdict "${reportData.founderDecision.decision}" doesn't match score ${finalScore}. Correcting to "${correctVerdict}".`);
+            reportData.founderDecision.decision = correctVerdict;
+          }
+        }
+
+        // Also enforce signalStrength consistency
+        const correctSignalStrength = finalScore >= 70 ? "Strong" : finalScore >= 45 ? "Moderate" : "Weak";
+        if (reportData.signalStrength !== correctSignalStrength) {
+          console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctSignalStrength}".`);
+          reportData.signalStrength = correctSignalStrength;
+        }
+
+        // 3. Demand Override Rule — code-level enforcement
+        // If BOTH search demand AND user pain signals are weak (<5 signals combined),
+        // cap Opportunity at 10/20
+        const countDemandSignals = (): number => {
+          let count = 0;
+          // Tier 1 search signals: Serper results
+          count += rawData.serperTrends?.organic?.length ?? 0;
+          count += rawData.serperAutoComplete?.suggestions?.length ?? 0;
+          // Tier 1: App Store results
+          count += rawData.firecrawlAppStore?.results?.length ?? 0;
+          return count;
+        };
+
+        const countPainSignals = (): number => {
+          let count = 0;
+          // Tier 1: Reddit scrapes
+          count += rawData.firecrawlReddit?.results?.length ?? 0;
+          // Tier 2: Reddit via Serper
+          count += rawData.serperReddit?.organic?.length ?? 0;
+          // Tier 2: Twitter complaints
+          count += rawData.twitterSentiment?.tweets?.length ?? 0;
+          return count;
+        };
+
+        const demandSignalCount = countDemandSignals();
+        const painSignalCount = countPainSignals();
+        const totalDemandAndPain = demandSignalCount + painSignalCount;
+
+        if (totalDemandAndPain < 5) {
+          const opportunityEntry = reportData.scoreBreakdown?.find((b: any) => b.label === "Opportunity");
+          if (opportunityEntry && Number(opportunityEntry.value) > 10) {
+            console.warn(`[DEMAND OVERRIDE] Only ${totalDemandAndPain} demand+pain signals (${demandSignalCount} demand, ${painSignalCount} pain). Capping Opportunity from ${opportunityEntry.value} to 10.`);
+            const reduction = Number(opportunityEntry.value) - 10;
+            opportunityEntry.value = 10;
+            reportData.overallScore = (reportData.overallScore || 0) - reduction;
+
+            // Re-apply verdict after score adjustment
+            const adjustedScore = reportData.overallScore;
+            const adjustedVerdict = adjustedScore >= 75 ? "Build Now"
+              : adjustedScore >= 55 ? "Build, But Niche Down"
+              : adjustedScore >= 40 ? "Validate Further"
+              : "Do Not Build Yet";
+            if (reportData.founderDecision) {
+              reportData.founderDecision.decision = adjustedVerdict;
+            }
+            reportData.signalStrength = adjustedScore >= 70 ? "Strong" : adjustedScore >= 45 ? "Moderate" : "Weak";
+          }
+        }
+
+        // Log validation summary
+        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
+
+        overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
 
         // ── Fill missing sections with safe defaults so UI always renders ──
