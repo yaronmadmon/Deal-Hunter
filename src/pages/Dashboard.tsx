@@ -202,6 +202,21 @@ const Dashboard = () => {
       <AppNav credits={credits} onSignOut={() => { signOut(); navigate("/"); }} />
 
       <main className="max-w-3xl mx-auto px-6 py-10">
+        {/* Subscription success banner */}
+        {subscriptionSuccess && (
+          <div className="mb-6 rounded-xl border border-success/30 bg-success/10 p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center text-xl">🎉</div>
+            <div className="flex-1">
+              <p className="text-foreground font-semibold">Subscription Activated!</p>
+              <p className="text-muted-foreground text-sm">
+                Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active.
+                {subscription.tier !== "free" && " 3 bonus credits have been added to your account."}
+              </p>
+            </div>
+            <button onClick={() => setSubscriptionSuccess(false)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
+          </div>
+        )}
+
         <h1 className="font-heading text-3xl font-bold text-foreground mb-2">Validate an Idea</h1>
         <p className="text-muted-foreground mb-8">Describe your startup idea and we'll analyze real market data.</p>
 

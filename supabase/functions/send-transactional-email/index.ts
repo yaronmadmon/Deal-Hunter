@@ -69,6 +69,31 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
       </div>
     `,
   }),
+  subscription_activated: (data) => ({
+    subject: `Your ${data?.plan || 'Gold Rush'} Plan is Active! 🎉`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff;">
+        <h1 style="color: #1a1a1a; font-size: 24px;">Welcome to ${data?.plan || 'Gold Rush'} Plan! 🎉</h1>
+        <p style="color: #555; font-size: 16px; line-height: 1.6;">
+          Your subscription is now active. Here's what you get:
+        </p>
+        <ul style="color: #555; font-size: 16px; line-height: 1.8;">
+          ${data?.plan === 'Agency' ? '<li>Unlimited reports</li><li>3 team seats</li><li>White label PDF</li><li>Bulk analysis</li><li>Gold Rush Live access</li>' : ''}
+          ${data?.plan === 'Pro' ? '<li>Unlimited reports</li><li>Gold Rush Live access</li><li>Idea tracking</li><li>GitHub trending signals</li>' : ''}
+          ${data?.plan === 'Starter' ? '<li>10 credits per month</li><li>Full 6-card reports</li><li>Blueprint included</li><li>Clean PDF download</li>' : ''}
+        </ul>
+        ${data?.bonusCredits ? `<p style="color: #555; font-size: 16px; line-height: 1.6;">🎁 We've added <strong>${data.bonusCredits} bonus credits</strong> to get you started!</p>` : ''}
+        <p style="color: #555; font-size: 16px; line-height: 1.6;">
+          Your plan renews on <strong>${data?.renewDate || 'next month'}</strong>.
+        </p>
+        <a href="${data?.appUrl || 'https://goldrush.app'}/dashboard" 
+           style="display: inline-block; background: #d4af37; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px;">
+          Start Validating Ideas →
+        </a>
+        <p style="color: #999; font-size: 12px; margin-top: 32px;">Gold Rush — Data-driven idea validation</p>
+      </div>
+    `,
+  }),
 };
 
 Deno.serve(async (req) => {
