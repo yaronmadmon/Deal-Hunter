@@ -704,9 +704,11 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     const firecrawlPromises: Promise<void>[] = [];
 
     if (firecrawlKey) {
+      // Use semantic queries for better app store discovery
+      const firecrawlQuery = semanticQueries.length > 1 ? semanticQueries[0] : sanitizedIdea;
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} app site:apps.apple.com OR site:play.google.com`, 5));
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 5));
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -714,7 +716,8 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
 
       firecrawlPromises.push(
         trackSource("firecrawl_reddit", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} reviews complaints pain points site:reddit.com`, 5));
+          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : sanitizedIdea;
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${redditQuery} reviews complaints pain points site:reddit.com`, 5));
           rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
