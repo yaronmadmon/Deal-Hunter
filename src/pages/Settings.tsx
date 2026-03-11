@@ -72,6 +72,7 @@ const Settings = () => {
 
   // Billing
   const [creditLog, setCreditLog] = useState<CreditLogEntry[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -89,6 +90,9 @@ const Settings = () => {
     supabase.from("credits_log").select("id, amount, reason, created_at").eq("user_id", user.id)
       .order("created_at", { ascending: false }).limit(20)
       .then(({ data }) => { if (data) setCreditLog(data); });
+    supabase.from("subscriptions").select("plan, status, current_period_end").eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setSubscription(data); });
   }, [user]);
 
   const handleSaveProfile = async () => {
