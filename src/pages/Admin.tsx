@@ -6,10 +6,11 @@ import { CreditsManagement } from "@/components/admin/CreditsManagement";
 import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
 import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
+import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame, LayoutDashboard, Bell, Eye } from "lucide-react";
+import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame, LayoutDashboard, Bell, Eye, Activity } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -64,6 +65,10 @@ const AdminPage = () => {
                 <Flame className="h-4 w-4" />
                 <span className="hidden sm:inline">Live Feed</span>
               </TabsTrigger>
+              <TabsTrigger value="pipeline" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                <span className="hidden sm:inline">Pipeline</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -92,6 +97,10 @@ const AdminPage = () => {
 
             <TabsContent value="live-feed">
               <LiveFeedControl />
+            </TabsContent>
+
+            <TabsContent value="pipeline">
+              <PipelineMetricsPanel />
             </TabsContent>
           </Tabs>
         </main>
