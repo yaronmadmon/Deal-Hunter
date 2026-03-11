@@ -182,7 +182,7 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
               content: `Generate a detailed startup blueprint for "${idea}" using this market analysis data:\n\n${JSON.stringify(reportContext, null, 2)}`
             }
           ],
-          temperature: 0.7,
+          temperature: 0.4,
           max_tokens: 5000,
         }),
       });
