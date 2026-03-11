@@ -301,10 +301,24 @@ const Settings = () => {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
                   <div>
-                    <p className="font-heading font-semibold text-foreground">Free Plan</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Basic access with limited credits</p>
+                    <p className="font-heading font-semibold text-foreground">
+                      {subscription?.status === "active"
+                        ? `${(subscription.plan || "Pro").charAt(0).toUpperCase() + (subscription.plan || "pro").slice(1)} Plan`
+                        : "Free Plan"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {subscription?.status === "active" && subscription.current_period_end
+                        ? `Renews ${new Date(subscription.current_period_end).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                        : subscription?.status === "past_due"
+                          ? "Payment past due — please update billing"
+                          : subscription?.status === "canceled"
+                            ? "Canceled — access until period end"
+                            : "Basic access with limited credits"}
+                    </p>
                   </div>
-                  <Badge variant="secondary">Current</Badge>
+                  <Badge variant={subscription?.status === "active" ? "default" : subscription?.status === "past_due" ? "destructive" : "secondary"}>
+                    {subscription?.status === "active" ? "Active" : subscription?.status === "past_due" ? "Past Due" : subscription?.status === "canceled" ? "Canceled" : "Free"}
+                  </Badge>
                 </div>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
                   <Coins className="w-6 h-6 text-primary" />
@@ -314,7 +328,9 @@ const Settings = () => {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <Button onClick={() => navigate("/pricing")}>Upgrade Plan</Button>
+                  {(!subscription || subscription.status !== "active") && (
+                    <Button onClick={() => navigate("/pricing")}>Upgrade Plan</Button>
+                  )}
                   <Button variant="outline" onClick={() => navigate("/buy-credits")}>Buy Credits</Button>
                 </div>
               </CardContent>
