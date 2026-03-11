@@ -71,6 +71,30 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_name: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_name: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_name?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       credits_log: {
         Row: {
           amount: number
@@ -172,6 +196,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          suspended: boolean | null
           updated_at: string
         }
         Insert: {
@@ -180,6 +205,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          suspended?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -188,7 +214,41 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          suspended?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          plan: string | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          plan?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -271,6 +331,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      analyses_count_last_hour: { Args: { _user_id: string }; Returns: number }
       deduct_credit: { Args: { analysis_id?: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
