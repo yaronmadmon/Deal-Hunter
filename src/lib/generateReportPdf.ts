@@ -231,7 +231,7 @@ export function generateReportPdf(report: MockReportData) {
 
       // Weakness (truncated)
       doc.setFontSize(7);
-      const wLines = doc.splitTextToSize(c.weakness, cw - (cols[4] - m));
+      const wLines = doc.splitTextToSize(sanitizeForPdf(c.weakness), cw - (cols[4] - m));
       doc.text(wLines[0] || "", cols[4], y + 1);
       doc.setFontSize(8);
       y += 7;
