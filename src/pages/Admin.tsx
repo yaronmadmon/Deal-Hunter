@@ -98,6 +98,10 @@ const AdminPage = () => {
             <TabsContent value="live-feed">
               <LiveFeedControl />
             </TabsContent>
+
+            <TabsContent value="pipeline">
+              <PipelineMetricsPanel />
+            </TabsContent>
           </Tabs>
         </main>
       </div>
