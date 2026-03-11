@@ -639,7 +639,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Run Serper searches in parallel (Google Trends + Reddit fallback)
+    // Run Serper searches in parallel (Google Trends + Reddit fallback + Competitor Discovery)
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
@@ -685,6 +685,32 @@ Deno.serve(async (req) => {
           return r.suggestions.length;
         })
       );
+
+      // ── PHASE 1 FIX 1: Dedicated Competitor Discovery Queries ──
+      // Run 5 targeted competitor queries to ensure we find real alternatives
+      rawData.serperCompetitors = { allResults: [] as any[] };
+
+      const competitorQueryTemplates = [
+        `${serperKeywords} competitors alternatives`,
+        `apps like ${serperKeywords}`,
+        `${serperKeywords} vs`,
+        `${serperKeywords} alternative`,
+        `${serperKeywords} review comparison`,
+      ];
+
+      for (const cq of competitorQueryTemplates) {
+        serperPromises.push(
+          trackSource(`serper_competitor_${competitorQueryTemplates.indexOf(cq)}`, async () => {
+            const r = await serperSearch(serperKey, cq, "search", 10);
+            rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
+              ...o,
+              _query: cq,
+            })));
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper_competitor" })));
+            return r.organic.length;
+          })
+        );
+      }
     }
 
     // Run Product Hunt search — use broader keyword extraction
