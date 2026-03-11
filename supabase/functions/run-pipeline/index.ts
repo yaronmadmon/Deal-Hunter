@@ -801,17 +801,14 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       }
     }
 
-    // Run Product Hunt search — use broader keyword extraction
+    // Run Product Hunt search — use SEMANTIC keywords
     const productHuntPromises: Promise<void>[] = [];
 
     if (productHuntKey) {
-      const ideaWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
-      const coreKeywords = ideaWords.slice(0, 3);
-      const phSearches = [
-        coreKeywords.join(" "),
-        coreKeywords.slice(0, 2).join(" "),
-        coreKeywords.length > 2 ? `${coreKeywords[0]} ${coreKeywords[2]}` : coreKeywords[0],
-      ].filter((v, i, a) => a.indexOf(v) === i);
+      // Use semantic queries instead of naive word splitting
+      const phSearches = semanticQueries.length >= 3
+        ? semanticQueries.slice(0, 3)
+        : [primaryKeywords, ...(semanticQueries.length > 1 ? [semanticQueries[1]] : [])].filter((v, i, a) => a.indexOf(v) === i);
 
       const phResults: any[] = [];
       for (const kw of phSearches) {
@@ -837,15 +834,11 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       );
     }
 
-    // Run GitHub search — use broader keyword extraction with multiple queries
+    // Run GitHub search — use SEMANTIC keywords
     const githubPromises: Promise<void>[] = [];
-    const ghWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
-    const ghKeywords = ghWords.slice(0, 3);
-    const ghSearches = [
-      ghKeywords.join(" "),
-      ghKeywords.slice(0, 2).join(" "),
-      ghKeywords.length > 2 ? `${ghKeywords[0]} ${ghKeywords[2]}` : ghKeywords[0],
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    const ghSearches = semanticQueries.length >= 3
+      ? semanticQueries.slice(0, 3)
+      : [primaryKeywords];
 
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
@@ -870,11 +863,10 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       })
     );
 
-    // Run Twitter/X searches in parallel
+    // Run Twitter/X searches in parallel — use SEMANTIC keywords
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      // Use broader keyword without quotes for better Twitter coverage
-      const twitterKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+      const twitterKeywords = primaryKeywords;
 
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
@@ -896,17 +888,17 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
-    // Run Hacker News search
+    // Run Hacker News search — use SEMANTIC keywords
     const hnPromises: Promise<void>[] = [];
-    const hnKeywords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(hnKeywords, 10);
+        const r = await hackerNewsSearch(primaryKeywords, 10);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
       })
     );
+
 
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
