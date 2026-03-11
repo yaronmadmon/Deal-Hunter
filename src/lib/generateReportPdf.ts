@@ -310,12 +310,17 @@ export function generateReportPdf(report: MockReportData) {
   drawHRule();
 
   // ── Key Stats Bar ──
-  const statsRow = report.keyStats || [
+  const defaultStats = [
     { value: `${report.overallScore}/100`, label: "Signal Score" },
     { value: `${report.signalCards.reduce((s, c) => s + (c.evidenceCount || 0), 0)}+`, label: "Data Points" },
-    { value: report.revenueBenchmark.range, label: "Revenue Est." },
+    { value: report.revenueBenchmark?.range || "N/A", label: "Revenue Est." },
+    { value: `${report.signalCards.length}`, label: "Sources Analyzed" },
   ];
-  const statW = cw / statsRow.length;
+  const rawStats = report.keyStats && report.keyStats.length > 0 ? report.keyStats : defaultStats;
+  // Ensure exactly 4 stats — pad with defaults if pipeline returned fewer
+  const statsRow = rawStats.length >= 4
+    ? rawStats.slice(0, 4)
+    : [...rawStats, ...defaultStats.slice(rawStats.length)].slice(0, 4);
   doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   statsRow.forEach((stat, i) => {
