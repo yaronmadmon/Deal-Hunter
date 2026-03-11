@@ -76,10 +76,10 @@ export const ProofDashboard = ({ data }: Props) => {
 
         {/* Social Signals */}
         <SignalBlock icon={MessageCircle} title="Social Activity" confidence={data.socialActivity?.confidence}>
-          <MetricRow label="X/Twitter Mentions (7d)" value={data.socialActivity?.twitterMentions || "Data unavailable"} source="X API v2" />
-          <MetricRow label="Reddit Threads" value={data.socialActivity?.redditThreads || "Data unavailable"} source="Serper.dev" />
-          <MetricRow label="Sentiment Score" value={data.socialActivity?.sentimentScore || "Data unavailable"} />
-          <MetricRow label="HN/PH Launches" value={data.socialActivity?.hnPhLaunches || "Data unavailable"} />
+          <MetricRow label="X/Twitter Mentions (7d)" value={data.socialActivity?.twitterMentions || "Insufficient data"} source="X API v2" />
+          <MetricRow label="Reddit Threads" value={data.socialActivity?.redditThreads || "Insufficient data"} source="Serper.dev" />
+          <MetricRow label="Sentiment Score" value={data.socialActivity?.sentimentScore || "Insufficient data"} />
+          <MetricRow label="HN/PH Launches" value={data.socialActivity?.hnPhLaunches || "Insufficient data"} />
         </SignalBlock>
 
         {/* App Store Signals */}
