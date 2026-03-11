@@ -800,11 +800,11 @@ ${rawData.twitterInfluencers?.influencers?.length > 0
   : "No influencer/founder signals found — no relevant X accounts identified"}
 Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
 
---- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — fitness app retention data) ---
+--- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — category-specific retention data) ---
 ${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
 
---- BUILD COMPLEXITY & VOICE API COSTS (from Perplexity Sonar — technical feasibility data) ---
+--- BUILD COMPLEXITY & TECHNOLOGY COSTS (from Perplexity Sonar — technical feasibility data) ---
 ${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
 `;
