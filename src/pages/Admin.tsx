@@ -6,10 +6,11 @@ import { CreditsManagement } from "@/components/admin/CreditsManagement";
 import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
 import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
+import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame, LayoutDashboard, Bell, Eye } from "lucide-react";
+import { ArrowLeft, Shield, Users, FileText, CreditCard, Flame, LayoutDashboard, Bell, Eye, Activity } from "lucide-react";
 
 const AdminPage = () => {
   const navigate = useNavigate();
