@@ -600,7 +600,7 @@ Deno.serve(async (req) => {
     if (firecrawlKey) {
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await firecrawlSearch(firecrawlKey, `${idea} app site:apps.apple.com OR site:play.google.com`, 5);
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} app site:apps.apple.com OR site:play.google.com`, 5));
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -608,7 +608,7 @@ Deno.serve(async (req) => {
 
       firecrawlPromises.push(
         trackSource("firecrawl_reddit", async () => {
-          const r = await firecrawlSearch(firecrawlKey, `${idea} reviews complaints pain points site:reddit.com`, 5);
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} reviews complaints pain points site:reddit.com`, 5));
           rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
