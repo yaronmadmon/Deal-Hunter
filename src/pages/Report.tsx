@@ -80,8 +80,19 @@ const Report = () => {
             signalStrength: (data.signal_strength as MockReportData["signalStrength"]) ?? rd.signalStrength,
             blueprint: data.blueprint_data as unknown as MockReportData["blueprint"] ?? rd.blueprint,
           });
+        } else if (data?.status === "failed") {
+          const reportError = (data.report_data as any)?.error;
+          if (reportError === "insufficient_data") {
+            setReport(null);
+            toast.error((data.report_data as any)?.message || "Insufficient data to analyze this idea.");
+            navigate("/dashboard");
+          } else {
+            setReport(null);
+            toast.error("Analysis failed. Please try again.");
+            navigate("/dashboard");
+          }
         } else {
-          setReport({ ...mockReport, idea: data?.idea ?? mockReport.idea });
+          setReport(null);
         }
       });
 
