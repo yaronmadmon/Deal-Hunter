@@ -1532,6 +1532,31 @@ CRITICAL REMINDERS:
       updated_at: new Date().toISOString(),
     }).eq("id", analysisId);
 
+    // ── Analytics event (fire-and-forget) ──
+    if (pipelineUserId) {
+      supabase.from("analytics_events").insert({
+        event_name: "analysis_completed",
+        user_id: pipelineUserId,
+        metadata: { analysis_id: analysisId, score: overallScore, signal_strength: signalStrength },
+      }).then(() => {});
+    }
+
+    // ── Send analysis complete email (fire-and-forget) ──
+    if (pipelineUserId) {
+      const { data: userProfile } = await supabase.from("profiles").select("email").eq("id", pipelineUserId).single();
+      if (userProfile?.email) {
+        fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({
+            type: "analysis_complete",
+            to: userProfile.email,
+            data: { idea: sanitizedIdea, score: overallScore, analysisId },
+          }),
+        }).catch((e) => console.error("[pipeline] Email send failed:", e));
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Pipeline error:", err);

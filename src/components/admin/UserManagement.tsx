@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Search, Plus, Minus, Users, Crown, RefreshCw } from "lucide-react";
+import { Search, Plus, Minus, Users, Crown, RefreshCw, Ban, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Profile {
@@ -16,6 +16,7 @@ interface Profile {
   display_name: string | null;
   credits: number;
   created_at: string;
+  suspended?: boolean;
 }
 
 interface AdminEmail {
@@ -42,7 +43,7 @@ export const UserManagement = () => {
         supabase.from('admin_emails').select('*').order('created_at', { ascending: false })
       ]);
 
-      if (profilesRes.data) setProfiles(profilesRes.data);
+      if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
       if (adminsRes.data) setAdminEmails(adminsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -123,6 +124,22 @@ export const UserManagement = () => {
     }
   };
 
+  const handleToggleSuspension = async (profile: Profile) => {
+    const newSuspended = !profile.suspended;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ suspended: newSuspended } as any)
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+      toast.success(`User ${newSuspended ? 'suspended' : 'reactivated'}`);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update suspension status');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Admin Emails Management */}
@@ -198,13 +215,14 @@ export const UserManagement = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Credits</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProfiles.map((profile) => (
-                <TableRow key={profile.id}>
+                <TableRow key={profile.id} className={profile.suspended ? "opacity-60" : ""}>
                   <TableCell className="font-medium">{profile.display_name || 'Unknown'}</TableCell>
                   <TableCell>{profile.email}</TableCell>
                   <TableCell>
@@ -216,6 +234,13 @@ export const UserManagement = () => {
                     {format(new Date(profile.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
+                    {profile.suspended ? (
+                      <Badge variant="destructive">Suspended</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20">Active</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {isAdminUser(profile.email) ? (
                       <Badge className="bg-gold text-black">Admin</Badge>
                     ) : (
@@ -223,51 +248,67 @@ export const UserManagement = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Dialog open={creditDialogOpen && selectedUser?.id === profile.id} onOpenChange={setCreditDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
+                    <div className="flex items-center gap-2">
+                      <Dialog open={creditDialogOpen && selectedUser?.id === profile.id} onOpenChange={setCreditDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setSelectedUser(profile)}
+                          >
+                            Credits
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Manage Credits for {profile.display_name}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <p className="text-muted-foreground">
+                              Current balance: <span className="font-bold text-foreground">{profile.credits} credits</span>
+                            </p>
+                            <div className="flex items-center gap-4">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={creditAmount}
+                                onChange={(e) => setCreditAmount(parseInt(e.target.value) || 0)}
+                                className="w-24"
+                              />
+                              <span className="text-muted-foreground">credits</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={() => handleModifyCredits(true)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> Add
+                              </Button>
+                              <Button 
+                                onClick={() => handleModifyCredits(false)}
+                                variant="destructive"
+                              >
+                                <Minus className="h-4 w-4 mr-1" /> Remove
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {!isAdminUser(profile.email) && (
+                        <Button
+                          variant={profile.suspended ? "outline" : "destructive"}
                           size="sm"
-                          onClick={() => setSelectedUser(profile)}
+                          onClick={() => handleToggleSuspension(profile)}
                         >
-                          Manage Credits
+                          {profile.suspended ? (
+                            <><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Reactivate</>
+                          ) : (
+                            <><Ban className="h-3.5 w-3.5 mr-1" /> Suspend</>
+                          )}
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Manage Credits for {profile.display_name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <p className="text-muted-foreground">
-                            Current balance: <span className="font-bold text-foreground">{profile.credits} credits</span>
-                          </p>
-                          <div className="flex items-center gap-4">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={creditAmount}
-                              onChange={(e) => setCreditAmount(parseInt(e.target.value) || 0)}
-                              className="w-24"
-                            />
-                            <span className="text-muted-foreground">credits</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              onClick={() => handleModifyCredits(true)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Add
-                            </Button>
-                            <Button 
-                              onClick={() => handleModifyCredits(false)}
-                              variant="destructive"
-                            >
-                              <Minus className="h-4 w-4 mr-1" /> Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
