@@ -684,11 +684,11 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(6);
       if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
-      doc.text(doc.splitTextToSize(kw.keyword, 55)[0], cols[0], y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(kw.keyword), 55)[0], cols[0], y + 1);
       setColor(C.muted);
-      doc.text(kw.volume, cols[1], y + 1);
-      doc.text(kw.difficulty, cols[2], y + 1);
-      doc.text(kw.trend, cols[3], y + 1);
+      doc.text(safePdfText(kw.volume), cols[1], y + 1);
+      doc.text(safePdfText(kw.difficulty), cols[2], y + 1);
+      doc.text(safePdfText(kw.trend), cols[3], y + 1);
       y += 6;
     });
     y += 3;
