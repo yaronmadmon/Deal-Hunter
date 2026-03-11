@@ -538,7 +538,7 @@ export function generateReportPdf(report: MockReportData) {
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   setColor(C.success);
-  doc.text(report.revenueBenchmark.range, m + 4, y + 4);
+  doc.text(safePdfText(report.revenueBenchmark.range), m + 4, y + 4);
   y += 13;
 
   doc.setFontSize(8);
