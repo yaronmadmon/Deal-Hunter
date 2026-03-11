@@ -528,6 +528,74 @@ Deno.serve(async (req) => {
     // ── Step 1: Fetching real market data ──
     await supabase.from("analyses").update({ status: "fetching" }).eq("id", analysisId);
 
+    // ══════════════════════════════════════════════════════════════════
+    // SEMANTIC KEYWORD GENERATION
+    // Replace naive word splitting with AI-generated domain-specific queries.
+    // This single call fixes keyword quality for ALL downstream sources.
+    // ══════════════════════════════════════════════════════════════════
+    let semanticQueries: string[] = [];
+    let primaryKeywords = sanitizedIdea; // fallback
+
+    if (lovableKey) {
+      try {
+        const semanticStart = Date.now();
+        const semanticRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              {
+                role: "system",
+                content: `You generate search queries for market research. Given a startup idea, return 5 diverse search queries that someone would use to find competing products, market data, and user discussions about this type of product.
+
+Rules:
+- Each query should be 2-5 words, using natural language people actually search
+- Include variations: category terms, synonym phrases, "app for X" patterns, and "[problem] solution"
+- Do NOT just split the idea into words — generate semantically meaningful queries
+- The first query should be the most direct product category search
+- Include at least one query focused on the user problem (not the solution)
+- Think about what a user looking for this type of product would actually type into Google
+
+Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
+["AI fitness coach app", "voice guided workout", "hands-free personal trainer", "workout motivation app", "exercise without looking at phone"]`
+              },
+              { role: "user", content: `Startup idea: "${sanitizedIdea}"` }
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+          }),
+        });
+
+        if (semanticRes.ok) {
+          const semanticData = await semanticRes.json();
+          const semanticContent = semanticData.choices?.[0]?.message?.content || "[]";
+          const semanticMatch = semanticContent.match(/\[[\s\S]*?\]/);
+          if (semanticMatch) {
+            const parsed = JSON.parse(semanticMatch[0]);
+            if (Array.isArray(parsed) && parsed.length >= 3) {
+              semanticQueries = parsed.slice(0, 5).map((q: any) => String(q).trim()).filter(Boolean);
+              primaryKeywords = semanticQueries[0] || primaryKeywords;
+              console.log(`[SEMANTIC KEYWORDS] Generated ${semanticQueries.length} queries in ${Date.now() - semanticStart}ms: ${JSON.stringify(semanticQueries)}`);
+            }
+          }
+        } else {
+          console.warn("[SEMANTIC KEYWORDS] AI call failed, falling back to naive extraction");
+        }
+      } catch (semErr) {
+        console.warn("[SEMANTIC KEYWORDS] Error:", semErr);
+      }
+    }
+
+    // Fallback: if semantic generation failed, use improved naive extraction
+    if (semanticQueries.length === 0) {
+      const naiveWords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/)
+        .filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into','like','using','based'].includes(w.toLowerCase()));
+      primaryKeywords = naiveWords.slice(0, 4).join(" ");
+      semanticQueries = [primaryKeywords];
+      console.log(`[SEMANTIC KEYWORDS] Fallback to naive: "${primaryKeywords}"`);
+    }
+
     const rawData: Record<string, any> = {
       perplexityTrends: null,
       perplexityMarket: null,
@@ -535,6 +603,7 @@ Deno.serve(async (req) => {
       perplexityRevenue: null,
       perplexityChurn: null,
       perplexityBuildCosts: null,
+      perplexityCompetitors: null,
       firecrawlAppStore: null,
       firecrawlReddit: null,
       serperTrends: null,
@@ -549,6 +618,7 @@ Deno.serve(async (req) => {
       twitterSentiment: null,
       twitterCounts: null,
       twitterInfluencers: null,
+      semanticQueries,
       sources: [],
     };
 
