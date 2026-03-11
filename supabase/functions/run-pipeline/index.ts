@@ -859,6 +859,113 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // PHASE 1 FIX 2: POST-FETCH RELEVANCE FILTERING
+    // Score each collected item for relevance to the user's idea.
+    // Items scoring below 5/10 are filtered out before AI analysis.
+    // ══════════════════════════════════════════════════════════════════
+    if (lovableKey) {
+      const filterStart = Date.now();
+
+      // Build items to score: GitHub repos, HN hits, Product Hunt, competitor search results
+      const itemsToScore: { source: string; index: number; title: string; description: string }[] = [];
+
+      (rawData.github?.repos || []).forEach((r: any, i: number) => {
+        itemsToScore.push({ source: "github", index: i, title: r.name, description: r.description || "" });
+      });
+      (rawData.hackerNews?.hits || []).forEach((h: any, i: number) => {
+        itemsToScore.push({ source: "hackernews", index: i, title: h.title, description: "" });
+      });
+      (rawData.productHunt?.products || []).forEach((p: any, i: number) => {
+        itemsToScore.push({ source: "producthunt", index: i, title: p.name, description: p.tagline || "" });
+      });
+
+      if (itemsToScore.length > 0) {
+        try {
+          const scoringRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a relevance scorer. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to the idea. 0 = completely unrelated, 10 = directly about this exact topic. Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
+                },
+                {
+                  role: "user",
+                  content: `Startup idea: "${idea}"\n\nResults to score:\n${itemsToScore.map((item, i) => `${i + 1}. [${item.source}] ${item.title} — ${item.description}`).join("\n")}`,
+                },
+              ],
+              temperature: 0,
+              max_tokens: 500,
+            }),
+          });
+
+          if (scoringRes.ok) {
+            const scoringData = await scoringRes.json();
+            const scoresContent = scoringData.choices?.[0]?.message?.content || "[]";
+            const scoresMatch = scoresContent.match(/\[[\s\S]*?\]/);
+            if (scoresMatch) {
+              const scores: number[] = JSON.parse(scoresMatch[0]);
+              let filteredCount = 0;
+
+              // Apply relevance threshold of 5
+              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set() };
+              itemsToScore.forEach((item, idx) => {
+                const score = scores[idx] ?? 5; // default to 5 if missing
+                if (score < 5) {
+                  toRemove[item.source]?.add(item.index);
+                  filteredCount++;
+                }
+              });
+
+              // Filter GitHub repos
+              if (toRemove.github.size > 0 && rawData.github?.repos) {
+                const before = rawData.github.repos.length;
+                rawData.github.repos = rawData.github.repos.filter((_: any, i: number) => !toRemove.github.has(i));
+                console.log(`[RELEVANCE FILTER] GitHub: ${before} -> ${rawData.github.repos.length} repos (removed ${toRemove.github.size} irrelevant)`);
+              }
+
+              // Filter HN hits
+              if (toRemove.hackernews.size > 0 && rawData.hackerNews?.hits) {
+                const before = rawData.hackerNews.hits.length;
+                rawData.hackerNews.hits = rawData.hackerNews.hits.filter((_: any, i: number) => !toRemove.hackernews.has(i));
+                console.log(`[RELEVANCE FILTER] HackerNews: ${before} -> ${rawData.hackerNews.hits.length} hits (removed ${toRemove.hackernews.size} irrelevant)`);
+              }
+
+              // Filter Product Hunt products
+              if (toRemove.producthunt.size > 0 && rawData.productHunt?.products) {
+                const before = rawData.productHunt.products.length;
+                rawData.productHunt.products = rawData.productHunt.products.filter((_: any, i: number) => !toRemove.producthunt.has(i));
+                console.log(`[RELEVANCE FILTER] ProductHunt: ${before} -> ${rawData.productHunt.products.length} products (removed ${toRemove.producthunt.size} irrelevant)`);
+              }
+
+              console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
+              rawData.relevanceFilterApplied = true;
+              rawData.relevanceFilterStats = { scored: itemsToScore.length, filtered: filteredCount };
+            }
+          } else {
+            console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
+          }
+        } catch (filterErr) {
+          console.warn("[RELEVANCE FILTER] Error during relevance scoring:", filterErr);
+        }
+      }
+    }
+
+    // Deduplicate competitor search results
+    if (rawData.serperCompetitors?.allResults?.length > 0) {
+      const seen = new Set<string>();
+      rawData.serperCompetitors.allResults = rawData.serperCompetitors.allResults.filter((r: any) => {
+        const key = r.link || r.title;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      console.log(`[COMPETITOR DISCOVERY] ${rawData.serperCompetitors.allResults.length} unique competitor search results collected`);
+    }
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
