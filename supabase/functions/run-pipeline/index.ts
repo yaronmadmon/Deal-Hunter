@@ -939,14 +939,15 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // PHASE 1 FIX 2: POST-FETCH RELEVANCE FILTERING
+    // POST-FETCH RELEVANCE FILTERING (EXPANDED)
     // Score each collected item for relevance to the user's idea.
     // Items scoring below 5/10 are filtered out before AI analysis.
+    // Now includes: GitHub, HN, Product Hunt, AND Serper competitor results.
     // ══════════════════════════════════════════════════════════════════
     if (lovableKey) {
       const filterStart = Date.now();
 
-      // Build items to score: GitHub repos, HN hits, Product Hunt, competitor search results
+      // Build items to score from ALL filterable sources
       const itemsToScore: { source: string; index: number; title: string; description: string }[] = [];
 
       (rawData.github?.repos || []).forEach((r: any, i: number) => {
@@ -957,6 +958,10 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       });
       (rawData.productHunt?.products || []).forEach((p: any, i: number) => {
         itemsToScore.push({ source: "producthunt", index: i, title: p.name, description: p.tagline || "" });
+      });
+      // NEW: Also score Serper competitor results
+      (rawData.serperCompetitors?.allResults || []).forEach((r: any, i: number) => {
+        itemsToScore.push({ source: "serper_competitor", index: i, title: r.title || "", description: r.snippet || "" });
       });
 
       if (itemsToScore.length > 0) {
@@ -969,7 +974,18 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
               messages: [
                 {
                   role: "system",
-                  content: `You are a relevance scorer. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to the idea. 0 = completely unrelated, 10 = directly about this exact topic. Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
+                  content: `You are a relevance scorer for market research. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to validating or competing with the idea.
+
+Scoring guide:
+- 10: Directly about this product category or a direct competitor
+- 7-9: Closely related product, feature, or market discussion
+- 4-6: Tangentially related but in the same broad domain
+- 1-3: Different domain, only shares a keyword coincidentally
+- 0: Completely unrelated
+
+Be strict: a generic AI/ML repo is NOT relevant to a specific AI fitness app. A general "todo list" project is NOT relevant to an AI-powered project management tool.
+
+Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
                 },
                 {
                   role: "user",
@@ -977,7 +993,7 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
                 },
               ],
               temperature: 0,
-              max_tokens: 500,
+              max_tokens: 800,
             }),
           });
 
@@ -990,7 +1006,7 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
               let filteredCount = 0;
 
               // Apply relevance threshold of 5
-              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set() };
+              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set(), serper_competitor: new Set() };
               itemsToScore.forEach((item, idx) => {
                 const score = scores[idx] ?? 5; // default to 5 if missing
                 if (score < 5) {
@@ -1018,6 +1034,13 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
                 const before = rawData.productHunt.products.length;
                 rawData.productHunt.products = rawData.productHunt.products.filter((_: any, i: number) => !toRemove.producthunt.has(i));
                 console.log(`[RELEVANCE FILTER] ProductHunt: ${before} -> ${rawData.productHunt.products.length} products (removed ${toRemove.producthunt.size} irrelevant)`);
+              }
+
+              // Filter Serper competitor results
+              if (toRemove.serper_competitor.size > 0 && rawData.serperCompetitors?.allResults) {
+                const before = rawData.serperCompetitors.allResults.length;
+                rawData.serperCompetitors.allResults = rawData.serperCompetitors.allResults.filter((_: any, i: number) => !toRemove.serper_competitor.has(i));
+                console.log(`[RELEVANCE FILTER] Serper Competitors: ${before} -> ${rawData.serperCompetitors.allResults.length} results (removed ${toRemove.serper_competitor.size} irrelevant)`);
               }
 
               console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
