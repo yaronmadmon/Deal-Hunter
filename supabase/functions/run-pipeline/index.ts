@@ -437,6 +437,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing analysisId or idea" }), { status: 400, headers: corsHeaders });
     }
 
+    // ── Input validation ──
+    const trimmedIdea = idea.trim();
+    if (trimmedIdea.length < 10) {
+      return new Response(JSON.stringify({ error: "Idea must be at least 10 characters" }), { status: 400, headers: corsHeaders });
+    }
+    if (trimmedIdea.length > 500) {
+      return new Response(JSON.stringify({ error: "Idea must be under 500 characters" }), { status: 400, headers: corsHeaders });
+    }
+    // Strip HTML/script tags
+    const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
+
     const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
