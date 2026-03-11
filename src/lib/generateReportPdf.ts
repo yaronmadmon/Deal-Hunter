@@ -2,6 +2,19 @@ import jsPDF from "jspdf";
 import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
 import { sanitizeForPdf } from "./pdfSanitize";
 
+/** Sanitize + replace unknown/unavailable labels for PDF output */
+const safePdfText = (val: any): string => {
+  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
+    return "Insufficient data";
+  }
+  let s = String(val);
+  const lower = s.toLowerCase();
+  if (lower === "unknown" || lower === "data unavailable") {
+    return "Insufficient data";
+  }
+  return sanitizeForPdf(s);
+};
+
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
   indigo: [79, 70, 229] as [number, number, number],     // primary
