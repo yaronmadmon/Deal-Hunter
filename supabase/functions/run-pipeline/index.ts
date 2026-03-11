@@ -2273,6 +2273,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         primaryKeywords,
         perplexityDominance: perplexityDominanceWarning ? { tier1Sources: tier1SourcesWithData, perplexitySources: perplexitySourcesWithData, warning: true } : null,
         relevanceFilter: rawData.relevanceFilterStats || null,
+        competitorPipeline: {
+          rawCount: rawData.rawCompetitors?.length ?? 0,
+          normalizedCount: rawData.normalizedCompetitors?.length ?? 0,
+          validatedCount: rawData.validatedCompetitors?.length ?? 0,
+          validatedCompetitors: (rawData.validatedCompetitors || []).map((c: any) => ({
+            name: c.name,
+            evidenceType: c.evidenceType,
+            validationScore: c.validationScore,
+            confidenceScore: c.confidenceScore,
+            sources: c.sources,
+          })),
+        },
         timestamp: new Date().toISOString(),
       };
     }
