@@ -101,6 +101,40 @@ Deno.serve(async (req) => {
             status: "active",
             current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           }, { onConflict: "user_id" });
+
+          // Auto-grant 3 bonus credits on first subscription signup
+          const bonusReason = `Subscription bonus: 3 free reports (session: ${session.id})`;
+          const { data: bonusExists } = await supabase
+            .from("credits_log")
+            .select("id")
+            .eq("user_id", userId)
+            .like("reason", "%Subscription bonus%")
+            .limit(1);
+
+          if (!bonusExists || bonusExists.length === 0) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("credits")
+              .eq("id", userId)
+              .single();
+
+            if (profile) {
+              await supabase
+                .from("profiles")
+                .update({ credits: profile.credits + 3 })
+                .eq("id", userId);
+
+              await supabase.from("credits_log").insert({
+                user_id: userId,
+                amount: 3,
+                reason: bonusReason,
+              });
+
+              console.log(`[stripe-webhook] Granted 3 bonus credits to user ${userId}`);
+            }
+          } else {
+            console.log(`[stripe-webhook] Bonus credits already granted for user ${userId}, skipping.`);
+          }
         }
         break;
       }
