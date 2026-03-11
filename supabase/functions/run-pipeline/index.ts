@@ -528,6 +528,74 @@ Deno.serve(async (req) => {
     // ── Step 1: Fetching real market data ──
     await supabase.from("analyses").update({ status: "fetching" }).eq("id", analysisId);
 
+    // ══════════════════════════════════════════════════════════════════
+    // SEMANTIC KEYWORD GENERATION
+    // Replace naive word splitting with AI-generated domain-specific queries.
+    // This single call fixes keyword quality for ALL downstream sources.
+    // ══════════════════════════════════════════════════════════════════
+    let semanticQueries: string[] = [];
+    let primaryKeywords = sanitizedIdea; // fallback
+
+    if (lovableKey) {
+      try {
+        const semanticStart = Date.now();
+        const semanticRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              {
+                role: "system",
+                content: `You generate search queries for market research. Given a startup idea, return 5 diverse search queries that someone would use to find competing products, market data, and user discussions about this type of product.
+
+Rules:
+- Each query should be 2-5 words, using natural language people actually search
+- Include variations: category terms, synonym phrases, "app for X" patterns, and "[problem] solution"
+- Do NOT just split the idea into words — generate semantically meaningful queries
+- The first query should be the most direct product category search
+- Include at least one query focused on the user problem (not the solution)
+- Think about what a user looking for this type of product would actually type into Google
+
+Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
+["AI fitness coach app", "voice guided workout", "hands-free personal trainer", "workout motivation app", "exercise without looking at phone"]`
+              },
+              { role: "user", content: `Startup idea: "${sanitizedIdea}"` }
+            ],
+            temperature: 0.3,
+            max_tokens: 300,
+          }),
+        });
+
+        if (semanticRes.ok) {
+          const semanticData = await semanticRes.json();
+          const semanticContent = semanticData.choices?.[0]?.message?.content || "[]";
+          const semanticMatch = semanticContent.match(/\[[\s\S]*?\]/);
+          if (semanticMatch) {
+            const parsed = JSON.parse(semanticMatch[0]);
+            if (Array.isArray(parsed) && parsed.length >= 3) {
+              semanticQueries = parsed.slice(0, 5).map((q: any) => String(q).trim()).filter(Boolean);
+              primaryKeywords = semanticQueries[0] || primaryKeywords;
+              console.log(`[SEMANTIC KEYWORDS] Generated ${semanticQueries.length} queries in ${Date.now() - semanticStart}ms: ${JSON.stringify(semanticQueries)}`);
+            }
+          }
+        } else {
+          console.warn("[SEMANTIC KEYWORDS] AI call failed, falling back to naive extraction");
+        }
+      } catch (semErr) {
+        console.warn("[SEMANTIC KEYWORDS] Error:", semErr);
+      }
+    }
+
+    // Fallback: if semantic generation failed, use improved naive extraction
+    if (semanticQueries.length === 0) {
+      const naiveWords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/)
+        .filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into','like','using','based'].includes(w.toLowerCase()));
+      primaryKeywords = naiveWords.slice(0, 4).join(" ");
+      semanticQueries = [primaryKeywords];
+      console.log(`[SEMANTIC KEYWORDS] Fallback to naive: "${primaryKeywords}"`);
+    }
+
     const rawData: Record<string, any> = {
       perplexityTrends: null,
       perplexityMarket: null,
@@ -535,6 +603,7 @@ Deno.serve(async (req) => {
       perplexityRevenue: null,
       perplexityChurn: null,
       perplexityBuildCosts: null,
+      perplexityCompetitors: null,
       firecrawlAppStore: null,
       firecrawlReddit: null,
       serperTrends: null,
@@ -549,6 +618,7 @@ Deno.serve(async (req) => {
       twitterSentiment: null,
       twitterCounts: null,
       twitterInfluencers: null,
+      semanticQueries,
       sources: [],
     };
 
@@ -617,15 +687,28 @@ Deno.serve(async (req) => {
           return r.citations.length;
         })
       );
+
+      // ── DEDICATED PERPLEXITY COMPETITOR QUERY ──
+      // Specifically ask Perplexity for a structured competitor list
+      perplexityPromises.push(
+        trackSource("perplexity_competitors", async () => {
+          const r = await perplexitySearch(perplexityKey, `List the top 10 apps, tools, or products that directly compete with or are alternatives to "${idea}". For each competitor, provide: the exact product name, its app store rating (if applicable), approximate number of downloads or users, its primary weakness according to user reviews, and its pricing model. Focus on real, currently active products. If fewer than 10 exist, list all that you can find.`);
+          rawData.perplexityCompetitors = r;
+          rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity_competitors" })));
+          return r.citations.length;
+        })
+      );
     }
 
     // Run Firecrawl searches in parallel
     const firecrawlPromises: Promise<void>[] = [];
 
     if (firecrawlKey) {
+      // Use semantic queries for better app store discovery
+      const firecrawlQuery = semanticQueries.length > 1 ? semanticQueries[0] : sanitizedIdea;
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} app site:apps.apple.com OR site:play.google.com`, 5));
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 5));
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -633,7 +716,8 @@ Deno.serve(async (req) => {
 
       firecrawlPromises.push(
         trackSource("firecrawl_reddit", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${sanitizedIdea} reviews complaints pain points site:reddit.com`, 5));
+          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : sanitizedIdea;
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${redditQuery} reviews complaints pain points site:reddit.com`, 5));
           rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -644,8 +728,8 @@ Deno.serve(async (req) => {
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Extract shorter keywords for better Serper hit rate
-      const serperKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 4).join(" ");
+      // Use semantic keywords for all Serper queries
+      const serperKeywords = primaryKeywords;
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
@@ -657,7 +741,8 @@ Deno.serve(async (req) => {
 
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} market size demand`, "search", 10);
+          const trendQuery = semanticQueries.length > 2 ? semanticQueries[2] : serperKeywords;
+          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 10);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -687,21 +772,23 @@ Deno.serve(async (req) => {
         })
       );
 
-      // ── PHASE 1 FIX 1: Dedicated Competitor Discovery Queries ──
-      // Run 5 targeted competitor queries to ensure we find real alternatives
+      // ── COMPETITOR DISCOVERY: Use semantic queries for targeted competitor search ──
       rawData.serperCompetitors = { allResults: [] as any[] };
 
+      // Build competitor queries from SEMANTIC keywords, not naive splits
       const competitorQueryTemplates = [
         `${serperKeywords} competitors alternatives`,
-        `apps like ${serperKeywords}`,
+        `best ${serperKeywords} apps`,
         `${serperKeywords} vs`,
-        `${serperKeywords} alternative`,
-        `${serperKeywords} review comparison`,
-      ];
+        `${serperKeywords} alternative 2024 2025`,
+        ...(semanticQueries.length > 1 ? [`${semanticQueries[1]} competitors`] : []),
+        ...(semanticQueries.length > 2 ? [`best ${semanticQueries[2]} apps`] : []),
+      ].slice(0, 6); // max 6 competitor queries
 
-      for (const cq of competitorQueryTemplates) {
+      for (let i = 0; i < competitorQueryTemplates.length; i++) {
+        const cq = competitorQueryTemplates[i];
         serperPromises.push(
-          trackSource(`serper_competitor_${competitorQueryTemplates.indexOf(cq)}`, async () => {
+          trackSource(`serper_competitor_${i}`, async () => {
             const r = await serperSearch(serperKey, cq, "search", 10);
             rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
               ...o,
@@ -714,17 +801,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Run Product Hunt search — use broader keyword extraction
+    // Run Product Hunt search — use SEMANTIC keywords
     const productHuntPromises: Promise<void>[] = [];
 
     if (productHuntKey) {
-      const ideaWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
-      const coreKeywords = ideaWords.slice(0, 3);
-      const phSearches = [
-        coreKeywords.join(" "),
-        coreKeywords.slice(0, 2).join(" "),
-        coreKeywords.length > 2 ? `${coreKeywords[0]} ${coreKeywords[2]}` : coreKeywords[0],
-      ].filter((v, i, a) => a.indexOf(v) === i);
+      // Use semantic queries instead of naive word splitting
+      const phSearches = semanticQueries.length >= 3
+        ? semanticQueries.slice(0, 3)
+        : [primaryKeywords, ...(semanticQueries.length > 1 ? [semanticQueries[1]] : [])].filter((v, i, a) => a.indexOf(v) === i);
 
       const phResults: any[] = [];
       for (const kw of phSearches) {
@@ -750,15 +834,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Run GitHub search — use broader keyword extraction with multiple queries
+    // Run GitHub search — use SEMANTIC keywords
     const githubPromises: Promise<void>[] = [];
-    const ghWords = idea.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2 && !['the','and','for','with','app','tool','that','this','built','from','into'].includes(w));
-    const ghKeywords = ghWords.slice(0, 3);
-    const ghSearches = [
-      ghKeywords.join(" "),
-      ghKeywords.slice(0, 2).join(" "),
-      ghKeywords.length > 2 ? `${ghKeywords[0]} ${ghKeywords[2]}` : ghKeywords[0],
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    const ghSearches = semanticQueries.length >= 3
+      ? semanticQueries.slice(0, 3)
+      : [primaryKeywords];
 
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
@@ -783,11 +863,10 @@ Deno.serve(async (req) => {
       })
     );
 
-    // Run Twitter/X searches in parallel
+    // Run Twitter/X searches in parallel — use SEMANTIC keywords
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      // Use broader keyword without quotes for better Twitter coverage
-      const twitterKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+      const twitterKeywords = primaryKeywords;
 
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
@@ -809,17 +888,17 @@ Deno.serve(async (req) => {
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
-    // Run Hacker News search
+    // Run Hacker News search — use SEMANTIC keywords
     const hnPromises: Promise<void>[] = [];
-    const hnKeywords = sanitizedIdea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(hnKeywords, 10);
+        const r = await hackerNewsSearch(primaryKeywords, 10);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
       })
     );
+
 
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
@@ -860,14 +939,15 @@ Deno.serve(async (req) => {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // PHASE 1 FIX 2: POST-FETCH RELEVANCE FILTERING
+    // POST-FETCH RELEVANCE FILTERING (EXPANDED)
     // Score each collected item for relevance to the user's idea.
     // Items scoring below 5/10 are filtered out before AI analysis.
+    // Now includes: GitHub, HN, Product Hunt, AND Serper competitor results.
     // ══════════════════════════════════════════════════════════════════
     if (lovableKey) {
       const filterStart = Date.now();
 
-      // Build items to score: GitHub repos, HN hits, Product Hunt, competitor search results
+      // Build items to score from ALL filterable sources
       const itemsToScore: { source: string; index: number; title: string; description: string }[] = [];
 
       (rawData.github?.repos || []).forEach((r: any, i: number) => {
@@ -878,6 +958,10 @@ Deno.serve(async (req) => {
       });
       (rawData.productHunt?.products || []).forEach((p: any, i: number) => {
         itemsToScore.push({ source: "producthunt", index: i, title: p.name, description: p.tagline || "" });
+      });
+      // NEW: Also score Serper competitor results
+      (rawData.serperCompetitors?.allResults || []).forEach((r: any, i: number) => {
+        itemsToScore.push({ source: "serper_competitor", index: i, title: r.title || "", description: r.snippet || "" });
       });
 
       if (itemsToScore.length > 0) {
@@ -890,7 +974,18 @@ Deno.serve(async (req) => {
               messages: [
                 {
                   role: "system",
-                  content: `You are a relevance scorer. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to the idea. 0 = completely unrelated, 10 = directly about this exact topic. Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
+                  content: `You are a relevance scorer for market research. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to validating or competing with the idea.
+
+Scoring guide:
+- 10: Directly about this product category or a direct competitor
+- 7-9: Closely related product, feature, or market discussion
+- 4-6: Tangentially related but in the same broad domain
+- 1-3: Different domain, only shares a keyword coincidentally
+- 0: Completely unrelated
+
+Be strict: a generic AI/ML repo is NOT relevant to a specific AI fitness app. A general "todo list" project is NOT relevant to an AI-powered project management tool.
+
+Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
                 },
                 {
                   role: "user",
@@ -898,7 +993,7 @@ Deno.serve(async (req) => {
                 },
               ],
               temperature: 0,
-              max_tokens: 500,
+              max_tokens: 800,
             }),
           });
 
@@ -911,7 +1006,7 @@ Deno.serve(async (req) => {
               let filteredCount = 0;
 
               // Apply relevance threshold of 5
-              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set() };
+              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set(), serper_competitor: new Set() };
               itemsToScore.forEach((item, idx) => {
                 const score = scores[idx] ?? 5; // default to 5 if missing
                 if (score < 5) {
@@ -939,6 +1034,13 @@ Deno.serve(async (req) => {
                 const before = rawData.productHunt.products.length;
                 rawData.productHunt.products = rawData.productHunt.products.filter((_: any, i: number) => !toRemove.producthunt.has(i));
                 console.log(`[RELEVANCE FILTER] ProductHunt: ${before} -> ${rawData.productHunt.products.length} products (removed ${toRemove.producthunt.size} irrelevant)`);
+              }
+
+              // Filter Serper competitor results
+              if (toRemove.serper_competitor.size > 0 && rawData.serperCompetitors?.allResults) {
+                const before = rawData.serperCompetitors.allResults.length;
+                rawData.serperCompetitors.allResults = rawData.serperCompetitors.allResults.filter((_: any, i: number) => !toRemove.serper_competitor.has(i));
+                console.log(`[RELEVANCE FILTER] Serper Competitors: ${before} -> ${rawData.serperCompetitors.allResults.length} results (removed ${toRemove.serper_competitor.size} irrelevant)`);
               }
 
               console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
@@ -1097,7 +1199,13 @@ ${rawData.serperCompetitors?.allResults?.length > 0
   ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
   : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
 IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
-${rawData.relevanceFilterApplied ? `\n[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, and Product Hunt before this analysis.` : ""}
+
+--- PERPLEXITY COMPETITOR LIST (from Perplexity Sonar — dedicated competitor query) ---
+${rawData.perplexityCompetitors ? rawData.perplexityCompetitors.content : "No Perplexity competitor data available"}
+Citations: ${rawData.perplexityCompetitors?.citations?.join(", ") || "none"}
+IMPORTANT: Cross-reference this list with Serper competitor discovery above. Competitors appearing in BOTH sources are high-confidence.
+
+${rawData.relevanceFilterApplied ? `[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, Product Hunt, and competitor results before this analysis.` : ""}
 
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
@@ -1144,7 +1252,52 @@ Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
 --- BUILD COMPLEXITY & TECHNOLOGY COSTS (from Perplexity Sonar — technical feasibility data) ---
 ${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
+
+--- SEMANTIC QUERIES USED FOR THIS ANALYSIS ---
+${semanticQueries.join(", ")}
+
+--- SEARCH QUERIES USED ---
+Primary keywords: "${primaryKeywords}"
+All semantic queries: ${JSON.stringify(semanticQueries)}
 `;
+
+    // ── PERPLEXITY DOMINANCE CHECK ──
+    // Count how many Tier 1 sources returned data vs Perplexity-only
+    const tier1SourcesWithData = [
+      rawData.firecrawlAppStore?.results?.length > 0,
+      rawData.firecrawlReddit?.results?.length > 0,
+      rawData.serperTrends?.organic?.length > 0,
+      rawData.serperCompetitors?.allResults?.length > 0,
+      rawData.github?.repos?.length > 0,
+      rawData.productHunt?.products?.length > 0,
+    ].filter(Boolean).length;
+
+    const perplexitySourcesWithData = [
+      rawData.perplexityTrends?.content,
+      rawData.perplexityMarket?.content,
+      rawData.perplexityVC?.content,
+      rawData.perplexityRevenue?.content,
+      rawData.perplexityChurn?.content,
+      rawData.perplexityBuildCosts?.content,
+      rawData.perplexityCompetitors?.content,
+    ].filter(Boolean).length;
+
+    let perplexityDominanceWarning = "";
+    if (tier1SourcesWithData <= 2 && perplexitySourcesWithData >= 4) {
+      perplexityDominanceWarning = `
+[CRITICAL DATA QUALITY WARNING]
+Only ${tier1SourcesWithData} Tier 1 sources (Firecrawl, Serper, GitHub, Product Hunt) returned data, while ${perplexitySourcesWithData} Perplexity queries returned data.
+This means the analysis is heavily dependent on Perplexity-synthesized information rather than primary evidence.
+You MUST:
+1. Set overall report confidence to "Low"
+2. Flag any metric derived solely from Perplexity as "reported" not "verified"
+3. Explicitly state in the scoreExplanation that primary evidence is thin
+4. Do NOT give high scores to categories where only Perplexity data exists
+`;
+      console.warn(`[PERPLEXITY DOMINANCE] Only ${tier1SourcesWithData} Tier 1 sources vs ${perplexitySourcesWithData} Perplexity sources. Injecting dominance warning.`);
+    }
+
+    const fullContext = realDataContext + perplexityDominanceWarning;
 
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
@@ -1410,11 +1563,23 @@ CRITICAL REMINDERS:
 - Never present estimated data as if from a real source.
 - Score honestly. Narrative MUST match scores. Bullish text under low scores is forbidden.
 - If BOTH search demand AND pain signals are weak (<5 corroborating signals), cap Opportunity at 10/20.
-- Return ONLY the JSON, no markdown formatting.`,
+- Return ONLY the JSON, no markdown formatting.
+
+SOURCE CREDIBILITY WEIGHTING (apply when analyzing evidence):
+Weight evidence in this order of trust:
+1. Firecrawl app store scrapes (direct product data) — HIGHEST weight
+2. Serper Google search results (real search data) — HIGH weight
+3. Product Hunt launches (real launch data) — HIGH weight
+4. GitHub repos (real developer activity) — MEDIUM weight (only relevant for dev tools)
+5. X/Twitter data (real social signals) — MEDIUM weight (short timeframe)
+6. Perplexity Sonar summaries (AI-synthesized) — LOW weight for conclusions, useful for context only
+7. Hacker News (developer bias) — LOW weight for consumer apps
+
+Never let Perplexity summaries override contradicting Tier 1 evidence. If Perplexity says "large market" but Firecrawl finds 0 apps and Serper finds 0 competitors, trust the Tier 1 evidence.`,
           },
           {
             role: "user",
-            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${realDataContext}`,
+            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${fullContext}`,
           },
         ],
         temperature: 0.2,
@@ -1585,6 +1750,68 @@ CRITICAL REMINDERS:
 
         console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
 
+        // ══════════════════════════════════════════════════════════════
+        // DATA QUALITY PENALTY
+        // If >50% of metrics in a scoring category are "estimated",
+        // reduce that category's score by 30%.
+        // ══════════════════════════════════════════════════════════════
+        const categoryToCardTitle: Record<string, string> = {
+          "Trend Momentum": "Trend Momentum",
+          "Market Saturation": "Market Saturation",
+          "Sentiment": "Sentiment & Pain Points",
+          "Growth": "Growth Signals",
+          "Opportunity": "Competitor Snapshot",
+        };
+
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          let penaltyApplied = false;
+          for (const category of reportData.scoreBreakdown) {
+            const cardTitle = categoryToCardTitle[category.label];
+            const card = (reportData.signalCards || []).find((c: any) => c.title === cardTitle);
+            if (!card) continue;
+
+            const metrics = card.metrics || card.competitors || [];
+            const totalMetrics = metrics.length;
+            if (totalMetrics === 0) continue;
+
+            const estimatedCount = metrics.filter((m: any) => 
+              m.dataTier === "estimated" || m.dataSource === "ai_estimated"
+            ).length;
+
+            if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
+              const originalValue = Number(category.value) || 0;
+              const penalty = Math.round(originalValue * 0.3);
+              category.value = originalValue - penalty;
+              penaltyApplied = true;
+              console.warn(`[DATA QUALITY PENALTY] ${category.label}: ${estimatedCount}/${totalMetrics} metrics estimated. Score reduced by ${penalty} (${originalValue} -> ${category.value})`);
+              if (card.confidence !== "Low") {
+                card.confidence = "Low";
+              }
+            }
+          }
+
+          if (penaltyApplied) {
+            const newSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
+            console.warn(`[DATA QUALITY PENALTY] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
+            reportData.overallScore = newSum;
+
+            const penaltyScore = reportData.overallScore;
+            const penaltyVerdict = penaltyScore >= 75 ? "Build Now"
+              : penaltyScore >= 55 ? "Build, But Niche Down"
+              : penaltyScore >= 40 ? "Validate Further"
+              : "Do Not Build Yet";
+            if (reportData.founderDecision) {
+              reportData.founderDecision.decision = penaltyVerdict;
+            }
+            reportData.signalStrength = penaltyScore >= 70 ? "Strong" : penaltyScore >= 45 ? "Moderate" : "Weak";
+          }
+        }
+
+        // Perplexity dominance: flag low confidence if triggered
+        if (perplexityDominanceWarning && reportData.methodology) {
+          reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
+        }
+
         // Log validation summary
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
 
@@ -1705,6 +1932,10 @@ CRITICAL REMINDERS:
         totalSignals,
         failedSources,
         sources: pipelineMetrics,
+        semanticQueries,
+        primaryKeywords,
+        perplexityDominance: perplexityDominanceWarning ? { tier1Sources: tier1SourcesWithData, perplexitySources: perplexitySourcesWithData, warning: true } : null,
+        relevanceFilter: rawData.relevanceFilterStats || null,
         timestamp: new Date().toISOString(),
       };
     }
