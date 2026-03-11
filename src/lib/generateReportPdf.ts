@@ -343,10 +343,10 @@ export function generateReportPdf(report: MockReportData) {
         checkPage(5);
         doc.setFont("helvetica", "normal");
         setColor(C.muted);
-        doc.text(`${met.label}:`, m + 2, y);
+        doc.text(safePdfText(met.label) + ":", m + 2, y);
         doc.setFont("helvetica", "bold");
         setColor(C.text);
-        doc.text(met.value, m + 45, y);
+        doc.text(safePdfText(met.value), m + 45, y);
         y += 5;
       });
       y += 2;
