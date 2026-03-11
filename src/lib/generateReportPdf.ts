@@ -2,6 +2,19 @@ import jsPDF from "jspdf";
 import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
 import { sanitizeForPdf } from "./pdfSanitize";
 
+/** Sanitize + replace unknown/unavailable labels for PDF output */
+const safePdfText = (val: any): string => {
+  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
+    return "Insufficient data";
+  }
+  let s = String(val);
+  const lower = s.toLowerCase();
+  if (lower === "unknown" || lower === "data unavailable") {
+    return "Insufficient data";
+  }
+  return sanitizeForPdf(s);
+};
+
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
   indigo: [79, 70, 229] as [number, number, number],     // primary
@@ -308,11 +321,11 @@ export function generateReportPdf(report: MockReportData) {
   statsRow.forEach((stat, i) => {
     const sx = m + statW * i + statW / 2;
     setColor(C.indigo);
-    doc.text(stat.value, sx, y, { align: "center" });
+    doc.text(safePdfText(stat.value), sx, y, { align: "center" });
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     setColor(C.muted);
-    doc.text(stat.label, sx, y + 4, { align: "center" });
+    doc.text(safePdfText(stat.label), sx, y + 4, { align: "center" });
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
   });
@@ -330,10 +343,10 @@ export function generateReportPdf(report: MockReportData) {
         checkPage(5);
         doc.setFont("helvetica", "normal");
         setColor(C.muted);
-        doc.text(`${met.label}:`, m + 2, y);
+        doc.text(safePdfText(met.label) + ":", m + 2, y);
         doc.setFont("helvetica", "bold");
         setColor(C.text);
-        doc.text(met.value, m + 45, y);
+        doc.text(safePdfText(met.value), m + 45, y);
         y += 5;
       });
       y += 2;
@@ -525,7 +538,7 @@ export function generateReportPdf(report: MockReportData) {
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   setColor(C.success);
-  doc.text(report.revenueBenchmark.range, m + 4, y + 4);
+  doc.text(safePdfText(report.revenueBenchmark.range), m + 4, y + 4);
   y += 13;
 
   doc.setFontSize(8);
@@ -642,7 +655,7 @@ export function generateReportPdf(report: MockReportData) {
       block.items.forEach(item => {
         checkPage(5);
         setColor(C.text);
-        doc.text(item, m + 4, y);
+        doc.text(safePdfText(item), m + 4, y);
         y += 4;
       });
       y += 2;
@@ -671,11 +684,11 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(6);
       if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
-      doc.text(doc.splitTextToSize(kw.keyword, 55)[0], cols[0], y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(kw.keyword), 55)[0], cols[0], y + 1);
       setColor(C.muted);
-      doc.text(kw.volume, cols[1], y + 1);
-      doc.text(kw.difficulty, cols[2], y + 1);
-      doc.text(kw.trend, cols[3], y + 1);
+      doc.text(safePdfText(kw.volume), cols[1], y + 1);
+      doc.text(safePdfText(kw.difficulty), cols[2], y + 1);
+      doc.text(safePdfText(kw.trend), cols[3], y + 1);
       y += 6;
     });
     y += 3;
@@ -704,13 +717,13 @@ export function generateReportPdf(report: MockReportData) {
       if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
       doc.setFont("helvetica", "bold");
-      doc.text(doc.splitTextToSize(app.name, 42)[0], cols[0], y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(app.name), 42)[0], cols[0], y + 1);
       doc.setFont("helvetica", "normal");
       setColor(C.muted);
-      doc.text(app.platform, cols[1], y + 1);
-      doc.text(app.rating, cols[2], y + 1);
-      doc.text(app.reviews, cols[3], y + 1);
-      doc.text(app.downloads, cols[4], y + 1);
+      doc.text(safePdfText(app.platform), cols[1], y + 1);
+      doc.text(safePdfText(app.rating), cols[2], y + 1);
+      doc.text(safePdfText(app.reviews), cols[3], y + 1);
+      doc.text(safePdfText(app.downloads), cols[4], y + 1);
       y += 6;
     });
     if (report.appStoreIntelligence.insight) {
@@ -780,10 +793,10 @@ export function generateReportPdf(report: MockReportData) {
     doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
     doc.setFontSize(6); doc.setFont("helvetica", "bold"); setColor(C.muted);
     doc.text("Feature", m + 2, y + 3);
-    cm.competitors.forEach((comp, i) => {
+      cm.competitors.forEach((comp, i) => {
       const cx = m + fColW + colW * i + colW / 2;
       setColor(comp.isYou ? C.indigo : C.muted);
-      doc.text(comp.name, cx, y + 3, { align: "center" });
+      doc.text(safePdfText(comp.name), cx, y + 3, { align: "center" });
     });
     y += 8;
 
@@ -792,7 +805,7 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(6);
       if (fi % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
       setColor(C.text);
-      doc.text(doc.splitTextToSize(feature, fColW - 4)[0], m + 2, y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(feature), fColW - 4)[0], m + 2, y + 1);
       cm.competitors.forEach((comp, ci) => {
         const val = comp.scores[feature] || "—";
         const cx = m + fColW + colW * ci + colW / 2;
@@ -801,7 +814,7 @@ export function generateReportPdf(report: MockReportData) {
         else if (lower === "no" || lower === "weak" || lower === "none") setColor(C.danger);
         else if (lower === "medium" || lower === "partial") setColor(C.warning);
         else setColor(C.muted);
-        doc.text(val, cx, y + 1, { align: "center" });
+        doc.text(safePdfText(val), cx, y + 1, { align: "center" });
       });
       y += 6;
     });
@@ -867,10 +880,11 @@ export function generateReportPdf(report: MockReportData) {
       checkPage(8);
       const sevColor = risk.severity === "High" ? C.danger : risk.severity === "Medium" ? C.gold : C.success;
       doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-      doc.text("⚠ " + risk.risk, m + 2, y);
+      const riskText = safePdfText(risk.risk);
+      doc.text("- " + riskText, m + 2, y);
       if (risk.severity) {
         doc.setFontSize(6); setColor(sevColor);
-        doc.text(`[${risk.severity}]`, m + 2 + doc.getTextWidth("⚠ " + risk.risk) + 2, y);
+        doc.text(`[${risk.severity}]`, m + 2 + doc.getTextWidth("- " + riskText) + 2, y);
       }
       y += 5;
     }
@@ -901,9 +915,9 @@ export function generateReportPdf(report: MockReportData) {
     setFill(lightDecColor);
     doc.roundedRect(m, y - 2, cw, 14, 2, 2, "F");
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(decColor);
-    doc.text(fd.decision, m + 4, y + 4);
+    doc.text(safePdfText(fd.decision), m + 4, y + 4);
     doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-    const rLines = doc.splitTextToSize(fd.reasoning, cw - 8);
+    const rLines = doc.splitTextToSize(safePdfText(fd.reasoning), cw - 8);
     doc.text(rLines[0] || "", m + 4, y + 9);
     y += 17;
 
