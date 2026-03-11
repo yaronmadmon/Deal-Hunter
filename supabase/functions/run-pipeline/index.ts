@@ -2024,11 +2024,19 @@ Produce the JSON report with this EXACT structure:
 }
 
 CRITICAL REMINDERS:
-- If real data is not available, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "AI estimate — no primary source confirmed."
+- If evidence does not exist for a section, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "Insufficient data — no evidence collected for this metric."
 - Never present estimated data as if from a real source.
 - Score honestly. Narrative MUST match scores. Bullish text under low scores is forbidden.
 - If BOTH search demand AND pain signals are weak (<5 corroborating signals), cap Opportunity at 10/20.
 - Return ONLY the JSON, no markdown formatting.
+- If a section has 0 evidence signals, its confidence MUST be "Low" and insights must state "Insufficient data."
+
+EVIDENCE-LOCKED SECTION RULES:
+- Competitor Snapshot: If evidence.competitors is empty → competitors array must be empty, insight must say "No verified competitors identified."
+- Sentiment & Pain Points: If evidence.sentimentSignals is empty → complaints and loves must be empty, insight must say "Insufficient sentiment data."
+- Growth Signals: If evidence.productLaunchSignals AND evidence.developerSignals are both empty → metrics must show "N/A", insight must say "Insufficient growth data."
+- Trend Momentum: If evidence.demandSignals AND evidence.trendSignals are both empty → metrics must show "N/A", insight must say "Insufficient trend data."
+- Revenue / Unit Economics: If evidence.pricingSignals is empty → mark all values as "Insufficient data", dataSource as "ai_estimated".
 
 SOURCE CREDIBILITY WEIGHTING (apply when analyzing evidence):
 Weight evidence in this order of trust:
@@ -2044,7 +2052,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
           {
             role: "user",
-            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${fullContext}`,
+            content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
         ],
         temperature: 0.2,
