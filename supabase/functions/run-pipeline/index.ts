@@ -1733,7 +1733,7 @@ You MUST:
       console.warn(`[PERPLEXITY DOMINANCE] Only ${tier1SourcesWithData} Tier 1 sources vs ${perplexitySourcesWithData} Perplexity sources. Injecting dominance warning.`);
     }
 
-    const fullContext = realDataContext + perplexityDominanceWarning;
+    const fullContext = evidenceContext + perplexityDominanceWarning;
 
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
