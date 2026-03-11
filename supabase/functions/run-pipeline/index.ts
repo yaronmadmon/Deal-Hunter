@@ -542,6 +542,7 @@ Deno.serve(async (req) => {
       serperNews: null,
       serperReddit: null,
       serperAutoComplete: null,
+      serperCompetitors: null,
       productHunt: null,
       github: null,
       hackerNews: null,
@@ -639,7 +640,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Run Serper searches in parallel (Google Trends + Reddit fallback)
+    // Run Serper searches in parallel (Google Trends + Reddit fallback + Competitor Discovery)
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
@@ -685,6 +686,32 @@ Deno.serve(async (req) => {
           return r.suggestions.length;
         })
       );
+
+      // ── PHASE 1 FIX 1: Dedicated Competitor Discovery Queries ──
+      // Run 5 targeted competitor queries to ensure we find real alternatives
+      rawData.serperCompetitors = { allResults: [] as any[] };
+
+      const competitorQueryTemplates = [
+        `${serperKeywords} competitors alternatives`,
+        `apps like ${serperKeywords}`,
+        `${serperKeywords} vs`,
+        `${serperKeywords} alternative`,
+        `${serperKeywords} review comparison`,
+      ];
+
+      for (const cq of competitorQueryTemplates) {
+        serperPromises.push(
+          trackSource(`serper_competitor_${competitorQueryTemplates.indexOf(cq)}`, async () => {
+            const r = await serperSearch(serperKey, cq, "search", 10);
+            rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
+              ...o,
+              _query: cq,
+            })));
+            rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper_competitor" })));
+            return r.organic.length;
+          })
+        );
+      }
     }
 
     // Run Product Hunt search — use broader keyword extraction
@@ -832,6 +859,113 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // PHASE 1 FIX 2: POST-FETCH RELEVANCE FILTERING
+    // Score each collected item for relevance to the user's idea.
+    // Items scoring below 5/10 are filtered out before AI analysis.
+    // ══════════════════════════════════════════════════════════════════
+    if (lovableKey) {
+      const filterStart = Date.now();
+
+      // Build items to score: GitHub repos, HN hits, Product Hunt, competitor search results
+      const itemsToScore: { source: string; index: number; title: string; description: string }[] = [];
+
+      (rawData.github?.repos || []).forEach((r: any, i: number) => {
+        itemsToScore.push({ source: "github", index: i, title: r.name, description: r.description || "" });
+      });
+      (rawData.hackerNews?.hits || []).forEach((h: any, i: number) => {
+        itemsToScore.push({ source: "hackernews", index: i, title: h.title, description: "" });
+      });
+      (rawData.productHunt?.products || []).forEach((p: any, i: number) => {
+        itemsToScore.push({ source: "producthunt", index: i, title: p.name, description: p.tagline || "" });
+      });
+
+      if (itemsToScore.length > 0) {
+        try {
+          const scoringRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a relevance scorer. Given a startup idea and a list of search results, score each result from 0-10 for how relevant it is to the idea. 0 = completely unrelated, 10 = directly about this exact topic. Return ONLY a JSON array of numbers, one score per item, in the same order. Example: [8, 2, 6, 1, 9]`,
+                },
+                {
+                  role: "user",
+                  content: `Startup idea: "${idea}"\n\nResults to score:\n${itemsToScore.map((item, i) => `${i + 1}. [${item.source}] ${item.title} — ${item.description}`).join("\n")}`,
+                },
+              ],
+              temperature: 0,
+              max_tokens: 500,
+            }),
+          });
+
+          if (scoringRes.ok) {
+            const scoringData = await scoringRes.json();
+            const scoresContent = scoringData.choices?.[0]?.message?.content || "[]";
+            const scoresMatch = scoresContent.match(/\[[\s\S]*?\]/);
+            if (scoresMatch) {
+              const scores: number[] = JSON.parse(scoresMatch[0]);
+              let filteredCount = 0;
+
+              // Apply relevance threshold of 5
+              const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set() };
+              itemsToScore.forEach((item, idx) => {
+                const score = scores[idx] ?? 5; // default to 5 if missing
+                if (score < 5) {
+                  toRemove[item.source]?.add(item.index);
+                  filteredCount++;
+                }
+              });
+
+              // Filter GitHub repos
+              if (toRemove.github.size > 0 && rawData.github?.repos) {
+                const before = rawData.github.repos.length;
+                rawData.github.repos = rawData.github.repos.filter((_: any, i: number) => !toRemove.github.has(i));
+                console.log(`[RELEVANCE FILTER] GitHub: ${before} -> ${rawData.github.repos.length} repos (removed ${toRemove.github.size} irrelevant)`);
+              }
+
+              // Filter HN hits
+              if (toRemove.hackernews.size > 0 && rawData.hackerNews?.hits) {
+                const before = rawData.hackerNews.hits.length;
+                rawData.hackerNews.hits = rawData.hackerNews.hits.filter((_: any, i: number) => !toRemove.hackernews.has(i));
+                console.log(`[RELEVANCE FILTER] HackerNews: ${before} -> ${rawData.hackerNews.hits.length} hits (removed ${toRemove.hackernews.size} irrelevant)`);
+              }
+
+              // Filter Product Hunt products
+              if (toRemove.producthunt.size > 0 && rawData.productHunt?.products) {
+                const before = rawData.productHunt.products.length;
+                rawData.productHunt.products = rawData.productHunt.products.filter((_: any, i: number) => !toRemove.producthunt.has(i));
+                console.log(`[RELEVANCE FILTER] ProductHunt: ${before} -> ${rawData.productHunt.products.length} products (removed ${toRemove.producthunt.size} irrelevant)`);
+              }
+
+              console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
+              rawData.relevanceFilterApplied = true;
+              rawData.relevanceFilterStats = { scored: itemsToScore.length, filtered: filteredCount };
+            }
+          } else {
+            console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
+          }
+        } catch (filterErr) {
+          console.warn("[RELEVANCE FILTER] Error during relevance scoring:", filterErr);
+        }
+      }
+    }
+
+    // Deduplicate competitor search results
+    if (rawData.serperCompetitors?.allResults?.length > 0) {
+      const seen = new Set<string>();
+      rawData.serperCompetitors.allResults = rawData.serperCompetitors.allResults.filter((r: any) => {
+        const key = r.link || r.title;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      console.log(`[COMPETITOR DISCOVERY] ${rawData.serperCompetitors.allResults.length} unique competitor search results collected`);
+    }
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
@@ -957,6 +1091,13 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
+
+--- DEDICATED COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries) ---
+${rawData.serperCompetitors?.allResults?.length > 0
+  ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
+  : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
+IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
+${rawData.relevanceFilterApplied ? `\n[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, and Product Hunt before this analysis.` : ""}
 
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
@@ -1398,6 +1539,51 @@ CRITICAL REMINDERS:
             reportData.signalStrength = adjustedScore >= 70 ? "Strong" : adjustedScore >= 45 ? "Moderate" : "Weak";
           }
         }
+
+        // ══════════════════════════════════════════════════════════════
+        // PHASE 1 FIX 3: COMPETITOR COUNT VALIDATION
+        // Cross-check: if AI says 0 competitors but competitor discovery
+        // found results, flag inconsistency and lower confidence.
+        // ══════════════════════════════════════════════════════════════
+        const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
+        const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
+        const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
+
+        if (aiCompetitorCount === 0 && (competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but competitor discovery found ${competitorDiscoveryCount} results and competitor snapshot has ${aiCompetitorListCount} entries. Correcting.`);
+
+          // Fix the niche analysis competitor count
+          if (reportData.nicheAnalysis) {
+            reportData.nicheAnalysis.directCompetitors = Math.max(aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${competitorDiscoveryCount} competitor search results were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+          }
+
+          // Lower confidence on the competitor snapshot card
+          if (competitorSnapshotCard) {
+            if (competitorSnapshotCard.confidence === "High") {
+              competitorSnapshotCard.confidence = "Medium";
+            }
+          }
+
+          // Lower Market Saturation confidence if it was inflated
+          const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+          if (saturationCard && saturationCard.confidence === "High") {
+            saturationCard.confidence = "Medium";
+            console.warn(`[COMPETITOR VALIDATION] Lowered Market Saturation confidence to Medium due to competitor count inconsistency`);
+          }
+        }
+
+        // Also validate: if competitor discovery found many results but AI only lists 1-2
+        if (competitorDiscoveryCount >= 10 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Competitor discovery found ${competitorDiscoveryCount} results but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+          if (competitorSnapshotCard.confidence !== "Low") {
+            competitorSnapshotCard.confidence = "Medium";
+          }
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${competitorDiscoveryCount} competitor search results were found — more competitors may exist than listed.]`.trim();
+        }
+
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
 
         // Log validation summary
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
