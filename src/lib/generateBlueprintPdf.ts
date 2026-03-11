@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { BlueprintData, ChartPoint, DonutSegment, ScoreBreakdownItem } from "@/data/mockReport";
+import { sanitizeForPdf } from "./pdfSanitize";
 
 // ── Colors ──
 const C = {
@@ -38,7 +39,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
 
   const checkPage = (needed: number) => { if (y + needed > maxY) { doc.addPage(); y = 18; } };
   const writeLines = (lines: string[], x: number, lh: number) => {
-    for (const line of lines) { checkPage(lh); doc.text(line, x, y); y += lh; }
+    for (const line of lines) { checkPage(lh); doc.text(sanitizeForPdf(line), x, y); y += lh; }
   };
   const drawHRule = () => { checkPage(4); setDraw(C.border); doc.setLineWidth(0.3); doc.line(m, y, pw - m, y); y += 4; };
 

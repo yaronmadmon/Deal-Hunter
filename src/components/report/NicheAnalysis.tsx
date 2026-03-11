@@ -38,7 +38,11 @@ export const NicheAnalysis = ({ data }: Props) => {
             <h3 className="font-semibold text-sm text-foreground">Competitor Positioning</h3>
           </div>
           <p className="text-2xl font-bold text-foreground mb-1">{data.directCompetitors} direct</p>
-          <p className="text-[13px] text-muted-foreground mb-2">competitors in your exact niche</p>
+          <p className="text-[13px] text-muted-foreground mb-2">
+            {data.directCompetitors === 0
+              ? "No direct competitors found. Adjacent solutions exist."
+              : "competitors in your exact niche"}
+          </p>
           <p className="text-sm text-muted-foreground">{data.competitorClarity}</p>
           <p className="text-sm text-muted-foreground mt-2 italic">{data.competitorDetail}</p>
         </div>

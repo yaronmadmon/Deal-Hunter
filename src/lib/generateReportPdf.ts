@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
+import { sanitizeForPdf } from "./pdfSanitize";
 
 // ── Color palette (HSL → RGB approximations for jsPDF) ──
 const C = {
@@ -45,7 +46,7 @@ export function generateReportPdf(report: MockReportData) {
   const writeLines = (lines: string[], x: number, lh: number) => {
     for (const line of lines) {
       checkPage(lh);
-      doc.text(line, x, y);
+      doc.text(sanitizeForPdf(line), x, y);
       y += lh;
     }
   };
@@ -221,16 +222,16 @@ export function generateReportPdf(report: MockReportData) {
       }
       setColor(C.text);
       doc.setFont("helvetica", "bold");
-      doc.text(c.name, cols[0], y + 1);
+      doc.text(sanitizeForPdf(c.name), cols[0], y + 1);
       doc.setFont("helvetica", "normal");
       setColor(C.muted);
-      doc.text(c.rating, cols[1], y + 1);
-      doc.text(c.reviews, cols[2], y + 1);
-      doc.text(c.downloads, cols[3], y + 1);
+      doc.text(sanitizeForPdf(c.rating), cols[1], y + 1);
+      doc.text(sanitizeForPdf(c.reviews), cols[2], y + 1);
+      doc.text(sanitizeForPdf(c.downloads), cols[3], y + 1);
 
       // Weakness (truncated)
       doc.setFontSize(7);
-      const wLines = doc.splitTextToSize(c.weakness, cw - (cols[4] - m));
+      const wLines = doc.splitTextToSize(sanitizeForPdf(c.weakness), cw - (cols[4] - m));
       doc.text(wLines[0] || "", cols[4], y + 1);
       doc.setFontSize(8);
       y += 7;

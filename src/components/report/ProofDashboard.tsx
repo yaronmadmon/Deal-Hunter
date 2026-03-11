@@ -24,11 +24,16 @@ const SignalBlock = ({ icon: Icon, title, children, confidence }: { icon: React.
   </Card>
 );
 
+const safeFallback = (val?: string) => {
+  if (!val || val.toLowerCase() === "unknown" || val.toLowerCase() === "data unavailable") return "Insufficient data";
+  return val;
+};
+
 const MetricRow = ({ label, value, source }: { label: string; value: string; source?: string }) => (
   <div className="flex justify-between items-baseline text-sm py-1.5 border-b border-border/30 last:border-0">
     <span className="text-muted-foreground">{label}</span>
     <div className="text-right">
-      <span className="font-semibold text-foreground">{value || "Data unavailable"}</span>
+      <span className="font-semibold text-foreground">{safeFallback(value)}</span>
       {source && <span className="text-xs text-muted-foreground block">{source}</span>}
     </div>
   </div>
@@ -46,9 +51,9 @@ export const ProofDashboard = ({ data }: Props) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Search Demand */}
         <SignalBlock icon={Search} title="Search Demand" confidence={data.searchDemand?.confidence}>
-          <MetricRow label="Primary Keyword" value={data.searchDemand?.keyword || "Data unavailable"} />
-          <MetricRow label="Monthly Searches" value={data.searchDemand?.monthlySearches || "Data unavailable"} source={data.searchDemand?.source} />
-          <MetricRow label="Trend Direction" value={data.searchDemand?.trend || "Data unavailable"} />
+          <MetricRow label="Primary Keyword" value={data.searchDemand?.keyword || "Insufficient data"} />
+          <MetricRow label="Monthly Searches" value={data.searchDemand?.monthlySearches || "Insufficient data"} source={data.searchDemand?.source} />
+          <MetricRow label="Trend Direction" value={data.searchDemand?.trend || "Insufficient data"} />
           {data.searchDemand?.relatedKeywords && data.searchDemand.relatedKeywords.length > 0 && (
             <div className="mt-2">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Related Keywords</span>
@@ -63,26 +68,26 @@ export const ProofDashboard = ({ data }: Props) => {
 
         {/* Developer Activity */}
         <SignalBlock icon={Code} title="Developer Activity" confidence={data.developerActivity?.confidence}>
-          <MetricRow label="GitHub Repos" value={data.developerActivity?.repoCount || "Data unavailable"} />
-          <MetricRow label="Total Stars" value={data.developerActivity?.totalStars || "Data unavailable"} />
-          <MetricRow label="Recent Commits (30d)" value={data.developerActivity?.recentCommits || "Data unavailable"} />
-          <MetricRow label="Activity Trend" value={data.developerActivity?.trend || "Data unavailable"} source="GitHub API" />
+          <MetricRow label="GitHub Repos" value={data.developerActivity?.repoCount || "Insufficient data"} />
+          <MetricRow label="Total Stars" value={data.developerActivity?.totalStars || "Insufficient data"} />
+          <MetricRow label="Recent Commits (30d)" value={data.developerActivity?.recentCommits || "Insufficient data"} />
+          <MetricRow label="Activity Trend" value={data.developerActivity?.trend || "Insufficient data"} source="GitHub API" />
         </SignalBlock>
 
         {/* Social Signals */}
         <SignalBlock icon={MessageCircle} title="Social Activity" confidence={data.socialActivity?.confidence}>
-          <MetricRow label="X/Twitter Mentions (7d)" value={data.socialActivity?.twitterMentions || "Data unavailable"} source="X API v2" />
-          <MetricRow label="Reddit Threads" value={data.socialActivity?.redditThreads || "Data unavailable"} source="Serper.dev" />
-          <MetricRow label="Sentiment Score" value={data.socialActivity?.sentimentScore || "Data unavailable"} />
-          <MetricRow label="HN/PH Launches" value={data.socialActivity?.hnPhLaunches || "Data unavailable"} />
+          <MetricRow label="X/Twitter Mentions (7d)" value={data.socialActivity?.twitterMentions || "Insufficient data"} source="X API v2" />
+          <MetricRow label="Reddit Threads" value={data.socialActivity?.redditThreads || "Insufficient data"} source="Serper.dev" />
+          <MetricRow label="Sentiment Score" value={data.socialActivity?.sentimentScore || "Insufficient data"} />
+          <MetricRow label="HN/PH Launches" value={data.socialActivity?.hnPhLaunches || "Insufficient data"} />
         </SignalBlock>
 
         {/* App Store Signals */}
         <SignalBlock icon={Smartphone} title="App Store Signals" confidence={data.appStoreSignals?.confidence}>
-          <MetricRow label="Related Apps" value={data.appStoreSignals?.relatedApps || "Data unavailable"} />
-          <MetricRow label="Average Rating" value={data.appStoreSignals?.avgRating || "Data unavailable"} source="App Store / Play Store" />
-          <MetricRow label="Download Estimates" value={data.appStoreSignals?.downloadEstimate || "Data unavailable"} />
-          <MetricRow label="Market Gap" value={data.appStoreSignals?.marketGap || "Data unavailable"} />
+          <MetricRow label="Related Apps" value={data.appStoreSignals?.relatedApps || "Insufficient data"} />
+          <MetricRow label="Average Rating" value={data.appStoreSignals?.avgRating || "Insufficient data"} source="App Store / Play Store" />
+          <MetricRow label="Download Estimates" value={data.appStoreSignals?.downloadEstimate || "Insufficient data"} />
+          <MetricRow label="Market Gap" value={data.appStoreSignals?.marketGap || "Insufficient data"} />
         </SignalBlock>
       </div>
     </div>

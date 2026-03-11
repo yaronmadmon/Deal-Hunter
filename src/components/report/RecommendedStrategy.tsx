@@ -30,7 +30,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
             <Crosshair className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-heading font-semibold text-foreground">Positioning</h3>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">{data.positioning || "Data unavailable"}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{data.positioning || "Insufficient data"}</p>
         </div>
 
         {/* Pricing */}
@@ -39,7 +39,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
             <DollarSign className="w-4 h-4 text-success" />
             <h3 className="text-sm font-heading font-semibold text-foreground">Suggested Pricing</h3>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">{data.suggestedPricing || "Data unavailable"}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{data.suggestedPricing || "Insufficient data"}</p>
         </div>
 
         {/* Differentiation */}
@@ -58,7 +58,7 @@ export const RecommendedStrategy = ({ data }: Props) => {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground italic">Data unavailable</p>
+            <p className="text-sm text-muted-foreground italic">Insufficient data</p>
           )}
         </div>
 

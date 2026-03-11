@@ -29,12 +29,16 @@ const confidenceBadge = (c: string) => {
 /** Safely display a value — never show null, undefined, NaN, or N/A */
 const safeVal = (val: any): string => {
   if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Data unavailable";
+    return "Insufficient data";
   }
-  return String(val);
+  const s = String(val);
+  if (s.toLowerCase() === "unknown" || s.toLowerCase() === "data unavailable") {
+    return "Insufficient data";
+  }
+  return s;
 };
 
-const isMutedValue = (val: string) => val === "Data unavailable";
+const isMutedValue = (val: string) => val === "Insufficient data";
 
 const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => {
   const maxUpvotes = Math.max(...launches.map(l => l.upvotes));
@@ -252,6 +256,10 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
             <div className="space-y-2">
               {visibleMetrics.map((m) => {
                 const displayValue = safeVal(m.value);
+                // If a numeric stat has no source URL, mark as "Reported" instead of showing as verified
+                const isNumeric = /\d/.test(displayValue) && !isMutedValue(displayValue);
+                const hasSource = !!(m.sourceUrl || (m.dataSource && m.dataSource !== "ai_estimated"));
+                const showReported = isNumeric && !hasSource;
                 return (
                   <div key={m.label} className="flex justify-between text-sm items-start gap-2">
                     <span className="text-muted-foreground">{m.label}</span>
@@ -259,6 +267,9 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
                       <span className={`font-medium ${isMutedValue(displayValue) ? "text-muted-foreground/60 text-[13px] italic" : "text-foreground"}`}>
                         {displayValue}
                       </span>
+                      {showReported && (
+                        <span className="text-[10px] text-muted-foreground/60 italic">Reported (unverified)</span>
+                      )}
                       {m.dataSource && (
                         <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />
                       )}
