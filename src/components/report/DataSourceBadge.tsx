@@ -51,6 +51,7 @@ export const DataSourceBadge = ({ dataSource, sourceUrl, sourceUrls, compact }: 
   if (!dataSource) return null;
 
   const config = sourceConfig[dataSource];
+  if (!config) return null;
   const Icon = config.icon;
   const urls = sourceUrls?.filter(Boolean) || (sourceUrl ? [sourceUrl] : []);
 
