@@ -542,6 +542,7 @@ Deno.serve(async (req) => {
       serperNews: null,
       serperReddit: null,
       serperAutoComplete: null,
+      serperCompetitors: null,
       productHunt: null,
       github: null,
       hackerNews: null,
