@@ -950,6 +950,12 @@ ${rawData.twitterInfluencers?.influencers?.length > 0
   : "No influencer/founder signals found — no relevant X accounts identified"}
 Total influencers found: ${rawData.twitterInfluencers?.influencers?.length ?? 0}
 
+--- HACKER NEWS DISCUSSIONS (from HN Algolia API — developer buzz signals) ---
+${rawData.hackerNews?.hits?.length > 0
+  ? rawData.hackerNews.hits.map((h: any) => `Title: ${h.title}\nPoints: ${h.points}\nComments: ${h.comments}\nAuthor: ${h.author}\nDate: ${h.createdAt}\nHN URL: ${h.hnUrl}\nLink: ${h.url || "self-post"}`).join("\n---\n")
+  : "No Hacker News discussions found — limited developer community buzz"}
+Total HN stories found: ${rawData.hackerNews?.hits?.length ?? 0}
+
 --- CHURN & RETENTION BENCHMARKS (from Perplexity Sonar — category-specific retention data) ---
 ${rawData.perplexityChurn ? rawData.perplexityChurn.content : "No churn data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
