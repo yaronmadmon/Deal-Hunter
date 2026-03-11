@@ -51,9 +51,9 @@ export const ProofDashboard = ({ data }: Props) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Search Demand */}
         <SignalBlock icon={Search} title="Search Demand" confidence={data.searchDemand?.confidence}>
-          <MetricRow label="Primary Keyword" value={data.searchDemand?.keyword || "Data unavailable"} />
-          <MetricRow label="Monthly Searches" value={data.searchDemand?.monthlySearches || "Data unavailable"} source={data.searchDemand?.source} />
-          <MetricRow label="Trend Direction" value={data.searchDemand?.trend || "Data unavailable"} />
+          <MetricRow label="Primary Keyword" value={data.searchDemand?.keyword || "Insufficient data"} />
+          <MetricRow label="Monthly Searches" value={data.searchDemand?.monthlySearches || "Insufficient data"} source={data.searchDemand?.source} />
+          <MetricRow label="Trend Direction" value={data.searchDemand?.trend || "Insufficient data"} />
           {data.searchDemand?.relatedKeywords && data.searchDemand.relatedKeywords.length > 0 && (
             <div className="mt-2">
               <span className="text-xs text-muted-foreground uppercase tracking-wide">Related Keywords</span>
