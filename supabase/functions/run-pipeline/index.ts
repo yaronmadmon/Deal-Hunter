@@ -687,6 +687,17 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
           return r.citations.length;
         })
       );
+
+      // ── DEDICATED PERPLEXITY COMPETITOR QUERY ──
+      // Specifically ask Perplexity for a structured competitor list
+      perplexityPromises.push(
+        trackSource("perplexity_competitors", async () => {
+          const r = await perplexitySearch(perplexityKey, `List the top 10 apps, tools, or products that directly compete with or are alternatives to "${idea}". For each competitor, provide: the exact product name, its app store rating (if applicable), approximate number of downloads or users, its primary weakness according to user reviews, and its pricing model. Focus on real, currently active products. If fewer than 10 exist, list all that you can find.`);
+          rawData.perplexityCompetitors = r;
+          rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity_competitors" })));
+          return r.citations.length;
+        })
+      );
     }
 
     // Run Firecrawl searches in parallel
