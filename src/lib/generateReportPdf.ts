@@ -655,7 +655,7 @@ export function generateReportPdf(report: MockReportData) {
       block.items.forEach(item => {
         checkPage(5);
         setColor(C.text);
-        doc.text(item, m + 4, y);
+        doc.text(safePdfText(item), m + 4, y);
         y += 4;
       });
       y += 2;
