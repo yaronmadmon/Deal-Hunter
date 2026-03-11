@@ -356,6 +356,314 @@ async function hackerNewsSearch(
   }
 }
 
+// ── Competitor Normalization & Deduplication ────────────────────────
+interface RawCompetitor {
+  name: string;
+  rating?: string | number;
+  downloads?: string;
+  weaknesses?: string[];
+  sources: string[];
+  url?: string;
+  upvotes?: number;
+  description?: string;
+}
+
+interface NormalizedCompetitor extends RawCompetitor {
+  normalizedName: string;
+  confidenceScore: "High" | "Medium" | "Low";
+}
+
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\.com$/, "")
+    .replace(/\.(io|co|app|ai|dev|org|net)$/, "")
+    .replace(/\b(app|inc|ltd|llc|co|the)\b/gi, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractCompetitorsFromSources(rawData: Record<string, any>): RawCompetitor[] {
+  const competitors: RawCompetitor[] = [];
+
+  // From Serper competitor results — extract product names from titles
+  (rawData.serperCompetitors?.allResults || []).forEach((r: any) => {
+    const title = (r.title || "").replace(/\s*[-|–—:].*/g, "").trim();
+    if (title && title.length > 1 && title.length < 80) {
+      competitors.push({
+        name: title,
+        sources: ["Serper"],
+        url: r.link,
+        description: r.snippet || "",
+      });
+    }
+  });
+
+  // From Product Hunt
+  (rawData.productHunt?.products || []).forEach((p: any) => {
+    if (p.name) {
+      competitors.push({
+        name: p.name,
+        sources: ["Product Hunt"],
+        url: p.url || p.website,
+        upvotes: p.upvotes,
+        description: p.tagline || "",
+      });
+    }
+  });
+
+  // From Firecrawl App Store results
+  (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
+    const title = (r.title || "").replace(/on the App Store.*$/i, "").replace(/- Apps on Google Play.*$/i, "").trim();
+    if (title && title.length > 1 && title.length < 80) {
+      // Try to extract rating from markdown
+      const ratingMatch = (r.markdown || "").match(/(\d\.\d)\s*(?:out of 5|★|stars?)/i);
+      const downloadsMatch = (r.markdown || "").match(/([\d,.]+[KMB]?\+?)\s*(?:downloads|installs)/i);
+      competitors.push({
+        name: title,
+        sources: ["App Store"],
+        url: r.url,
+        rating: ratingMatch ? ratingMatch[1] : undefined,
+        downloads: downloadsMatch ? downloadsMatch[1] : undefined,
+      });
+    }
+  });
+
+  // From GitHub repos (only if they look like products, not libraries)
+  (rawData.github?.repos || []).forEach((r: any) => {
+    const repoName = (r.name || "").split("/").pop() || "";
+    if (r.stars > 100 && repoName.length > 1) {
+      competitors.push({
+        name: repoName,
+        sources: ["GitHub"],
+        url: r.url,
+        description: r.description || "",
+      });
+    }
+  });
+
+  return competitors;
+}
+
+function normalizeCompetitors(rawCompetitors: RawCompetitor[]): NormalizedCompetitor[] {
+  console.log(`[COMPETITOR NORMALIZATION] Raw competitors: ${rawCompetitors.length}`);
+
+  // Step 1: Normalize names
+  const withNormalized = rawCompetitors.map(c => ({
+    ...c,
+    normalizedName: normalizeName(c.name),
+  }));
+
+  // Step 2 & 3: Detect duplicates and merge
+  const merged = new Map<string, NormalizedCompetitor>();
+  let mergedCount = 0;
+
+  for (const comp of withNormalized) {
+    if (!comp.normalizedName || comp.normalizedName.length < 2) continue;
+
+    // Find existing entry that matches
+    let matchKey: string | null = null;
+    for (const [key, existing] of merged) {
+      // Exact normalized match
+      if (key === comp.normalizedName) { matchKey = key; break; }
+      // Domain match
+      if (comp.url && existing.url) {
+        try {
+          const d1 = new URL(comp.url).hostname.replace("www.", "");
+          const d2 = new URL(existing.url).hostname.replace("www.", "");
+          if (d1 === d2) { matchKey = key; break; }
+        } catch {}
+      }
+      // One name contains the other
+      if (key.includes(comp.normalizedName) || comp.normalizedName.includes(key)) {
+        matchKey = key; break;
+      }
+    }
+
+    if (matchKey) {
+      // Merge into existing
+      const existing = merged.get(matchKey)!;
+      // Best rating
+      const existingRating = parseFloat(String(existing.rating || "0"));
+      const newRating = parseFloat(String(comp.rating || "0"));
+      if (newRating > existingRating) existing.rating = comp.rating;
+      // Largest downloads
+      if (comp.downloads && (!existing.downloads || comp.downloads.length > existing.downloads.length)) {
+        existing.downloads = comp.downloads;
+      }
+      // Merge weaknesses
+      if (comp.weaknesses) {
+        existing.weaknesses = [...new Set([...(existing.weaknesses || []), ...comp.weaknesses])];
+      }
+      // Merge sources
+      existing.sources = [...new Set([...existing.sources, ...comp.sources])];
+      // Keep best description
+      if (comp.description && (!existing.description || comp.description.length > existing.description.length)) {
+        existing.description = comp.description;
+      }
+      // Keep URL if missing
+      if (!existing.url && comp.url) existing.url = comp.url;
+      // Keep upvotes
+      if (comp.upvotes && (!existing.upvotes || comp.upvotes > existing.upvotes)) {
+        existing.upvotes = comp.upvotes;
+      }
+      // Use shorter/cleaner name
+      if (comp.name.length < existing.name.length && comp.name.length > 2) {
+        existing.name = comp.name;
+      }
+      mergedCount++;
+    } else {
+      merged.set(comp.normalizedName, {
+        ...comp,
+        confidenceScore: "Low",
+      });
+    }
+  }
+
+  // Step 4: Add confidence scores
+  for (const comp of merged.values()) {
+    if (comp.sources.length >= 3) comp.confidenceScore = "High";
+    else if (comp.sources.length === 2) comp.confidenceScore = "Medium";
+    else comp.confidenceScore = "Low";
+  }
+
+  // Step 5: Sort and limit to top 10
+  const sorted = [...merged.values()].sort((a, b) => {
+    // Sort by source count first, then downloads, then rating
+    const sourcesDiff = b.sources.length - a.sources.length;
+    if (sourcesDiff !== 0) return sourcesDiff;
+    const dlA = parseFloat(String(a.downloads || "0").replace(/[^0-9.]/g, "")) || 0;
+    const dlB = parseFloat(String(b.downloads || "0").replace(/[^0-9.]/g, "")) || 0;
+    if (dlB !== dlA) return dlB - dlA;
+    const rA = parseFloat(String(a.rating || "0"));
+    const rB = parseFloat(String(b.rating || "0"));
+    return rB - rA;
+  }).slice(0, 10);
+
+  console.log(`[COMPETITOR NORMALIZATION] After dedupe: ${sorted.length} | Merged duplicates: ${mergedCount}`);
+  return sorted;
+}
+
+// ── Competitor Validation (Real Product Check) ──────────────────────
+interface ValidatedCompetitor extends NormalizedCompetitor {
+  evidenceType: "app_store" | "google_play" | "product_hunt" | "github" | "official_site" | "unknown";
+  validationScore: number;
+}
+
+async function validateCompetitors(
+  competitors: NormalizedCompetitor[],
+  serperKey: string | undefined
+): Promise<ValidatedCompetitor[]> {
+  console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
+
+  const validated: ValidatedCompetitor[] = [];
+
+  for (const comp of competitors) {
+    let evidenceType: ValidatedCompetitor["evidenceType"] = "unknown";
+    let validationScore = 0;
+
+    // Check source-based evidence first (no API calls needed)
+    if (comp.sources.includes("App Store")) {
+      evidenceType = "app_store";
+      validationScore = 5;
+    } else if (comp.sources.includes("Product Hunt")) {
+      evidenceType = "product_hunt";
+      validationScore = 4;
+    } else if (comp.sources.includes("GitHub")) {
+      evidenceType = "github";
+      validationScore = 3;
+    }
+
+    // Check URL for evidence type
+    if (comp.url) {
+      const url = comp.url.toLowerCase();
+      if (url.includes("apps.apple.com")) {
+        evidenceType = "app_store";
+        validationScore = Math.max(validationScore, 5);
+      } else if (url.includes("play.google.com")) {
+        evidenceType = "google_play";
+        validationScore = Math.max(validationScore, 5);
+      } else if (url.includes("producthunt.com")) {
+        evidenceType = "product_hunt";
+        validationScore = Math.max(validationScore, 4);
+      } else if (url.includes("github.com")) {
+        evidenceType = "github";
+        validationScore = Math.max(validationScore, 3);
+      } else if (!url.includes("reddit.com") && !url.includes("blog") && !url.includes("article") &&
+                 !url.includes("news") && !url.includes("medium.com") && !url.includes("wikipedia")) {
+        // Likely an official product site
+        evidenceType = "official_site";
+        validationScore = Math.max(validationScore, 3);
+      }
+    }
+
+    // If still unknown/low and we have Serper, do a quick verification search
+    if (validationScore < 2 && serperKey) {
+      try {
+        const verifyRes = await serperSearch(serperKey, `"${comp.name}" app OR product OR software OR download`, "search", 5);
+        const results = verifyRes.organic || [];
+
+        // Check results for product evidence
+        for (const r of results) {
+          const link = (r.link || "").toLowerCase();
+          const snippet = (r.snippet || "").toLowerCase();
+          if (link.includes("apps.apple.com") || link.includes("play.google.com")) {
+            evidenceType = link.includes("apple") ? "app_store" : "google_play";
+            validationScore = 5;
+            if (!comp.url) comp.url = r.link;
+            break;
+          } else if (link.includes("producthunt.com")) {
+            evidenceType = "product_hunt";
+            validationScore = 4;
+            break;
+          } else if (link.includes("github.com")) {
+            evidenceType = "github";
+            validationScore = Math.max(validationScore, 3);
+          } else if (snippet.includes("download") || snippet.includes("sign up") || snippet.includes("pricing") || snippet.includes("free trial")) {
+            evidenceType = "official_site";
+            validationScore = Math.max(validationScore, 3);
+            if (!comp.url) comp.url = r.link;
+          }
+        }
+
+        // If we found some results but no strong evidence, it's still a search mention
+        if (validationScore < 2 && results.length > 0) {
+          validationScore = 1;
+        }
+      } catch (e) {
+        console.warn(`[COMPETITOR VALIDATION] Serper verification failed for "${comp.name}":`, e);
+        // Keep existing score
+      }
+    }
+
+    // Multi-source boost: having 2+ sources is itself evidence
+    if (comp.sources.length >= 2 && validationScore < 3) {
+      validationScore = Math.max(validationScore, 2);
+    }
+
+    validated.push({
+      ...comp,
+      evidenceType,
+      validationScore,
+    });
+  }
+
+  // Remove weak competitors (validationScore < 2)
+  const strong = validated.filter(c => c.validationScore >= 2);
+  const removed = validated.length - strong.length;
+
+  // Sort by validation score, then source count
+  const sorted = strong.sort((a, b) => {
+    const scoreDiff = b.validationScore - a.validationScore;
+    if (scoreDiff !== 0) return scoreDiff;
+    return b.sources.length - a.sources.length;
+  }).slice(0, 10);
+
+  console.log(`[COMPETITOR VALIDATION] Validated competitors: ${sorted.length} | Removed weak competitors: ${removed}`);
+  return sorted;
+}
+
 // ── Retry wrapper ───────────────────────────────────────────────────
 async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 2000): Promise<T> {
   try {
@@ -1068,6 +1376,28 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       console.log(`[COMPETITOR DISCOVERY] ${rawData.serperCompetitors.allResults.length} unique competitor search results collected`);
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // UPGRADE 1: COMPETITOR NORMALIZATION & DEDUPLICATION
+    // Extract competitors from ALL sources, normalize names, merge
+    // duplicates, assign confidence scores, and limit to top 10.
+    // ══════════════════════════════════════════════════════════════════
+    const rawCompetitors = extractCompetitorsFromSources(rawData);
+    rawData.rawCompetitors = rawCompetitors;
+
+    const normalizedCompetitors = normalizeCompetitors(rawCompetitors);
+    rawData.normalizedCompetitors = normalizedCompetitors;
+
+    // ══════════════════════════════════════════════════════════════════
+    // UPGRADE 2: REAL PRODUCT VALIDATION
+    // Verify each competitor is a real product (not a blog, article,
+    // or hypothetical). Uses URL analysis + Serper verification.
+    // Only competitors with validationScore >= 2 survive.
+    // ══════════════════════════════════════════════════════════════════
+    const validatedCompetitors = await validateCompetitors(normalizedCompetitors, serperKey);
+    rawData.validatedCompetitors = validatedCompetitors;
+
+    console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
@@ -1194,18 +1524,24 @@ ${rawData.serperAutoComplete?.suggestions?.join(", ") || "No autocomplete data a
 --- REDDIT DISCUSSIONS via GOOGLE (from Serper.dev — site:reddit.com fallback) ---
 ${rawData.serperReddit?.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n") || "No Serper Reddit data available"}
 
---- DEDICATED COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries) ---
+--- VALIDATED COMPETITORS (normalized, deduplicated, verified as real products) ---
+${rawData.validatedCompetitors?.length > 0
+  ? `${rawData.validatedCompetitors.length} validated competitors found:\n${rawData.validatedCompetitors.map((c: any) => `Name: ${c.name}\nEvidence Type: ${c.evidenceType}\nValidation Score: ${c.validationScore}/5\nConfidence: ${c.confidenceScore}\nSources: ${c.sources.join(", ")}\nRating: ${c.rating || "N/A"}\nDownloads: ${c.downloads || "N/A"}\nURL: ${c.url || "N/A"}\nDescription: ${c.description || "N/A"}`).join("\n---\n")}`
+  : "No validated competitors found — this strongly suggests a very new or niche market"}
+IMPORTANT: Use this VALIDATED competitor list as the primary source for competitor counts and competitor analysis. These are deduplicated, verified real products. Do NOT report 0 competitors if this list contains entries.
+
+--- RAW COMPETITOR DISCOVERY (from Serper.dev — targeted competitor queries, pre-validation) ---
 ${rawData.serperCompetitors?.allResults?.length > 0
-  ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
-  : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
-IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
+  ? `${rawData.serperCompetitors.allResults.length} raw competitor search results (before validation):\n${rawData.serperCompetitors.allResults.slice(0, 10).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}`).join("\n---\n")}`
+  : "No competitor discovery results found"}
 
 --- PERPLEXITY COMPETITOR LIST (from Perplexity Sonar — dedicated competitor query) ---
 ${rawData.perplexityCompetitors ? rawData.perplexityCompetitors.content : "No Perplexity competitor data available"}
 Citations: ${rawData.perplexityCompetitors?.citations?.join(", ") || "none"}
-IMPORTANT: Cross-reference this list with Serper competitor discovery above. Competitors appearing in BOTH sources are high-confidence.
+IMPORTANT: Cross-reference this list with the VALIDATED competitors above. Competitors appearing in BOTH sources are high-confidence.
 
 ${rawData.relevanceFilterApplied ? `[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, Product Hunt, and competitor results before this analysis.` : ""}
+[COMPETITOR PIPELINE] Raw: ${rawData.rawCompetitors?.length ?? 0} → Normalized: ${rawData.normalizedCompetitors?.length ?? 0} → Validated: ${rawData.validatedCompetitors?.length ?? 0}
 
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
@@ -1706,22 +2042,23 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // PHASE 1 FIX 3: COMPETITOR COUNT VALIDATION
-        // Cross-check: if AI says 0 competitors but competitor discovery
-        // found results, flag inconsistency and lower confidence.
+        // COMPETITOR COUNT VALIDATION (uses validated competitors)
+        // Cross-check: if AI says 0 competitors but validated pipeline
+        // found real products, flag inconsistency and lower confidence.
         // ══════════════════════════════════════════════════════════════
+        const validatedCount = rawData.validatedCompetitors?.length ?? 0;
         const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
         const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
         const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
         const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
 
-        if (aiCompetitorCount === 0 && (competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
-          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but competitor discovery found ${competitorDiscoveryCount} results and competitor snapshot has ${aiCompetitorListCount} entries. Correcting.`);
+        if (aiCompetitorCount === 0 && (validatedCount >= 1 || competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but validated pipeline found ${validatedCount} real products (discovery: ${competitorDiscoveryCount}, snapshot: ${aiCompetitorListCount}). Correcting.`);
 
-          // Fix the niche analysis competitor count
+          // Fix the niche analysis competitor count — use validated count as ground truth
           if (reportData.nicheAnalysis) {
-            reportData.nicheAnalysis.directCompetitors = Math.max(aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
-            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${competitorDiscoveryCount} competitor search results were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+            reportData.nicheAnalysis.directCompetitors = Math.max(validatedCount, aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${validatedCount} validated real products were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
           }
 
           // Lower confidence on the competitor snapshot card
@@ -1739,16 +2076,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Also validate: if competitor discovery found many results but AI only lists 1-2
-        if (competitorDiscoveryCount >= 10 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
-          console.warn(`[COMPETITOR VALIDATION] Competitor discovery found ${competitorDiscoveryCount} results but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+        // Also validate: if validated competitors found many but AI only lists 1-2
+        if (validatedCount >= 5 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Validated pipeline found ${validatedCount} real products but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
           if (competitorSnapshotCard.confidence !== "Low") {
             competitorSnapshotCard.confidence = "Medium";
           }
-          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${competitorDiscoveryCount} competitor search results were found — more competitors may exist than listed.]`.trim();
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
         }
 
-        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
 
         // ══════════════════════════════════════════════════════════════
         // DATA QUALITY PENALTY
@@ -1936,6 +2273,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         primaryKeywords,
         perplexityDominance: perplexityDominanceWarning ? { tier1Sources: tier1SourcesWithData, perplexitySources: perplexitySourcesWithData, warning: true } : null,
         relevanceFilter: rawData.relevanceFilterStats || null,
+        competitorPipeline: {
+          rawCount: rawData.rawCompetitors?.length ?? 0,
+          normalizedCount: rawData.normalizedCompetitors?.length ?? 0,
+          validatedCount: rawData.validatedCompetitors?.length ?? 0,
+          validatedCompetitors: (rawData.validatedCompetitors || []).map((c: any) => ({
+            name: c.name,
+            evidenceType: c.evidenceType,
+            validationScore: c.validationScore,
+            confidenceScore: c.confidenceScore,
+            sources: c.sources,
+          })),
+        },
         timestamp: new Date().toISOString(),
       };
     }
