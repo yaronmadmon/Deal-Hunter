@@ -740,6 +740,59 @@ Deno.serve(async (req) => {
     console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
     console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
 
+    // ── Source Failure Alerting: notify admins if >2 sources failed ──
+    if (failedSources.length > 2) {
+      try {
+        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
+        if (adminEmails && adminEmails.length > 0) {
+          // Look up admin user IDs from profiles
+          const adminEmailList = adminEmails.map((a: any) => a.email);
+          const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("email", adminEmailList);
+
+          if (adminProfiles && adminProfiles.length > 0) {
+            const notifications = adminProfiles.map((p: any) => ({
+              user_id: p.id,
+              title: `Pipeline Alert: ${failedSources.length} sources failed`,
+              message: `Analysis "${idea.slice(0, 50)}..." had ${failedSources.length} source failures: ${failedSources.join(", ")}. Total signals: ${totalSignals}. Review in Admin > Pipeline.`,
+            }));
+            await supabase.from("notifications").insert(notifications);
+            console.log(`[ALERT] Notified ${adminProfiles.length} admin(s) about ${failedSources.length} source failures`);
+          }
+        }
+      } catch (alertErr) {
+        console.error("[ALERT] Failed to send failure notification:", alertErr);
+      }
+    }
+
+    // ── Zero-signal warning: alert if total signals are critically low ──
+    if (totalSignals < 10) {
+      try {
+        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
+        if (adminEmails && adminEmails.length > 0) {
+          const adminEmailList = adminEmails.map((a: any) => a.email);
+          const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("id")
+            .in("email", adminEmailList);
+
+          if (adminProfiles && adminProfiles.length > 0) {
+            const notifications = adminProfiles.map((p: any) => ({
+              user_id: p.id,
+              title: `Low Signal Alert: only ${totalSignals} signals collected`,
+              message: `Analysis "${idea.slice(0, 50)}..." collected only ${totalSignals} signals across all sources. This may produce a low-quality report. Review in Admin > Pipeline.`,
+            }));
+            await supabase.from("notifications").insert(notifications);
+            console.log(`[ALERT] Notified admin(s) about low signal count: ${totalSignals}`);
+          }
+        }
+      } catch (alertErr) {
+        console.error("[ALERT] Failed to send low-signal notification:", alertErr);
+      }
+    }
+
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
