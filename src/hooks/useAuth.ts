@@ -1,28 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { trackEvent } from "@/lib/analytics";
+import { getTierByProductId, type SubscriptionTier } from "@/lib/subscriptionTiers";
+
+export interface SubscriptionInfo {
+  subscribed: boolean;
+  tier: SubscriptionTier;
+  subscriptionEnd: string | null;
+}
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionInfo>({
+    subscribed: false,
+    tier: "free",
+    subscriptionEnd: null,
+  });
+  const [subLoading, setSubLoading] = useState(false);
+
+  const checkSubscription = useCallback(async () => {
+    try {
+      setSubLoading(true);
+      const { data, error } = await supabase.functions.invoke("check-subscription");
+      if (error || !data) return;
+      setSubscription({
+        subscribed: data.subscribed ?? false,
+        tier: data.product_id ? getTierByProductId(data.product_id) : "free",
+        subscriptionEnd: data.subscription_end ?? null,
+      });
+    } catch {
+      // silent fail
+    } finally {
+      setSubLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Fire-and-forget: track signup + send welcome email
         if (event === "SIGNED_IN" && session?.user) {
-          // Check if this is a brand new user (created within last 60s)
+          // Check subscription after sign in
+          setTimeout(() => checkSubscription(), 500);
+
           const createdAt = new Date(session.user.created_at).getTime();
           const now = Date.now();
           if (now - createdAt < 60_000) {
             trackEvent("user_signup", session.user.id, { email: session.user.email });
-            // Send welcome email (fire-and-forget)
             supabase.functions.invoke("send-transactional-email", {
               body: {
                 type: "welcome",
@@ -32,6 +62,10 @@ export const useAuth = () => {
             }).catch(() => {});
           }
         }
+
+        if (event === "SIGNED_OUT") {
+          setSubscription({ subscribed: false, tier: "free", subscriptionEnd: null });
+        }
       }
     );
 
@@ -39,10 +73,20 @@ export const useAuth = () => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.user) {
+        checkSubscription();
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => authSub.unsubscribe();
+  }, [checkSubscription]);
+
+  // Periodic refresh every 60s
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(checkSubscription, 60_000);
+    return () => clearInterval(interval);
+  }, [user, checkSubscription]);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
@@ -58,5 +102,5 @@ export const useAuth = () => {
     await supabase.auth.signOut();
   };
 
-  return { user, session, loading, signUp, signIn, signOut };
+  return { user, session, loading, signUp, signIn, signOut, subscription, subLoading, checkSubscription };
 };
