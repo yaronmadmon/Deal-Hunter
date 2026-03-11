@@ -321,11 +321,11 @@ export function generateReportPdf(report: MockReportData) {
   statsRow.forEach((stat, i) => {
     const sx = m + statW * i + statW / 2;
     setColor(C.indigo);
-    doc.text(stat.value, sx, y, { align: "center" });
+    doc.text(safePdfText(stat.value), sx, y, { align: "center" });
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     setColor(C.muted);
-    doc.text(stat.label, sx, y + 4, { align: "center" });
+    doc.text(safePdfText(stat.label), sx, y + 4, { align: "center" });
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
   });
