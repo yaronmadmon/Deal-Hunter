@@ -520,6 +520,7 @@ Deno.serve(async (req) => {
       serperAutoComplete: null,
       productHunt: null,
       github: null,
+      hackerNews: null,
       twitterSentiment: null,
       twitterCounts: null,
       twitterInfluencers: null,
