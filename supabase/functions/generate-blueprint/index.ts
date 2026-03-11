@@ -119,7 +119,7 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
 
   "monetizationValidation": [
     "How will you test pricing before launch? (surveys, beta tiers, willingness-to-pay tests)",
-    "Unit economics: cost of voice inference per user per month, storage costs, margin analysis",
+    "Unit economics: key cost drivers per user per month, infrastructure costs, margin analysis",
     "Is any premium tier validated or just a guess? How to test demand for it",
     "What metrics prove pricing works? (conversion rate targets, churn thresholds)"
   ],
