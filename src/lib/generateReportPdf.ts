@@ -225,9 +225,9 @@ export function generateReportPdf(report: MockReportData) {
       doc.text(sanitizeForPdf(c.name), cols[0], y + 1);
       doc.setFont("helvetica", "normal");
       setColor(C.muted);
-      doc.text(c.rating, cols[1], y + 1);
-      doc.text(c.reviews, cols[2], y + 1);
-      doc.text(c.downloads, cols[3], y + 1);
+      doc.text(sanitizeForPdf(c.rating), cols[1], y + 1);
+      doc.text(sanitizeForPdf(c.reviews), cols[2], y + 1);
+      doc.text(sanitizeForPdf(c.downloads), cols[3], y + 1);
 
       // Weakness (truncated)
       doc.setFontSize(7);
