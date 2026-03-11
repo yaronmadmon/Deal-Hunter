@@ -1563,11 +1563,23 @@ CRITICAL REMINDERS:
 - Never present estimated data as if from a real source.
 - Score honestly. Narrative MUST match scores. Bullish text under low scores is forbidden.
 - If BOTH search demand AND pain signals are weak (<5 corroborating signals), cap Opportunity at 10/20.
-- Return ONLY the JSON, no markdown formatting.`,
+- Return ONLY the JSON, no markdown formatting.
+
+SOURCE CREDIBILITY WEIGHTING (apply when analyzing evidence):
+Weight evidence in this order of trust:
+1. Firecrawl app store scrapes (direct product data) — HIGHEST weight
+2. Serper Google search results (real search data) — HIGH weight
+3. Product Hunt launches (real launch data) — HIGH weight
+4. GitHub repos (real developer activity) — MEDIUM weight (only relevant for dev tools)
+5. X/Twitter data (real social signals) — MEDIUM weight (short timeframe)
+6. Perplexity Sonar summaries (AI-synthesized) — LOW weight for conclusions, useful for context only
+7. Hacker News (developer bias) — LOW weight for consumer apps
+
+Never let Perplexity summaries override contradicting Tier 1 evidence. If Perplexity says "large market" but Firecrawl finds 0 apps and Serper finds 0 competitors, trust the Tier 1 evidence.`,
           },
           {
             role: "user",
-            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${realDataContext}`,
+            content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${fullContext}`,
           },
         ],
         temperature: 0.2,
