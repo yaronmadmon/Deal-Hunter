@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { BlueprintData, ChartPoint, DonutSegment, ScoreBreakdownItem } from "@/data/mockReport";
+import { sanitizeForPdf } from "./pdfSanitize";
 
 // ── Colors ──
 const C = {
