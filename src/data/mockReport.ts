@@ -366,6 +366,7 @@ export interface MockReportData {
   founderDecision?: FounderDecisionData;
   killShotAnalysis?: KillShotAnalysisData;
   scoreExplanationData?: ScoreExplanationData;
+  dataQualitySummary?: { sourceName: string; dataTier: string; signalCount: string; reliabilityNote: string }[];
 }
 
 export const mockReport: MockReportData = {
