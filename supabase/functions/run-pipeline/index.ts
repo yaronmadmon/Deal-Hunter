@@ -1080,7 +1080,7 @@ CRITICAL REMINDERS:
             content: `Analyze this startup idea: "${idea}"\n\nHere is the real market data collected:\n${realDataContext}`,
           },
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         max_tokens: 16000,
       }),
     });
