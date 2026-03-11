@@ -696,11 +696,13 @@ Deno.serve(async (req) => {
       rawData.twitterInfluencerNicheQuery = twitterKeyword;
     }
 
+    const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises]);
+    const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
     if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
-      try {
+      await trackSource("twitter_influencers", async () => {
         const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
@@ -714,24 +716,29 @@ Deno.serve(async (req) => {
             max_tokens: 200,
           }),
         });
-        if (extractRes.ok) {
-          const extractData = await extractRes.json();
-          const content = extractData.choices?.[0]?.message?.content || "[]";
-          const jsonMatch = content.match(/\[[\s\S]*?\]/);
-          if (jsonMatch) {
-            const usernames: string[] = JSON.parse(jsonMatch[0]);
-            if (usernames.length > 0) {
-              const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
-              const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
-              rawData.twitterInfluencers = influencerResult;
-              rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
-            }
+        if (!extractRes.ok) return 0;
+        const extractData = await extractRes.json();
+        const content = extractData.choices?.[0]?.message?.content || "[]";
+        const jsonMatch = content.match(/\[[\s\S]*?\]/);
+        if (jsonMatch) {
+          const usernames: string[] = JSON.parse(jsonMatch[0]);
+          if (usernames.length > 0) {
+            const nicheQuery = idea.split(/\s+/).slice(0, 4).join(" ");
+            const influencerResult = await twitterInfluencerSignals(twitterBearerToken, usernames, nicheQuery);
+            rawData.twitterInfluencers = influencerResult;
+            rawData.sources.push(...influencerResult.influencers.map((inf: any) => ({ url: `https://x.com/${inf.username}`, type: "twitter" })));
+            return influencerResult.influencers.length;
           }
         }
-      } catch (e) {
-        console.error("Influencer extraction error:", e);
-      }
+        return 0;
+      });
     }
+
+    // Log pipeline metrics summary
+    const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
+    const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
+    console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
+    console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
