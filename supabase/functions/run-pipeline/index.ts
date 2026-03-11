@@ -1199,7 +1199,13 @@ ${rawData.serperCompetitors?.allResults?.length > 0
   ? `${rawData.serperCompetitors.allResults.length} competitor search results found:\n${rawData.serperCompetitors.allResults.slice(0, 20).map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet || "N/A"}\nQuery: ${r._query || "N/A"}`).join("\n---\n")}`
   : "No competitor discovery results found — this is unusual and suggests a very new or niche market"}
 IMPORTANT: Use this competitor data to validate and supplement competitor counts. If these results show real competing products, do NOT report 0 competitors.
-${rawData.relevanceFilterApplied ? `\n[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, and Product Hunt before this analysis.` : ""}
+
+--- PERPLEXITY COMPETITOR LIST (from Perplexity Sonar — dedicated competitor query) ---
+${rawData.perplexityCompetitors ? rawData.perplexityCompetitors.content : "No Perplexity competitor data available"}
+Citations: ${rawData.perplexityCompetitors?.citations?.join(", ") || "none"}
+IMPORTANT: Cross-reference this list with Serper competitor discovery above. Competitors appearing in BOTH sources are high-confidence.
+
+${rawData.relevanceFilterApplied ? `[RELEVANCE FILTER APPLIED] ${rawData.relevanceFilterStats?.filtered || 0} irrelevant results were removed from GitHub, HN, Product Hunt, and competitor results before this analysis.` : ""}
 
 --- PRODUCT HUNT LAUNCHES (from Product Hunt API — real launch data) ---
 ${rawData.productHunt?.products?.length > 0
@@ -1246,7 +1252,52 @@ Citations: ${rawData.perplexityChurn?.citations?.join(", ") || "none"}
 --- BUILD COMPLEXITY & TECHNOLOGY COSTS (from Perplexity Sonar — technical feasibility data) ---
 ${rawData.perplexityBuildCosts ? rawData.perplexityBuildCosts.content : "No build cost data available — mark as AI Estimated"}
 Citations: ${rawData.perplexityBuildCosts?.citations?.join(", ") || "none"}
+
+--- SEMANTIC QUERIES USED FOR THIS ANALYSIS ---
+${semanticQueries.join(", ")}
+
+--- SEARCH QUERIES USED ---
+Primary keywords: "${primaryKeywords}"
+All semantic queries: ${JSON.stringify(semanticQueries)}
 `;
+
+    // ── PERPLEXITY DOMINANCE CHECK ──
+    // Count how many Tier 1 sources returned data vs Perplexity-only
+    const tier1SourcesWithData = [
+      rawData.firecrawlAppStore?.results?.length > 0,
+      rawData.firecrawlReddit?.results?.length > 0,
+      rawData.serperTrends?.organic?.length > 0,
+      rawData.serperCompetitors?.allResults?.length > 0,
+      rawData.github?.repos?.length > 0,
+      rawData.productHunt?.products?.length > 0,
+    ].filter(Boolean).length;
+
+    const perplexitySourcesWithData = [
+      rawData.perplexityTrends?.content,
+      rawData.perplexityMarket?.content,
+      rawData.perplexityVC?.content,
+      rawData.perplexityRevenue?.content,
+      rawData.perplexityChurn?.content,
+      rawData.perplexityBuildCosts?.content,
+      rawData.perplexityCompetitors?.content,
+    ].filter(Boolean).length;
+
+    let perplexityDominanceWarning = "";
+    if (tier1SourcesWithData <= 2 && perplexitySourcesWithData >= 4) {
+      perplexityDominanceWarning = `
+[CRITICAL DATA QUALITY WARNING]
+Only ${tier1SourcesWithData} Tier 1 sources (Firecrawl, Serper, GitHub, Product Hunt) returned data, while ${perplexitySourcesWithData} Perplexity queries returned data.
+This means the analysis is heavily dependent on Perplexity-synthesized information rather than primary evidence.
+You MUST:
+1. Set overall report confidence to "Low"
+2. Flag any metric derived solely from Perplexity as "reported" not "verified"
+3. Explicitly state in the scoreExplanation that primary evidence is thin
+4. Do NOT give high scores to categories where only Perplexity data exists
+`;
+      console.warn(`[PERPLEXITY DOMINANCE] Only ${tier1SourcesWithData} Tier 1 sources vs ${perplexitySourcesWithData} Perplexity sources. Injecting dominance warning.`);
+    }
+
+    const fullContext = realDataContext + perplexityDominanceWarning;
 
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
