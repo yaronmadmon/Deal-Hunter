@@ -2286,8 +2286,76 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // EVIDENCE-LOCKED SECTION VALIDATION
+        // Enforce that sections without evidence are properly flagged.
+        // This runs AFTER AI generation to catch any hallucinations.
+        // ══════════════════════════════════════════════════════════════
+        const evidenceValidations: string[] = [];
+
+        // Validate Competitor Snapshot against evidence
+        const compCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        if (compCard && evidenceBlock.competitors.length === 0) {
+          if (compCard.competitors?.length > 0) {
+            evidenceValidations.push(`Competitor Snapshot: AI generated ${compCard.competitors.length} competitors but evidence block has 0. Flagging as Low confidence.`);
+            compCard.confidence = "Low";
+            compCard.insight = "Insufficient verified competitor data. Listed competitors may not be validated. " + (compCard.insight || "");
+          }
+        }
+
+        // Validate Sentiment section
+        const sentCard = (reportData.signalCards || []).find((c: any) => c.title === "Sentiment & Pain Points");
+        if (sentCard && evidenceBlock.sentimentSignals.length === 0) {
+          sentCard.confidence = "Low";
+          sentCard.insight = "Insufficient sentiment data collected. " + (sentCard.insight || "");
+          if (sentCard.sentiment) {
+            sentCard.sentiment.emotion = "Insufficient data";
+          }
+          evidenceValidations.push("Sentiment: 0 evidence signals — forced Low confidence.");
+        }
+
+        // Validate Growth Signals
+        const growthCard = (reportData.signalCards || []).find((c: any) => c.title === "Growth Signals");
+        if (growthCard && evidenceBlock.productLaunchSignals.length === 0 && evidenceBlock.developerSignals.length === 0) {
+          growthCard.confidence = "Low";
+          growthCard.insight = "Insufficient growth data. " + (growthCard.insight || "");
+          evidenceValidations.push("Growth: 0 launch + 0 developer signals — forced Low confidence.");
+        }
+
+        // Validate Trend Momentum
+        const trendCard = (reportData.signalCards || []).find((c: any) => c.title === "Trend Momentum");
+        if (trendCard && evidenceBlock.demandSignals.length === 0 && evidenceBlock.trendSignals.length === 0) {
+          trendCard.confidence = "Low";
+          trendCard.insight = "Insufficient trend data. " + (trendCard.insight || "");
+          evidenceValidations.push("Trends: 0 demand + 0 trend signals — forced Low confidence.");
+        }
+
+        // Validate Revenue / Unit Economics
+        if (reportData.unitEconomics && evidenceBlock.pricingSignals.length === 0) {
+          reportData.unitEconomics.dataSource = "ai_estimated";
+          reportData.unitEconomics.sourceUrls = [];
+          evidenceValidations.push("Unit Economics: 0 pricing signals — marked as ai_estimated.");
+        }
+        if (reportData.revenueBenchmark && evidenceBlock.pricingSignals.length === 0) {
+          reportData.revenueBenchmark.dataSource = "ai_estimated";
+          reportData.revenueBenchmark.sourceUrls = [];
+          evidenceValidations.push("Revenue Benchmark: 0 pricing signals — marked as ai_estimated.");
+        }
+
+        // Inject evidence lock metadata into report
+        reportData.evidenceLock = {
+          coverage: evidenceCoverage,
+          confidences: evidenceConfidences,
+          totalEvidence,
+          validations: evidenceValidations,
+        };
+
+        if (evidenceValidations.length > 0) {
+          console.warn(`[EVIDENCE LOCK] Post-AI validations applied: ${evidenceValidations.join(" | ")}`);
+        }
+
         // Log validation summary
-        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
+        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}`);
 
         overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
