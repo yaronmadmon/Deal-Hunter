@@ -78,12 +78,13 @@ Deno.serve(async (req) => {
                 reason: `Stripe webhook: purchased ${credits} credits (session: ${session.id})`,
               });
 
-            // Log analytics
-            await supabase.from("analytics_events").insert({
-              event_name: "credits_purchased",
-              user_id: userId,
-              metadata: { credits, session_id: session.id },
-            });
+              // Log analytics
+              await supabase.from("analytics_events").insert({
+                event_name: "credits_purchased",
+                user_id: userId,
+                metadata: { credits, session_id: session.id },
+              });
+            }
           }
         }
 

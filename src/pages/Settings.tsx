@@ -30,6 +30,12 @@ interface Profile {
   created_at: string;
 }
 
+interface Subscription {
+  plan: string | null;
+  status: string | null;
+  current_period_end: string | null;
+}
+
 interface CreditLogEntry {
   id: string;
   amount: number;
