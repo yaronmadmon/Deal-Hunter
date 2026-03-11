@@ -677,11 +677,12 @@ Deno.serve(async (req) => {
     // Run Twitter/X searches in parallel
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      const twitterKeyword = idea.split(/\s+/).slice(0, 4).join(" ");
-      
+      // Use broader keyword without quotes for better Twitter coverage
+      const twitterKeywords = idea.replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter((w: string) => w.length > 2).slice(0, 3).join(" ");
+
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
-          const r = await twitterSearch(twitterBearerToken, `"${twitterKeyword}" app`, 50);
+          const r = await twitterSearch(twitterBearerToken, twitterKeywords, 50);
           rawData.twitterSentiment = r;
           rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
           return r.tweets.length;
@@ -690,13 +691,13 @@ Deno.serve(async (req) => {
       
       twitterPromises.push(
         trackSource("twitter_counts", async () => {
-          const r = await twitterTweetCounts(twitterBearerToken, twitterKeyword);
+          const r = await twitterTweetCounts(twitterBearerToken, twitterKeywords);
           rawData.twitterCounts = r;
           return r.total_count;
         })
       );
 
-      rawData.twitterInfluencerNicheQuery = twitterKeyword;
+      rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
     const fetchStart = Date.now();
