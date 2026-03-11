@@ -92,12 +92,22 @@ Deno.serve(async (req) => {
         if (session.mode === "subscription" && userId && customerId) {
           const subscriptionId = session.subscription as string;
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = sub.items.data[0]?.price?.id;
+          const lookupKey = sub.items.data[0]?.price?.lookup_key || "pro";
+
+          // Determine plan name from price ID
+          const planMap: Record<string, string> = {
+            "price_1T9uH5FDYbFzESfWd8q9QfOx": "Starter",
+            "price_1T9uJcFDYbFzESfW9k8hntj2": "Pro",
+            "price_1T9uKEFDYbFzESfWCDsC0dPT": "Agency",
+          };
+          const planName = priceId ? (planMap[priceId] || lookupKey) : lookupKey;
 
           await supabase.from("subscriptions").upsert({
             user_id: userId,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
-            plan: sub.items.data[0]?.price?.lookup_key || "pro",
+            plan: planName.toLowerCase(),
             status: "active",
             current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           }, { onConflict: "user_id" });
@@ -111,6 +121,7 @@ Deno.serve(async (req) => {
             .like("reason", "%Subscription bonus%")
             .limit(1);
 
+          let bonusGranted = false;
           if (!bonusExists || bonusExists.length === 0) {
             const { data: profile } = await supabase
               .from("profiles")
@@ -130,10 +141,44 @@ Deno.serve(async (req) => {
                 reason: bonusReason,
               });
 
+              bonusGranted = true;
               console.log(`[stripe-webhook] Granted 3 bonus credits to user ${userId}`);
             }
           } else {
             console.log(`[stripe-webhook] Bonus credits already granted for user ${userId}, skipping.`);
+          }
+
+          // Send subscription activation email
+          const customerEmail = session.customer_details?.email || session.customer_email;
+          if (customerEmail) {
+            const renewDate = new Date(sub.current_period_end * 1000).toLocaleDateString("en-US", {
+              year: "numeric", month: "long", day: "numeric",
+            });
+
+            try {
+              const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+              const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+              await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseAnonKey}`,
+                },
+                body: JSON.stringify({
+                  type: "subscription_activated",
+                  to: customerEmail,
+                  data: {
+                    plan: planName,
+                    bonusCredits: bonusGranted ? 3 : 0,
+                    renewDate,
+                    appUrl: "https://goldrush.app",
+                  },
+                }),
+              });
+              console.log(`[stripe-webhook] Sent subscription activation email to ${customerEmail}`);
+            } catch (emailErr) {
+              console.error(`[stripe-webhook] Failed to send activation email:`, emailErr);
+            }
           }
         }
         break;
