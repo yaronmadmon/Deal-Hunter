@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.twitter-search]
 verify_jwt = false
+
+[functions.timeout-watchdog]
+verify_jwt = false
