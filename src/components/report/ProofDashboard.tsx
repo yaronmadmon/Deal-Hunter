@@ -68,10 +68,10 @@ export const ProofDashboard = ({ data }: Props) => {
 
         {/* Developer Activity */}
         <SignalBlock icon={Code} title="Developer Activity" confidence={data.developerActivity?.confidence}>
-          <MetricRow label="GitHub Repos" value={data.developerActivity?.repoCount || "Data unavailable"} />
-          <MetricRow label="Total Stars" value={data.developerActivity?.totalStars || "Data unavailable"} />
-          <MetricRow label="Recent Commits (30d)" value={data.developerActivity?.recentCommits || "Data unavailable"} />
-          <MetricRow label="Activity Trend" value={data.developerActivity?.trend || "Data unavailable"} source="GitHub API" />
+          <MetricRow label="GitHub Repos" value={data.developerActivity?.repoCount || "Insufficient data"} />
+          <MetricRow label="Total Stars" value={data.developerActivity?.totalStars || "Insufficient data"} />
+          <MetricRow label="Recent Commits (30d)" value={data.developerActivity?.recentCommits || "Insufficient data"} />
+          <MetricRow label="Activity Trend" value={data.developerActivity?.trend || "Insufficient data"} source="GitHub API" />
         </SignalBlock>
 
         {/* Social Signals */}
