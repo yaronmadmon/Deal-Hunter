@@ -321,6 +321,7 @@ export function generateReportPdf(report: MockReportData) {
   const statsRow = rawStats.length >= 4
     ? rawStats.slice(0, 4)
     : [...rawStats, ...defaultStats.slice(rawStats.length)].slice(0, 4);
+  const statW = cw / statsRow.length;
   doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   statsRow.forEach((stat, i) => {
