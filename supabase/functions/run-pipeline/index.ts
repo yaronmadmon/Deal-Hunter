@@ -1540,6 +1540,51 @@ CRITICAL REMINDERS:
           }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // PHASE 1 FIX 3: COMPETITOR COUNT VALIDATION
+        // Cross-check: if AI says 0 competitors but competitor discovery
+        // found results, flag inconsistency and lower confidence.
+        // ══════════════════════════════════════════════════════════════
+        const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
+        const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
+        const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
+
+        if (aiCompetitorCount === 0 && (competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but competitor discovery found ${competitorDiscoveryCount} results and competitor snapshot has ${aiCompetitorListCount} entries. Correcting.`);
+
+          // Fix the niche analysis competitor count
+          if (reportData.nicheAnalysis) {
+            reportData.nicheAnalysis.directCompetitors = Math.max(aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${competitorDiscoveryCount} competitor search results were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+          }
+
+          // Lower confidence on the competitor snapshot card
+          if (competitorSnapshotCard) {
+            if (competitorSnapshotCard.confidence === "High") {
+              competitorSnapshotCard.confidence = "Medium";
+            }
+          }
+
+          // Lower Market Saturation confidence if it was inflated
+          const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+          if (saturationCard && saturationCard.confidence === "High") {
+            saturationCard.confidence = "Medium";
+            console.warn(`[COMPETITOR VALIDATION] Lowered Market Saturation confidence to Medium due to competitor count inconsistency`);
+          }
+        }
+
+        // Also validate: if competitor discovery found many results but AI only lists 1-2
+        if (competitorDiscoveryCount >= 10 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Competitor discovery found ${competitorDiscoveryCount} results but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+          if (competitorSnapshotCard.confidence !== "Low") {
+            competitorSnapshotCard.confidence = "Medium";
+          }
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${competitorDiscoveryCount} competitor search results were found — more competitors may exist than listed.]`.trim();
+        }
+
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Discovery results: ${competitorDiscoveryCount}, Snapshot entries: ${aiCompetitorListCount}`);
+
         // Log validation summary
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}`);
 
