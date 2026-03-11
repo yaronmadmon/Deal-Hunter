@@ -1376,6 +1376,28 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       console.log(`[COMPETITOR DISCOVERY] ${rawData.serperCompetitors.allResults.length} unique competitor search results collected`);
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // UPGRADE 1: COMPETITOR NORMALIZATION & DEDUPLICATION
+    // Extract competitors from ALL sources, normalize names, merge
+    // duplicates, assign confidence scores, and limit to top 10.
+    // ══════════════════════════════════════════════════════════════════
+    const rawCompetitors = extractCompetitorsFromSources(rawData);
+    rawData.rawCompetitors = rawCompetitors;
+
+    const normalizedCompetitors = normalizeCompetitors(rawCompetitors);
+    rawData.normalizedCompetitors = normalizedCompetitors;
+
+    // ══════════════════════════════════════════════════════════════════
+    // UPGRADE 2: REAL PRODUCT VALIDATION
+    // Verify each competitor is a real product (not a blog, article,
+    // or hypothetical). Uses URL analysis + Serper verification.
+    // Only competitors with validationScore >= 2 survive.
+    // ══════════════════════════════════════════════════════════════════
+    const validatedCompetitors = await validateCompetitors(normalizedCompetitors, serperKey);
+    rawData.validatedCompetitors = validatedCompetitors;
+
+    console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
+
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
     const failedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error").map(([k]) => k);
