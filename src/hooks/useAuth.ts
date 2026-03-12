@@ -28,7 +28,7 @@ export const useAuth = () => {
       if (error || !data) return;
       setSubscription({
         subscribed: data.subscribed ?? false,
-        tier: data.product_id ? getTierByProductId(data.product_id) : "free",
+        tier: data.tier ?? (data.product_id ? getTierByProductId(data.product_id) : data.price_id ? getTierByPriceId(data.price_id) : "free"),
         subscriptionEnd: data.subscription_end ?? null,
       });
     } catch {
