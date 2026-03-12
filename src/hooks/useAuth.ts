@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { trackEvent } from "@/lib/analytics";
-import { getTierByProductId, type SubscriptionTier } from "@/lib/subscriptionTiers";
+import { getTierByPriceId, getTierByProductId, type SubscriptionTier } from "@/lib/subscriptionTiers";
 
 export interface SubscriptionInfo {
   subscribed: boolean;
