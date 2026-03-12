@@ -1274,11 +1274,11 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
 
       if (itemsToScore.length > 0) {
         try {
-          const scoringRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const scoringRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
+              model: "gpt-4o-mini",
               messages: [
                 {
                   role: "system",
