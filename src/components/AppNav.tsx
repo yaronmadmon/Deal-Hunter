@@ -65,6 +65,8 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
             <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
           </Button>
         ))}
+        <FeedbackDialog />
+        <ReviewDialog />
         <NotificationBell />
         <ThemeToggle />
         {onSignOut && (

@@ -71,6 +71,8 @@ const AdminPage = () => {
       case "watchlist": return <WatchlistManagement />;
       case "notifications": return <NotificationsManagement />;
       case "emails": return <EmailLogs />;
+      case "feedback": return <FeedbackManagement />;
+      case "reviews": return <ReviewsManagement />;
       case "live-feed": return <LiveFeedControl />;
       case "pipeline": return <PipelineMetricsPanel />;
       default: return <AdminOverview />;
