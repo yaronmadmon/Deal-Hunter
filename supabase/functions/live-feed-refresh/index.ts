@@ -23,12 +23,27 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   twitter_buzz: 9,
 };
 
+// Category taxonomy for signals
+const CATEGORY_LABELS = [
+  "AI & Machine Learning",
+  "Developer Tools",
+  "Productivity",
+  "E-Commerce & Retail",
+  "Health & Wellness",
+  "Social & Community",
+  "Fintech & Payments",
+  "Education",
+  "Utilities",
+  "Creative Tools",
+  "Infrastructure",
+  "Other",
+];
+
 function scoreSignal(g: number, d: number, c: number, r: number, source?: string, timestamp?: string): number {
   let base = Math.round(
     clamp(g) * 0.35 + clamp(d) * 0.25 + clamp(c) * 0.20 + clamp(r) * 0.20
   );
   if (source) base += SOURCE_WEIGHTS[source] ?? 0;
-  // Recency boost
   if (timestamp) {
     const age = Date.now() - new Date(timestamp).getTime();
     if (age < 24 * 60 * 60 * 1000) base += 10;
@@ -108,7 +123,7 @@ function addSignalMeta(items: any[], source: string, opts: {
   return items.map((item) => {
     const growth = opts.growthField ? parseGrowth(item[opts.growthField]) : (opts.defaultGrowth ?? 50);
     const velocity = opts.velocityField ? (item[opts.velocityField] ?? opts.defaultVelocity ?? 40) : (opts.defaultVelocity ?? 40);
-    const recency = 70; // default recency factor
+    const recency = 70;
     const score = scoreSignal(growth, velocity, 50, recency, source, now);
     const momentum = computeMomentum(growth, velocity, recency);
     return {
@@ -134,7 +149,6 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
   const pplxKey = Deno.env.get("PERPLEXITY_API_KEY");
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
 
   const { section } = await req.json().catch(() => ({ section: "all" }));
   const results: Record<string, unknown> = {};
@@ -147,7 +161,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "sonar",
         messages: [
-          { role: "system", content: "You are a data API. Always respond with ONLY valid JSON arrays. No markdown, no explanation, no extra text." },
+          { role: "system", content: "You are a data API. Always respond with ONLY valid JSON arrays or objects. No markdown, no explanation, no extra text." },
           { role: "user", content: prompt }
         ],
       }),
@@ -164,7 +178,6 @@ Deno.serve(async (req) => {
   }
 
   async function askAI(prompt: string): Promise<string> {
-    // Use Perplexity as the AI backend (Lovable AI gateway is not accessible from edge functions)
     if (!pplxKey) return "";
     try {
       const res = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -199,6 +212,18 @@ Deno.serve(async (req) => {
     }
     console.error("Could not parse JSON array:", text.slice(0, 300));
     return [];
+  }
+
+  function parseJsonObject(text: string): any {
+    // Try object first
+    const objMatch = text.match(/\{[\s\S]*\}/);
+    if (objMatch) {
+      try { return JSON.parse(objMatch[0]); } catch { /* fall through */ }
+    }
+    // Try array
+    const arr = parseJsonArray(text);
+    if (arr.length > 0) return arr;
+    return null;
   }
 
   try {
@@ -268,7 +293,7 @@ Return ONLY a JSON array, no other text.`
         const prompt = `Find 6 real startup pain points trending on Reddit (r/startups, r/SaaS, r/entrepreneur) this week. Return a JSON array where each object has: "title" (max 100 chars), "problemSummary" (8-12 word summary), "subreddit", "upvotes" (number). Return ONLY the JSON array.`;
         let items = parseJsonArray(await askPerplexity(prompt)).slice(0, 6);
         if (items.length === 0) {
-          console.log("Reddit: Perplexity failed, trying Lovable AI fallback");
+          console.log("Reddit: Perplexity failed, trying AI fallback");
           items = parseJsonArray(await askAI(prompt)).slice(0, 6);
         }
         items = addSignalMeta(items, "reddit_pain_points", { keywordField: "title", velocityField: "upvotes", defaultGrowth: 45 });
@@ -376,7 +401,6 @@ Return ONLY a JSON array, no other text.`
         let apps: any[] = [];
 
         if (firecrawlKey) {
-          // Scrape trending/top apps from App Store and Google Play via Firecrawl search
           const [iosRes, androidRes] = await Promise.all([
             fetch("https://api.firecrawl.dev/v1/search", {
               method: "POST",
@@ -404,7 +428,6 @@ Return ONLY a JSON array, no other text.`
           apps = [...iosApps, ...androidApps].filter(a => a.name && a.name !== "Unknown App").slice(0, 8);
         }
 
-        // Fallback to Perplexity if Firecrawl returned nothing
         if (apps.length === 0 && pplxKey) {
           const raw = await askPerplexity(
             `What are the top 6 trending or fastest-rising apps on the App Store and Google Play right now in March 2026? For each, return a JSON object with: "name" (app name), "platform" ("iOS" or "Android" or "Both"), "snippet" (one sentence about what it does, max 100 chars), "category" (app category). Return ONLY a JSON array.`
@@ -435,7 +458,6 @@ Return ONLY a JSON array, no other text.`
         let tweets: any[] = [];
 
         if (twitterToken) {
-          // Search recent tweets about startups, SaaS launches, trending apps
           const queries = ["startup launch 2026", "new SaaS app trending"];
           for (const q of queries) {
             try {
@@ -463,12 +485,10 @@ Return ONLY a JSON array, no other text.`
               console.error("Twitter query failed:", e);
             }
           }
-          // Sort by engagement and take top 8
           tweets.sort((a: any, b: any) => (b.likes + b.retweets * 2) - (a.likes + a.retweets * 2));
           tweets = tweets.slice(0, 8);
         }
 
-        // Fallback to Perplexity if Twitter API returned nothing
         if (tweets.length === 0 && pplxKey) {
           const raw = await askPerplexity(
             `What are the top 6 buzzing tweets or X/Twitter discussions about startups, new app launches, or SaaS tools right now in March 2026? For each, return a JSON object with: "text" (the tweet or discussion summary, max 150 chars), "likes" (number), "retweets" (number), "replies" (number), "topic" (2-3 word topic). Return ONLY a JSON array.`
@@ -499,7 +519,81 @@ Return ONLY a JSON array, no other text.`
     }
     const mergedSignals = crossFeedMerge(allSignals, "keyword");
     mergedSignals.sort((a: any, b: any) => (b._signalScore ?? 0) - (a._signalScore ?? 0));
-    results.top_opportunities = mergedSignals.slice(0, 5);
+
+    // ── NEW: AI Opportunity Enrichment ──
+    // For top signals, generate: category, opportunity gap summary, and a validate-ready idea
+    if (pplxKey && mergedSignals.length > 0) {
+      const topSignals = mergedSignals.slice(0, 12);
+      const signalSummaries = topSignals.map((s: any, i: number) => {
+        const name = s.keyword || s.name || s.title || s.problemSummary || s.text?.slice(0, 60) || `Signal ${i}`;
+        const src = s._source || "unknown";
+        const desc = s.snippet || s.tagline || s.description || s.problemSummary || s.text?.slice(0, 80) || "";
+        return `${i + 1}. "${name}" (from ${src}): ${desc}`;
+      }).join("\n");
+
+      const categoryList = CATEGORY_LABELS.join(", ");
+
+      try {
+        const enrichPrompt = `You are a startup opportunity analyst. Below are ${topSignals.length} trending market signals. For EACH signal, analyze the GAP or underserved opportunity it reveals — NOT the existing product/company itself.
+
+SIGNALS:
+${signalSummaries}
+
+For each signal, return a JSON array with objects containing:
+- "index": the signal number (1-based)
+- "category": one of [${categoryList}]
+- "opportunityGap": 1-2 sentences describing what's MISSING or underserved in this space. Focus on pain points, underserved segments, or features competitors lack. (max 150 chars)
+- "suggestedIdea": a specific, actionable startup idea that fills this gap (max 80 chars, start with an action verb like "Build", "Create", "Launch")
+- "whyNow": one sentence explaining why this is timely (max 100 chars)
+
+Return ONLY a valid JSON array.`;
+
+        const enrichRaw = await askPerplexity(enrichPrompt);
+        const enrichments = parseJsonArray(enrichRaw);
+
+        // Map enrichments back onto signals
+        for (const enrich of enrichments) {
+          const idx = (enrich.index ?? 0) - 1;
+          if (idx >= 0 && idx < topSignals.length) {
+            topSignals[idx]._category = enrich.category || "Other";
+            topSignals[idx]._opportunityGap = enrich.opportunityGap || "";
+            topSignals[idx]._suggestedIdea = enrich.suggestedIdea || "";
+            topSignals[idx]._whyNow = enrich.whyNow || "";
+          }
+        }
+
+        // Apply enrichments back to mergedSignals
+        for (let i = 0; i < topSignals.length; i++) {
+          mergedSignals[i] = topSignals[i];
+        }
+
+        // For remaining signals that weren't enriched, assign basic category
+        for (let i = topSignals.length; i < mergedSignals.length; i++) {
+          mergedSignals[i]._category = "Other";
+          mergedSignals[i]._opportunityGap = "";
+          mergedSignals[i]._suggestedIdea = "";
+          mergedSignals[i]._whyNow = "";
+        }
+
+        console.log(`Enriched ${enrichments.length} signals with opportunity insights`);
+      } catch (e) {
+        console.error("Opportunity enrichment failed:", e);
+        // Set defaults if enrichment fails
+        for (const sig of mergedSignals) {
+          sig._category = sig._category || "Other";
+          sig._opportunityGap = sig._opportunityGap || "";
+          sig._suggestedIdea = sig._suggestedIdea || "";
+          sig._whyNow = sig._whyNow || "";
+        }
+      }
+    }
+
+    results.top_opportunities = mergedSignals.slice(0, 8);
+
+    // Also save enriched opportunities as their own snapshot for frontend consumption
+    if (mergedSignals.length > 0) {
+      await saveSnapshot(supabase, "enriched_opportunities", mergedSignals.slice(0, 12));
+    }
 
     // ── Breakout Idea of the Day ──
     if (section === "all" || section === "breakout_idea") {
@@ -510,25 +604,35 @@ Return ONLY a JSON array, no other text.`
           signal: s._signalScore ?? 0,
           confidence: s._confidence ?? "Low",
           momentum: s._momentum ?? "Emerging",
+          category: s._category || "Other",
+          suggestedIdea: s._suggestedIdea || "",
+          opportunityGap: s._opportunityGap || "",
+          whyNow: s._whyNow || "",
         }));
 
-        // Quality filter: score >= 50 AND confidence >= Medium
         const qualified = candidates.filter((c: any) =>
           c.signal >= 50 && (c.confidence === "High" || c.confidence === "Medium")
         );
 
-        const pick = qualified[0] || candidates[0] || { name: "AI-Powered Micro-SaaS", type: "trending", signal: 50, confidence: "Medium", momentum: "Rising" };
+        const pick = qualified[0] || candidates[0] || { name: "AI-Powered Micro-SaaS", type: "trending", signal: 50, confidence: "Medium", momentum: "Rising", category: "AI & Machine Learning", suggestedIdea: "", opportunityGap: "", whyNow: "" };
 
         let summary = `High signal opportunity based on ${pick.type} data.`;
-        const aiSummary = await askAI(`In exactly 2 sentences, explain why "${pick.name}" is a promising startup opportunity right now in March 2026. Be specific and mention real market data.`);
-        if (aiSummary) summary = aiSummary.slice(0, 250);
+        if (pick.opportunityGap) {
+          summary = pick.opportunityGap;
+        } else {
+          const aiSummary = await askAI(`In exactly 2 sentences, explain what MARKET GAP exists around "${pick.name}" right now in March 2026. Focus on what's missing or underserved, not on the existing product. Be specific.`);
+          if (aiSummary) summary = aiSummary.slice(0, 250);
+        }
 
         const breakout = {
-          name: pick.name,
-          category: pick.type,
+          name: pick.suggestedIdea || pick.name,
+          originalSignal: pick.name,
+          category: pick.category,
           score: clamp(Math.floor(50 + pick.signal / 10), 0, 95),
           signalStrength: pick.signal > 70 ? "Strong" : pick.signal > 45 ? "Moderate" : "Emerging",
           summary,
+          suggestedIdea: pick.suggestedIdea,
+          whyNow: pick.whyNow,
           generatedAt: new Date().toISOString(),
           _signalScore: clamp(pick.signal),
           _confidence: pick.confidence,
@@ -540,6 +644,41 @@ Return ONLY a JSON array, no other text.`
       } catch (e) {
         console.error("breakout_idea error:", e);
         results.breakout_idea = {};
+      }
+    }
+
+    // ── NEW: Market Gaps Summary ──
+    // Generate 3-5 high-level gap hypotheses from cross-referencing all signals
+    if (section === "all" && pplxKey && mergedSignals.length >= 3) {
+      try {
+        const gapSignals = mergedSignals.slice(0, 10).map((s: any) => {
+          return `- ${s.keyword || s.name || s.title || "?"} (${s._source}, score: ${s._signalScore}, gap: ${s._opportunityGap || "unknown"})`;
+        }).join("\n");
+
+        const gapsPrompt = `Based on these trending market signals, identify 4 high-conviction startup opportunities that emerge from PATTERNS across multiple signals. These should be actionable gaps, not just restating what's trending.
+
+SIGNALS:
+${gapSignals}
+
+For each opportunity, return a JSON array with objects containing:
+- "title": a compelling 4-8 word opportunity title
+- "category": one of [${CATEGORY_LABELS.join(", ")}]
+- "insight": 2 sentences explaining the gap and why it's underserved (max 200 chars)
+- "suggestedIdea": a specific product idea to validate (max 80 chars)
+- "confidenceLevel": "High", "Medium", or "Low" based on signal convergence
+- "signalSources": array of 2-3 source types that back this up (e.g. ["reddit_pain_points", "trending_searches"])
+
+Return ONLY a valid JSON array of exactly 4 objects.`;
+
+        const gapsRaw = await askPerplexity(gapsPrompt);
+        const gaps = parseJsonArray(gapsRaw).slice(0, 5);
+
+        if (gaps.length > 0) {
+          await saveSnapshot(supabase, "market_gaps", gaps);
+          results.market_gaps = gaps;
+        }
+      } catch (e) {
+        console.error("market_gaps generation error:", e);
       }
     }
 
@@ -556,19 +695,16 @@ Return ONLY a JSON array, no other text.`
 });
 
 async function saveSnapshot(supabase: any, sectionName: string, data: any) {
-  // Empty protection: never overwrite with empty data
   if (Array.isArray(data) && data.length === 0) {
     console.log(`Skipping save for ${sectionName} — empty data, preserving existing`);
     return;
   }
 
-  // Insert new snapshot (keep last N per section)
   await supabase.from("live_feed_snapshots").insert({
     section_name: sectionName,
     data_payload: data,
   });
 
-  // Retain only the latest MAX_SNAPSHOTS_PER_SECTION snapshots
   const { data: rows } = await supabase
     .from("live_feed_snapshots")
     .select("id, created_at")
