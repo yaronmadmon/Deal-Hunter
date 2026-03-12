@@ -37,19 +37,25 @@ export const AnalysisManagement = () => {
   const fetchAnalyses = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('analyses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [analysesRes, profilesRes] = await Promise.all([
+        supabase.from('analyses').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, email, display_name'),
+      ]);
 
-      if (error) throw error;
-      if (data) setAnalyses(data);
+      if (analysesRes.error) throw analysesRes.error;
+      if (analysesRes.data) setAnalyses(analysesRes.data);
+      if (profilesRes.data) setProfiles(profilesRes.data);
     } catch (error) {
       console.error('Error fetching analyses:', error);
       toast.error('Failed to load analyses');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getUserLabel = (userId: string) => {
+    const p = profiles.find(pr => pr.id === userId);
+    return p?.display_name || p?.email?.split('@')[0] || userId.slice(0, 8);
   };
 
   useEffect(() => {
