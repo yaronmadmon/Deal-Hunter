@@ -59,6 +59,7 @@ const Report = () => {
   const { id } = useParams();
   const { user, loading } = useAuth();
   const [report, setReport] = useState<MockReportData | null>(null);
+  const [loadingReport, setLoadingReport] = useState(true);
   const [isTracked, setIsTracked] = useState(false);
   const [trackingLoading, setTrackingLoading] = useState(false);
 
