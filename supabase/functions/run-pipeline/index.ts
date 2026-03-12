@@ -1634,8 +1634,8 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!lovableKey) {
-      console.error("LOVABLE_API_KEY not found");
+    if (!openaiKey) {
+      console.error("OPENAI_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
