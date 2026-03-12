@@ -282,9 +282,28 @@ const Live = () => {
     }
     setCredits((c) => Math.max(0, c - 1));
 
-    supabase.functions.invoke("run-pipeline", {
-      body: { analysisId: data.id, idea: ideaText },
-    });
+    try {
+      const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+        body: { analysisId: data.id, idea: ideaText },
+      });
+
+      if (pipelineError) {
+        await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+        const message = pipelineError.message?.includes("429")
+          ? "Rate limit reached. Please try again in a minute."
+          : "Analysis failed to start. Please try again.";
+        toast.error(message);
+        return;
+      }
+    } catch (pipelineErr: any) {
+      await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+      const text = String(pipelineErr?.message || "").toLowerCase();
+      const message = text.includes("429") || text.includes("rate limit")
+        ? "Rate limit reached. Please try again in a minute."
+        : "Analysis failed to start. Please try again.";
+      toast.error(message);
+      return;
+    }
 
     navigate(`/processing/${data.id}`);
   };

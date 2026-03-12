@@ -81,9 +81,28 @@ const Watchlist = () => {
         .eq("id", item.id);
 
       // Kick off pipeline
-      supabase.functions.invoke("run-pipeline", {
-        body: { analysisId: newAnalysis.id, idea: item.idea },
-      });
+      try {
+        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+          body: { analysisId: newAnalysis.id, idea: item.idea },
+        });
+
+        if (pipelineError) {
+          await supabase.from("analyses").update({ status: "failed" }).eq("id", newAnalysis.id);
+          const message = pipelineError.message?.includes("429")
+            ? "Rate limit reached. Please try again in a minute."
+            : "Re-analysis failed to start. Please try again.";
+          toast.error(message);
+          return;
+        }
+      } catch (pipelineErr: any) {
+        await supabase.from("analyses").update({ status: "failed" }).eq("id", newAnalysis.id);
+        const text = String(pipelineErr?.message || "").toLowerCase();
+        const message = text.includes("429") || text.includes("rate limit")
+          ? "Rate limit reached. Please try again in a minute."
+          : "Re-analysis failed to start. Please try again.";
+        toast.error(message);
+        return;
+      }
 
       toast.success("Re-analysis started! Redirecting to processing...");
       navigate(`/processing/${newAnalysis.id}`);
