@@ -5,6 +5,8 @@ import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard, Setti
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { ReviewDialog } from "@/components/ReviewDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AppNavProps {
