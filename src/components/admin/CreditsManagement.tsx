@@ -17,6 +17,12 @@ interface CreditLog {
   created_at: string;
 }
 
+interface Profile {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+}
+
 interface CreditStats {
   totalCreditsGiven: number;
   totalCreditsUsed: number;
@@ -25,6 +31,7 @@ interface CreditStats {
 
 export const CreditsManagement = () => {
   const [creditLogs, setCreditLogs] = useState<CreditLog[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CreditStats>({
     totalCreditsGiven: 0,
@@ -35,32 +42,36 @@ export const CreditsManagement = () => {
   const fetchCreditLogs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('credits_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      const [logsRes, profilesRes] = await Promise.all([
+        supabase.from('credits_log').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('profiles').select('id, email, display_name'),
+      ]);
 
-      if (error) throw error;
+      if (logsRes.error) throw logsRes.error;
       
-      if (data) {
-        setCreditLogs(data);
+      const data = logsRes.data || [];
+      setCreditLogs(data);
+      if (profilesRes.data) setProfiles(profilesRes.data);
         
-        const given = data.filter(l => l.amount > 0).reduce((sum, l) => sum + l.amount, 0);
-        const used = data.filter(l => l.amount < 0).reduce((sum, l) => sum + Math.abs(l.amount), 0);
+      const given = data.filter(l => l.amount > 0).reduce((sum, l) => sum + l.amount, 0);
+      const used = data.filter(l => l.amount < 0).reduce((sum, l) => sum + Math.abs(l.amount), 0);
         
-        setStats({
-          totalCreditsGiven: given,
-          totalCreditsUsed: used,
-          totalTransactions: data.length
-        });
-      }
+      setStats({
+        totalCreditsGiven: given,
+        totalCreditsUsed: used,
+        totalTransactions: data.length
+      });
     } catch (error) {
       console.error('Error fetching credit logs:', error);
       toast.error('Failed to load credit logs');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getUserLabel = (userId: string) => {
+    const p = profiles.find(pr => pr.id === userId);
+    return p?.display_name || p?.email?.split('@')[0] || userId.slice(0, 8);
   };
 
   useEffect(() => {
