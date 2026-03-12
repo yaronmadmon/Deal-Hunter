@@ -67,7 +67,6 @@ serve(async (req) => {
       customer: customerId,
       status: "active",
       limit: 1,
-      expand: ["data.items.data.price.product"],
     });
 
     const hasActiveSub = subscriptions.data.length > 0;
@@ -80,12 +79,20 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       const item = subscription.items.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
       priceId = item.price.id;
+      productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
 
+      // Infer tier from lookup_key first
       tier = inferTier(item.price.lookup_key);
-      if (!tier && typeof item.price.product !== "string") {
-        tier = inferTier(item.price.product.name);
+
+      // If no tier from lookup_key, fetch the product name separately
+      if (!tier && productId) {
+        try {
+          const product = await stripe.products.retrieve(productId as string);
+          tier = inferTier(product.name);
+        } catch (e) {
+          logStep("Failed to retrieve product", { error: String(e) });
+        }
       }
 
       logStep("Active subscription found", { productId, priceId, tier, subscriptionEnd });
