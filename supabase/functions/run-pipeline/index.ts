@@ -2564,15 +2564,26 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("Pipeline error:", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("Pipeline error:", errorMessage);
     try {
       if (capturedAnalysisId) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, serviceKey);
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", capturedAnalysisId);
+        await supabase.from("analyses").update({
+          status: "failed",
+          report_data: {
+            error: "pipeline_error",
+            message: errorMessage,
+          },
+          updated_at: new Date().toISOString(),
+        }).eq("id", capturedAnalysisId);
       }
     } catch (_) {}
-    return new Response(JSON.stringify({ error: "Pipeline failed" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Pipeline failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
