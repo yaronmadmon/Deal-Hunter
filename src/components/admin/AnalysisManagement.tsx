@@ -21,8 +21,15 @@ interface Analysis {
   user_id: string;
 }
 
+interface Profile {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+}
+
 export const AnalysisManagement = () => {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
@@ -30,19 +37,25 @@ export const AnalysisManagement = () => {
   const fetchAnalyses = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('analyses')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [analysesRes, profilesRes] = await Promise.all([
+        supabase.from('analyses').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, email, display_name'),
+      ]);
 
-      if (error) throw error;
-      if (data) setAnalyses(data);
+      if (analysesRes.error) throw analysesRes.error;
+      if (analysesRes.data) setAnalyses(analysesRes.data);
+      if (profilesRes.data) setProfiles(profilesRes.data);
     } catch (error) {
       console.error('Error fetching analyses:', error);
       toast.error('Failed to load analyses');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getUserLabel = (userId: string) => {
+    const p = profiles.find(pr => pr.id === userId);
+    return p?.display_name || p?.email?.split('@')[0] || userId.slice(0, 8);
   };
 
   useEffect(() => {
@@ -106,21 +119,25 @@ export const AnalysisManagement = () => {
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40%]">Idea</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Signal</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[35%]">Idea</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Signal</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {filteredAnalyses.map((analysis) => (
               <TableRow key={analysis.id}>
                 <TableCell className="font-medium max-w-xs truncate">
                   {analysis.idea}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {getUserLabel(analysis.user_id)}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(analysis.status)}>

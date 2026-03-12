@@ -57,7 +57,7 @@ export const PipelineMetricsPanel = () => {
       const { data, error } = await supabase
         .from("analyses")
         .select("id, idea, status, overall_score, created_at, report_data")
-        .eq("status", "complete")
+        .eq("status", "completed")
         .order("created_at", { ascending: false })
         .limit(50);
 
