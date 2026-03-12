@@ -137,7 +137,7 @@ export const CreditsManagement = () => {
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Reason</TableHead>
-                <TableHead>User ID</TableHead>
+                <TableHead>User</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
