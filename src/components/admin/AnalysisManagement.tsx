@@ -29,6 +29,7 @@ interface Profile {
 
 export const AnalysisManagement = () => {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
