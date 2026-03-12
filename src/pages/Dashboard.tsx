@@ -220,8 +220,11 @@ const Dashboard = () => {
             <div className="flex-1">
               <p className="text-foreground font-semibold">Subscription Activated!</p>
               <p className="text-muted-foreground text-sm">
-                Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active.
-                {subscription.tier !== "free" && " 3 bonus credits have been added to your account."}
+                {subscription.tier !== "free" ? (
+                  <>Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active. 3 bonus credits have been added to your account.</>
+                ) : (
+                  <>Your plan is being activated. This may take a moment...</>
+                )}
               </p>
             </div>
             <button onClick={() => setSubscriptionSuccess(false)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
