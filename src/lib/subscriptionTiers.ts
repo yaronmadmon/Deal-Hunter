@@ -1,24 +1,24 @@
 export const SUBSCRIPTION_TIERS = {
   starter: {
     name: "Starter",
-    price_id: "price_1T9uH5FDYbFzESfWd8q9QfOx",
-    product_id: "prod_U8AcRADCC7pvqR",
+    price_id: "price_1T9zz9JxNS5tkQFqAymso8ZE",
+    product_id: "prod_U8GWnWSv5dmoMX",
     monthly: 9,
     credits_per_month: 10,
     free_reports_on_signup: 3,
   },
   pro: {
     name: "Pro",
-    price_id: "price_1T9uJcFDYbFzESfW9k8hntj2",
-    product_id: "prod_U8AeVZPYMnMkCq",
+    price_id: "price_1TA01SJxNS5tkQFqLx9oAtAz",
+    product_id: "prod_U8GYqKRTiz3L9A",
     monthly: 29,
     credits_per_month: -1, // unlimited
     free_reports_on_signup: 3,
   },
   agency: {
     name: "Agency",
-    price_id: "price_1T9uKEFDYbFzESfWCDsC0dPT",
-    product_id: "prod_U8AfEDCYRPGFhE",
+    price_id: "price_1TA021JxNS5tkQFqjTK3mxwJ",
+    product_id: "prod_U8GZdU4fzNjS0t",
     monthly: 79,
     credits_per_month: -1, // unlimited
     free_reports_on_signup: 3,
