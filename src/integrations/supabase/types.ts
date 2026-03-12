@@ -217,6 +217,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          admin_notes: string | null
+          category: string
+          created_at: string
+          id: string
+          message: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       live_feed_snapshots: {
         Row: {
           created_at: string
@@ -303,6 +333,39 @@ export type Database = {
           id?: string
           suspended?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          approved: boolean
+          body: string
+          created_at: string
+          display_name: string | null
+          id: string
+          rating: number
+          title: string
+          user_id: string
+        }
+        Insert: {
+          approved?: boolean
+          body: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          rating?: number
+          title: string
+          user_id: string
+        }
+        Update: {
+          approved?: boolean
+          body?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          rating?: number
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
