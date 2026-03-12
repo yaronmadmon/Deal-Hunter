@@ -158,8 +158,8 @@ export const CreditsManagement = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>{log.reason}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {log.user_id.slice(0, 8)}...
+                  <TableCell className="text-sm text-muted-foreground">
+                    {getUserLabel(log.user_id)}
                   </TableCell>
                 </TableRow>
               ))}
