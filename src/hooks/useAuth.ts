@@ -89,8 +89,8 @@ export const useAuth = () => {
   }, [user, checkSubscription]);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    return { error, needsEmailConfirmation: !data.session };
   };
 
   const signIn = async (email: string, password: string) => {
