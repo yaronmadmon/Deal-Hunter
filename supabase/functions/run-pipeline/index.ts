@@ -112,6 +112,10 @@ async function serperAutoComplete(
     },
     body: JSON.stringify({ q: query }),
   });
+  if (!res.ok) {
+    console.error(`[SERPER] autocomplete failed (${res.status}): ${await res.text()}`);
+    return { suggestions: [] };
+  }
   const data = await res.json();
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
