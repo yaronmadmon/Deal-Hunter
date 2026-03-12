@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
-  ChevronLeft, ChevronRight, Pickaxe,
+  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star,
 } from "lucide-react";
 
 const navSections = [
