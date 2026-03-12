@@ -86,9 +86,15 @@ async function serperSearch(
     },
     body: JSON.stringify({ q: query, num }),
   });
+  if (!res.ok) {
+    console.error(`[SERPER] ${type} search failed (${res.status}): ${await res.text()}`);
+    return { organic: [], searchParameters: {}, knowledgeGraph: null };
+  }
   const data = await res.json();
+  // News endpoint returns { news: [...] } not { organic: [...] }
+  const results = type === "news" ? (data.news || []) : (data.organic || []);
   return {
-    organic: data.organic || [],
+    organic: results,
     searchParameters: data.searchParameters || {},
     knowledgeGraph: data.knowledgeGraph || null,
   };
