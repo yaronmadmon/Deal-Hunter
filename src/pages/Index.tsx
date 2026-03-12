@@ -59,11 +59,15 @@ const Index = () => {
             Market Intelligence for Builders
           </div>
 
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-6">
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-4">
             The Gold Rush Is Back.
             <br />
             <span className="text-primary">This Time, the Gold Is Startup Ideas.</span>
           </h1>
+
+          <p className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-foreground/80 mb-6">
+            Validate Your App Idea Before You Build It.
+          </p>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
             Don't miss your opportunity. Grab your shovel and start digging for the next big app.
