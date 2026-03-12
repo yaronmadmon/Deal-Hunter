@@ -119,16 +119,17 @@ export const AnalysisManagement = () => {
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40%]">Idea</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Signal</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[35%]">Idea</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Signal</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {filteredAnalyses.map((analysis) => (
               <TableRow key={analysis.id}>
