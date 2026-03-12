@@ -93,15 +93,24 @@ Deno.serve(async (req) => {
           const subscriptionId = session.subscription as string;
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
           const priceId = sub.items.data[0]?.price?.id;
-          const lookupKey = sub.items.data[0]?.price?.lookup_key || "pro";
+          const lookupKey = sub.items.data[0]?.price?.lookup_key || "";
+          const priceProduct = sub.items.data[0]?.price?.product;
 
-          // Determine plan name from price ID
-          const planMap: Record<string, string> = {
-            "price_1T9uH5FDYbFzESfWd8q9QfOx": "Starter",
-            "price_1T9uJcFDYbFzESfW9k8hntj2": "Pro",
-            "price_1T9uKEFDYbFzESfWCDsC0dPT": "Agency",
-          };
-          const planName = priceId ? (planMap[priceId] || lookupKey) : lookupKey;
+          let planName = "pro";
+          const normalizedLookup = lookupKey.toLowerCase();
+          if (normalizedLookup.includes("agency")) {
+            planName = "agency";
+          } else if (normalizedLookup.includes("starter")) {
+            planName = "starter";
+          } else if (normalizedLookup.includes("pro")) {
+            planName = "pro";
+          } else if (typeof priceProduct === "string") {
+            const product = await stripe.products.retrieve(priceProduct);
+            const productName = product.name.toLowerCase();
+            if (productName.includes("agency")) planName = "agency";
+            else if (productName.includes("starter")) planName = "starter";
+            else if (productName.includes("pro")) planName = "pro";
+          }
 
           await supabase.from("subscriptions").upsert({
             user_id: userId,
