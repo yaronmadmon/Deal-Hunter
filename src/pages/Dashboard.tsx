@@ -54,19 +54,17 @@ const Dashboard = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("subscription") === "success") {
       setSubscriptionSuccess(true);
-      toast.success("🎉 Subscription activated! Welcome aboard!");
-      // Aggressively refresh subscription status
+      // Aggressively refresh subscription status with delay to allow Stripe to process
       const refresh = async () => {
-        for (let i = 0; i < 5; i++) {
-          await checkSubscription();
-          if (subscription.subscribed) break;
+        for (let i = 0; i < 8; i++) {
           await new Promise(r => setTimeout(r, 3000));
+          await checkSubscription();
         }
       };
       refresh();
       window.history.replaceState({}, "", "/dashboard");
-      // Auto-dismiss banner after 15s
-      setTimeout(() => setSubscriptionSuccess(false), 15000);
+      // Auto-dismiss banner after 30s
+      setTimeout(() => setSubscriptionSuccess(false), 30000);
     }
   }, [checkSubscription]);
 
@@ -222,8 +220,11 @@ const Dashboard = () => {
             <div className="flex-1">
               <p className="text-foreground font-semibold">Subscription Activated!</p>
               <p className="text-muted-foreground text-sm">
-                Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active.
-                {subscription.tier !== "free" && " 3 bonus credits have been added to your account."}
+                {subscription.tier !== "free" ? (
+                  <>Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active. 3 bonus credits have been added to your account.</>
+                ) : (
+                  <>Your plan is being activated. This may take a moment...</>
+                )}
               </p>
             </div>
             <button onClick={() => setSubscriptionSuccess(false)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
