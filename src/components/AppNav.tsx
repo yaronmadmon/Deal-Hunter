@@ -5,6 +5,8 @@ import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard, Setti
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { ReviewDialog } from "@/components/ReviewDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AppNavProps {
@@ -63,6 +65,8 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
             <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
           </Button>
         ))}
+        <FeedbackDialog />
+        <ReviewDialog />
         <NotificationBell />
         <ThemeToggle />
         {onSignOut && (

@@ -10,13 +10,15 @@ import { NotificationsManagement } from "@/components/admin/NotificationsManagem
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
 import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
 import { EmailLogs } from "@/components/admin/EmailLogs";
+import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
+import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
-  ChevronLeft, ChevronRight, Pickaxe,
+  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star,
 } from "lucide-react";
 
 const navSections = [
@@ -41,6 +43,8 @@ const navSections = [
     items: [
       { id: "notifications", label: "Notifications", icon: Bell },
       { id: "emails", label: "Email Logs", icon: Mail },
+      { id: "feedback", label: "Feedback", icon: MessageSquare },
+      { id: "reviews", label: "Reviews", icon: Star },
     ],
   },
   {
@@ -67,6 +71,8 @@ const AdminPage = () => {
       case "watchlist": return <WatchlistManagement />;
       case "notifications": return <NotificationsManagement />;
       case "emails": return <EmailLogs />;
+      case "feedback": return <FeedbackManagement />;
+      case "reviews": return <ReviewsManagement />;
       case "live-feed": return <LiveFeedControl />;
       case "pipeline": return <PipelineMetricsPanel />;
       default: return <AdminOverview />;
