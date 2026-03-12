@@ -108,6 +108,8 @@ serve(async (req) => {
       logStep("No active subscription found across all customers");
     }
 
+    const hasActiveSub = !!activeSubscription;
+
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       product_id: productId,
