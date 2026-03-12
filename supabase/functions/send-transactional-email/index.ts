@@ -140,6 +140,14 @@ Deno.serve(async (req) => {
 
     const { subject, html } = templates[type](data);
     const messageId = crypto.randomUUID();
+    const unsubscribeToken = crypto.randomUUID();
+
+    if (supabaseAdmin) {
+      await supabaseAdmin.from("email_unsubscribe_tokens").insert({
+        email: to,
+        token: unsubscribeToken,
+      });
+    }
 
     await sendLovableEmail(
       {
@@ -153,6 +161,7 @@ Deno.serve(async (req) => {
         label: type,
         external_id: messageId,
         idempotency_key: messageId,
+        unsubscribe_token: unsubscribeToken,
       },
       { apiKey: lovableApiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") }
     );
