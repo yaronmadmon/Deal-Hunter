@@ -7,9 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+const logStep = (step: string, details?: unknown) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
+};
+
+const inferTier = (raw: string | null | undefined): "starter" | "pro" | "agency" | null => {
+  if (!raw) return null;
+  const value = raw.toLowerCase();
+  if (value.includes("agency")) return "agency";
+  if (value.includes("starter")) return "starter";
+  if (value.includes("pro")) return "pro";
+  return null;
 };
 
 serve(async (req) => {
@@ -20,7 +29,7 @@ serve(async (req) => {
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
+    { auth: { persistSession: false } },
   );
 
   try {
@@ -35,6 +44,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
+
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
@@ -57,19 +67,28 @@ serve(async (req) => {
       customer: customerId,
       status: "active",
       limit: 1,
+      expand: ["data.items.data.price.product"],
     });
 
     const hasActiveSub = subscriptions.data.length > 0;
     let productId = null;
     let priceId = null;
     let subscriptionEnd = null;
+    let tier: "starter" | "pro" | "agency" | null = null;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
+      const item = subscription.items.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      productId = subscription.items.data[0].price.product;
-      priceId = subscription.items.data[0].price.id;
-      logStep("Active subscription found", { productId, priceId, subscriptionEnd });
+      productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
+      priceId = item.price.id;
+
+      tier = inferTier(item.price.lookup_key);
+      if (!tier && typeof item.price.product !== "string") {
+        tier = inferTier(item.price.product.name);
+      }
+
+      logStep("Active subscription found", { productId, priceId, tier, subscriptionEnd });
     } else {
       logStep("No active subscription found");
     }
@@ -78,6 +97,7 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       product_id: productId,
       price_id: priceId,
+      tier,
       subscription_end: subscriptionEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { trackEvent } from "@/lib/analytics";
-import { getTierByProductId, type SubscriptionTier } from "@/lib/subscriptionTiers";
+import { getTierByPriceId, getTierByProductId, type SubscriptionTier } from "@/lib/subscriptionTiers";
 
 export interface SubscriptionInfo {
   subscribed: boolean;
@@ -28,7 +28,7 @@ export const useAuth = () => {
       if (error || !data) return;
       setSubscription({
         subscribed: data.subscribed ?? false,
-        tier: data.product_id ? getTierByProductId(data.product_id) : "free",
+        tier: data.tier ?? (data.product_id ? getTierByProductId(data.product_id) : data.price_id ? getTierByPriceId(data.price_id) : "free"),
         subscriptionEnd: data.subscription_end ?? null,
       });
     } catch {
