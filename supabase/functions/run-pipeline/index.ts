@@ -1144,11 +1144,11 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       }
     }
 
-    // Run Product Hunt search — use SEMANTIC keywords
+    // Run Product Hunt search — use SEMANTIC keywords + Serper site search
     const productHuntPromises: Promise<void>[] = [];
 
-    if (productHuntKey) {
-      // Use semantic queries instead of naive word splitting
+    // Product Hunt works even without PH API key — uses Serper site:producthunt.com
+    if (productHuntKey || serperKey) {
       const phSearches = semanticQueries.length >= 3
         ? semanticQueries.slice(0, 3)
         : [primaryKeywords, ...(semanticQueries.length > 1 ? [semanticQueries[1]] : [])].filter((v, i, a) => a.indexOf(v) === i);
@@ -1156,7 +1156,7 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
       const phResults: any[] = [];
       for (const kw of phSearches) {
         productHuntPromises.push(
-          productHuntSearch(productHuntKey, kw, 5)
+          productHuntSearch(productHuntKey || "", kw, 5, serperKey || null)
             .then(r => { phResults.push(...r.products); })
             .catch(e => console.error("Product Hunt error:", e))
         );
