@@ -830,7 +830,7 @@ Deno.serve(async (req) => {
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
     const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
     const twitterBearerToken = Deno.env.get("TWITTER_BEARER_TOKEN");
 
     // ── Step 1: Fetching real market data ──
