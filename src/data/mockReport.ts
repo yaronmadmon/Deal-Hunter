@@ -339,6 +339,15 @@ export interface MethodologyInfo {
   confidenceNote: string;
 }
 
+export interface FounderInsightData {
+  summary: string;
+  marketReality: string;
+  competitivePressure: string;
+  possibleGaps: string;
+  signalInterpretation: string;
+  confidence?: "High" | "Medium" | "Low";
+}
+
 export interface MockReportData {
   idea: string;
   overallScore: number;
@@ -367,6 +376,7 @@ export interface MockReportData {
   killShotAnalysis?: KillShotAnalysisData;
   scoreExplanationData?: ScoreExplanationData;
   dataQualitySummary?: { sourceName: string; dataTier: string; signalCount: string; reliabilityNote: string }[];
+  founderInsight?: FounderInsightData;
 }
 
 export const mockReport: MockReportData = {
