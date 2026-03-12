@@ -136,6 +136,9 @@ export const AnalysisManagement = () => {
                 <TableCell className="font-medium max-w-xs truncate">
                   {analysis.idea}
                 </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {getUserLabel(analysis.user_id)}
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={getStatusColor(analysis.status)}>
                     {analysis.status}
