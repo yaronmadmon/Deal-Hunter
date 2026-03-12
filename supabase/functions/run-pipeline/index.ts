@@ -2095,6 +2095,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             }
           }
         }
+
+        if (!reportData) {
+          throw new Error("AI response JSON parsing failed");
+        }
+
         // Inject the collected source URLs into the report
         reportData.dataSources = uniqueSources;
         // Always set analysis date to actual current date
