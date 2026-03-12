@@ -71,13 +71,16 @@ const Report = () => {
     if (!id || !user) return;
 
     let cancelled = false;
-    setLoadingReport(true);
 
-    supabase.from("analyses")
-      .select("*")
-      .eq("id", id)
-      .single()
-      .then(({ data, error }) => {
+    const loadReport = async () => {
+      setLoadingReport(true);
+      try {
+        const { data, error } = await supabase
+          .from("analyses")
+          .select("*")
+          .eq("id", id)
+          .single();
+
         if (cancelled) return;
 
         if (error || !data) {
@@ -116,16 +119,17 @@ const Report = () => {
         }
 
         navigate(`/processing/${id}`, { replace: true });
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           toast.error("Failed to load report.");
           navigate("/dashboard", { replace: true });
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoadingReport(false);
-      });
+      }
+    };
+
+    loadReport();
 
     // Check if already tracked
     supabase
