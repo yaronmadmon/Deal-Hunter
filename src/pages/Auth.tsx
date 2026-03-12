@@ -13,18 +13,27 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    if (!loading && user) {
       navigate("/dashboard", { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   if (user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
       if (mode === "forgot") {
@@ -59,31 +68,62 @@ const Auth = () => {
             {mode === "login" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset your password"}
           </p>
         </div>
+
+        {/* Mode tabs for login/signup */}
+        {mode !== "forgot" && (
+          <div className="flex mb-4 rounded-lg overflow-hidden border border-border">
+            <button
+              type="button"
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                mode === "login"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setMode("login")}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                mode === "signup"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setMode("signup")}
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required autoComplete="email" />
           </div>
           {mode !== "forgot" && (
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} />
             </div>
           )}
-          <Button type="submit" className="w-full" variant="default" disabled={submitting}>
-            {submitting ? "Please wait…" : mode === "login" ? "Sign In" : mode === "signup" ? "Sign Up" : "Send Reset Link"}
+          <Button type="submit" className="w-full text-base py-5" variant="default" disabled={submitting}>
+            {submitting ? "Please wait…" : mode === "login" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link"}
           </Button>
           {mode === "login" && (
             <button type="button" className="text-xs text-muted-foreground hover:text-primary w-full text-center" onClick={() => setMode("forgot")}>
               Forgot password?
             </button>
           )}
-          <p className="text-center text-sm text-muted-foreground">
-            {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
-            <button type="button" className="text-primary font-medium hover:underline" onClick={() => setMode(mode === "signup" ? "login" : mode === "forgot" ? "login" : "signup")}>
-              {mode === "signup" ? "Sign In" : mode === "forgot" ? "Sign In" : "Sign Up"}
-            </button>
-          </p>
+          {mode === "forgot" && (
+            <p className="text-center text-sm text-muted-foreground">
+              Remember your password?{" "}
+              <button type="button" className="text-primary font-medium hover:underline" onClick={() => setMode("login")}>
+                Sign In
+              </button>
+            </p>
+          )}
         </form>
       </div>
     </div>
