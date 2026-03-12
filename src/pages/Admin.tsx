@@ -43,6 +43,8 @@ const navSections = [
     items: [
       { id: "notifications", label: "Notifications", icon: Bell },
       { id: "emails", label: "Email Logs", icon: Mail },
+      { id: "feedback", label: "Feedback", icon: MessageSquare },
+      { id: "reviews", label: "Reviews", icon: Star },
     ],
   },
   {
