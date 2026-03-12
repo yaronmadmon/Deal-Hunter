@@ -70,12 +70,23 @@ const Report = () => {
   useEffect(() => {
     if (!id || !user) return;
 
+    let cancelled = false;
+    setLoadingReport(true);
+
     supabase.from("analyses")
       .select("*")
       .eq("id", id)
       .single()
-      .then(({ data }) => {
-        if (data?.report_data) {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+
+        if (error || !data) {
+          toast.error("Report not found.");
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
+        if (data.report_data) {
           const rd = data.report_data as unknown as MockReportData;
           setReport({
             ...rd,
@@ -83,20 +94,37 @@ const Report = () => {
             signalStrength: (data.signal_strength as MockReportData["signalStrength"]) ?? rd.signalStrength,
             blueprint: data.blueprint_data as unknown as MockReportData["blueprint"] ?? rd.blueprint,
           });
-        } else if (data?.status === "failed") {
-          const reportError = (data.report_data as any)?.error;
-          if (reportError === "insufficient_data") {
-            setReport(null);
-            toast.error((data.report_data as any)?.message || "Insufficient data to analyze this idea.");
-            navigate("/dashboard");
-          } else {
-            setReport(null);
-            toast.error("Analysis failed. Please try again.");
-            navigate("/dashboard");
-          }
-        } else {
-          setReport(null);
+          return;
         }
+
+        if (data.status === "failed") {
+          const reportError = (data.report_data as any)?.error;
+          const reportMessage = (data.report_data as any)?.message;
+          toast.error(
+            reportError === "insufficient_data"
+              ? reportMessage || "Insufficient data to analyze this idea."
+              : reportMessage || "Analysis failed. Please try again.",
+          );
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
+        if (data.status === "complete") {
+          toast.error("This report couldn't be generated. Please retry the analysis.");
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
+        navigate(`/processing/${id}`, { replace: true });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast.error("Failed to load report.");
+          navigate("/dashboard", { replace: true });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingReport(false);
       });
 
     // Check if already tracked
@@ -107,9 +135,13 @@ const Report = () => {
       .eq("analysis_id", id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setIsTracked(true);
+        if (data && !cancelled) setIsTracked(true);
       });
-  }, [id, user]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user, navigate]);
 
   const handleTrack = async () => {
     if (!user || !id || !report) return;
