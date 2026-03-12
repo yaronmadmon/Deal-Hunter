@@ -21,6 +21,12 @@ interface Analysis {
   user_id: string;
 }
 
+interface Profile {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+}
+
 export const AnalysisManagement = () => {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(true);
