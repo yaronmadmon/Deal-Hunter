@@ -172,10 +172,21 @@ const Report = () => {
     }
   };
 
-  if (!report) {
+  if (loadingReport) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading report…</p>
+      </div>
+    );
+  }
+
+  if (!report) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="text-center">
+          <p className="text-foreground font-medium">This report is unavailable.</p>
+          <Button className="mt-4" onClick={() => navigate("/dashboard")}>Back to dashboard</Button>
+        </div>
       </div>
     );
   }
