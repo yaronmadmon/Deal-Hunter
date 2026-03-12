@@ -165,6 +165,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: resolvedPriceId, quantity: 1 }],
       mode: "subscription",
+      payment_method_types: ["card"],
       success_url: `${origin}/dashboard?subscription=success`,
       cancel_url: `${origin}/pricing`,
       metadata: {
