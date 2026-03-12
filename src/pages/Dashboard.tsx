@@ -189,7 +189,7 @@ const Dashboard = () => {
       if (pipelineError) {
         await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
         toast.error("Analysis failed to start. Please try again in a few minutes.");
-        loadAnalyses();
+        fetchData();
         return;
       }
 
