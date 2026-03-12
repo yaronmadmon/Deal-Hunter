@@ -1252,7 +1252,7 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     // Items scoring below 5/10 are filtered out before AI analysis.
     // Now includes: GitHub, HN, Product Hunt, AND Serper competitor results.
     // ══════════════════════════════════════════════════════════════════
-    if (lovableKey) {
+    if (openaiKey) {
       const filterStart = Date.now();
 
       // Build items to score from ALL filterable sources
