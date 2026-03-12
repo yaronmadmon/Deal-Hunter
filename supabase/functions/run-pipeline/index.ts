@@ -1213,13 +1213,13 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
-    if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
+    if (twitterBearerToken && openaiKey && rawData.perplexityMarket?.content) {
       await trackSource("twitter_influencers", async () => {
-        const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const extractRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Extract up to 3 X/Twitter usernames (handles without @) of founders, CEOs, or key people building products in the space described. Return ONLY a JSON array of strings like [\"username1\",\"username2\"]. If none found, return []." },
               { role: "user", content: `Market data:\n${rawData.perplexityMarket.content}\n\nIdea: ${idea}` },
