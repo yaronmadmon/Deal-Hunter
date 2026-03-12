@@ -10,6 +10,8 @@ import { NotificationsManagement } from "@/components/admin/NotificationsManagem
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
 import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
 import { EmailLogs } from "@/components/admin/EmailLogs";
+import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
+import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
