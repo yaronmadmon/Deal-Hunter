@@ -54,19 +54,17 @@ const Dashboard = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("subscription") === "success") {
       setSubscriptionSuccess(true);
-      toast.success("🎉 Subscription activated! Welcome aboard!");
-      // Aggressively refresh subscription status
+      // Aggressively refresh subscription status with delay to allow Stripe to process
       const refresh = async () => {
-        for (let i = 0; i < 5; i++) {
-          await checkSubscription();
-          if (subscription.subscribed) break;
+        for (let i = 0; i < 8; i++) {
           await new Promise(r => setTimeout(r, 3000));
+          await checkSubscription();
         }
       };
       refresh();
       window.history.replaceState({}, "", "/dashboard");
-      // Auto-dismiss banner after 15s
-      setTimeout(() => setSubscriptionSuccess(false), 15000);
+      // Auto-dismiss banner after 30s
+      setTimeout(() => setSubscriptionSuccess(false), 30000);
     }
   }, [checkSubscription]);
 
