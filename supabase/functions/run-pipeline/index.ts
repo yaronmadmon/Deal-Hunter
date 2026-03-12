@@ -830,7 +830,7 @@ Deno.serve(async (req) => {
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const serperKey = Deno.env.get("SERPER_API_KEY");
     const productHuntKey = Deno.env.get("PRODUCTHUNT_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
     const twitterBearerToken = Deno.env.get("TWITTER_BEARER_TOKEN");
 
     // ── Step 1: Fetching real market data ──
@@ -844,14 +844,14 @@ Deno.serve(async (req) => {
     let semanticQueries: string[] = [];
     let primaryKeywords = sanitizedIdea; // fallback
 
-    if (lovableKey) {
+    if (openaiKey) {
       try {
         const semanticStart = Date.now();
-        const semanticRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const semanticRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",
@@ -1213,13 +1213,13 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
-    if (twitterBearerToken && lovableKey && rawData.perplexityMarket?.content) {
+    if (twitterBearerToken && openaiKey && rawData.perplexityMarket?.content) {
       await trackSource("twitter_influencers", async () => {
-        const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const extractRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Extract up to 3 X/Twitter usernames (handles without @) of founders, CEOs, or key people building products in the space described. Return ONLY a JSON array of strings like [\"username1\",\"username2\"]. If none found, return []." },
               { role: "user", content: `Market data:\n${rawData.perplexityMarket.content}\n\nIdea: ${idea}` },
@@ -1252,7 +1252,7 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
     // Items scoring below 5/10 are filtered out before AI analysis.
     // Now includes: GitHub, HN, Product Hunt, AND Serper competitor results.
     // ══════════════════════════════════════════════════════════════════
-    if (lovableKey) {
+    if (openaiKey) {
       const filterStart = Date.now();
 
       // Build items to score from ALL filterable sources
@@ -1274,11 +1274,11 @@ Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
 
       if (itemsToScore.length > 0) {
         try {
-          const scoringRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          const scoringRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
             body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
+              model: "gpt-4o-mini",
               messages: [
                 {
                   role: "system",
@@ -1634,8 +1634,8 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!lovableKey) {
-      console.error("LOVABLE_API_KEY not found");
+    if (!openaiKey) {
+      console.error("OPENAI_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
@@ -1738,14 +1738,14 @@ You MUST:
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${lovableKey}`,
+        Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
