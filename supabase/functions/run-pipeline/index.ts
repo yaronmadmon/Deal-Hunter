@@ -2474,10 +2474,26 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             confidence: "Low",
           };
         }
+      } else {
+        throw new Error("AI response did not contain valid JSON payload");
       }
     } else {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
+      await supabase.from("analyses").update({
+        status: "failed",
+        report_data: {
+          error: "ai_gateway_error",
+          message: "Report generation failed due to an AI service error. Please retry.",
+          status: aiResponse.status,
+          details: errText?.slice(0, 4000) || null,
+        },
+        updated_at: new Date().toISOString(),
+      }).eq("id", analysisId);
+      return new Response(JSON.stringify({ error: "AI generation failed" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── Inject pipeline metrics into report for debugging ──
