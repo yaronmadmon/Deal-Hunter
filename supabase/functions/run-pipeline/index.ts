@@ -2480,18 +2480,26 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     } else {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
+      const isCreditsExhausted = aiResponse.status === 402 || errText.includes("Not enough credits") || errText.includes("payment_required");
+      const isRateLimit = aiResponse.status === 429 || errText.includes("rate limit");
+      const userMessage = isCreditsExhausted
+        ? "AI service temporarily unavailable. Please try again in a few minutes."
+        : isRateLimit
+        ? "Rate limit reached. Please try again in a minute."
+        : "Report generation failed due to an AI service error. Please retry.";
+      const errorCode = isCreditsExhausted ? "ai_credits_exhausted" : isRateLimit ? "ai_rate_limit" : "ai_gateway_error";
       await supabase.from("analyses").update({
         status: "failed",
         report_data: {
-          error: "ai_gateway_error",
-          message: "Report generation failed due to an AI service error. Please retry.",
+          error: errorCode,
+          message: userMessage,
           status: aiResponse.status,
           details: errText?.slice(0, 4000) || null,
         },
         updated_at: new Date().toISOString(),
       }).eq("id", analysisId);
-      return new Response(JSON.stringify({ error: "AI generation failed" }), {
-        status: 502,
+      return new Response(JSON.stringify({ error: userMessage, code: errorCode }), {
+        status: isRateLimit ? 429 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

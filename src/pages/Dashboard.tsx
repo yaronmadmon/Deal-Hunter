@@ -130,8 +130,11 @@ const Dashboard = () => {
 
         if (pipelineError) {
           await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-          const message = pipelineError.message?.includes("429")
+          const errMsg = pipelineError.message || "";
+          const message = errMsg.includes("429") || errMsg.includes("rate limit")
             ? "Rate limit reached. Please try again in a minute."
+            : errMsg.includes("temporarily unavailable") || errMsg.includes("credits")
+            ? "AI service temporarily unavailable. Please try again in a few minutes."
             : "Analysis failed to start. Please try again in a few minutes.";
           toast.error(message);
           fetchData();
