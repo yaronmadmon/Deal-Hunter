@@ -219,6 +219,9 @@ const Report = () => {
         {/* Data Quality Summary */}
         {r.dataQualitySummary && <DataQualitySummary data={r.dataQualitySummary} />}
 
+        {/* Founder Insight — plain-English interpretation */}
+        {r.founderInsight && <FounderInsight data={r.founderInsight} />}
+
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
 
