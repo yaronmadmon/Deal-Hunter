@@ -122,36 +122,19 @@ const Dashboard = () => {
 
       trackEvent("analysis_created", user.id, { idea_length: idea.length });
 
-      // Kick off pipeline
-      try {
-        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
-          body: { analysisId: data.id, idea },
-        });
-
-        if (pipelineError) {
-          await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-          const errMsg = pipelineError.message || "";
-          const message = errMsg.includes("429") || errMsg.includes("rate limit")
-            ? "Rate limit reached. Please try again in a minute."
-            : errMsg.includes("temporarily unavailable") || errMsg.includes("credits")
-            ? "AI service temporarily unavailable. Please try again in a few minutes."
-            : "Analysis failed to start. Please try again in a few minutes.";
-          toast.error(message);
-          fetchData();
-          return;
-        }
-      } catch (pipelineErr: any) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-        const text = String(pipelineErr?.message || "").toLowerCase();
-        const message = text.includes("429") || text.includes("rate limit")
-          ? "Rate limit reached. Please try again in a minute."
-          : "Analysis failed to start. Please try again in a few minutes.";
-        toast.error(message);
-        fetchData();
-        return;
-      }
-
+      // Navigate immediately, then fire off pipeline in background
       navigate(`/processing/${data.id}`);
+
+      // Kick off pipeline (fire-and-forget — processing page tracks status via realtime)
+      supabase.functions.invoke("run-pipeline", {
+        body: { analysisId: data.id, idea },
+      }).then(({ error: pipelineError }) => {
+        if (pipelineError) {
+          supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+        }
+      }).catch(() => {
+        supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+      });
     } finally {
       setSubmitting(false);
     }
@@ -198,33 +181,18 @@ const Dashboard = () => {
       setCredits((c) => Math.max(0, c - 1));
       trackEvent("analysis_created", user.id, { retry: true, original_id: item.id });
 
-      try {
-        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
-          body: { analysisId: data.id, idea: item.idea },
-        });
-
-        if (pipelineError) {
-          await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-          const message = pipelineError.message?.includes("429")
-            ? "Rate limit reached. Please try again in a minute."
-            : "Analysis failed to start. Please try again in a few minutes.";
-          toast.error(message);
-          fetchData();
-          return;
-        }
-      } catch (pipelineErr: any) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-        const text = String(pipelineErr?.message || "").toLowerCase();
-        const message = text.includes("429") || text.includes("rate limit")
-          ? "Rate limit reached. Please try again in a minute."
-          : "Analysis failed to start. Please try again in a few minutes.";
-        toast.error(message);
-        fetchData();
-        return;
-      }
-
       toast.success("Retrying analysis…");
       navigate(`/processing/${data.id}`);
+
+      supabase.functions.invoke("run-pipeline", {
+        body: { analysisId: data.id, idea: item.idea },
+      }).then(({ error: pipelineError }) => {
+        if (pipelineError) {
+          supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+        }
+      }).catch(() => {
+        supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+      });
     } finally {
       setRetryingId(null);
     }
