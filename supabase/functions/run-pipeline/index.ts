@@ -689,15 +689,82 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 2000): 
 }
 
 // ── Product Hunt helper ─────────────────────────────────────────────
-// Uses Serper site:producthunt.com search for reliable text-based discovery.
-// Falls back to PH GraphQL API only if Serper key unavailable.
+// Strategy 1: PH GraphQL API (primary). Strategy 2: Serper scraper (fallback).
 async function productHuntSearch(
   apiKey: string,
   topic: string,
   first = 10,
   serperKey?: string | null
 ): Promise<{ products: any[] }> {
-  // Strategy 1: Serper site search (most reliable for text queries)
+  // Strategy 1: PH GraphQL API — fetch top posts and filter by keyword
+  if (apiKey) {
+    try {
+      const query = `
+        query {
+          posts(order: RANKING, first: 20) {
+            edges {
+              node {
+                id
+                name
+                tagline
+                votesCount
+                createdAt
+                url
+                website
+              }
+            }
+          }
+        }
+      `;
+      const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.errors) {
+          const allPosts = (data.data?.posts?.edges || []).map((e: any) => e.node);
+          // Filter by keyword match in name/tagline
+          const kwLower = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+          const matched = allPosts.filter((p: any) =>
+            kwLower.some((kw: string) =>
+              (p.name || "").toLowerCase().includes(kw) ||
+              (p.tagline || "").toLowerCase().includes(kw)
+            )
+          );
+
+          if (matched.length > 0) {
+            console.log(`[PRODUCT HUNT] API found ${matched.length} products for "${topic}"`);
+            return {
+              products: matched.slice(0, first).map((p: any) => ({
+                name: p.name,
+                tagline: p.tagline,
+                upvotes: p.votesCount,
+                launchDate: p.createdAt,
+                url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+                website: p.website,
+              })),
+            };
+          }
+          console.log(`[PRODUCT HUNT] API returned ${allPosts.length} posts but none matched "${topic}"`);
+        } else {
+          console.error("[PRODUCT HUNT] GraphQL errors:", JSON.stringify(data.errors));
+        }
+      } else {
+        console.error(`[PRODUCT HUNT] API error (${res.status}): ${await res.text()}`);
+      }
+    } catch (e) {
+      console.error("[PRODUCT HUNT] API error:", e);
+    }
+  }
+
+  // Strategy 2: Serper site:producthunt.com fallback
   if (serperKey) {
     try {
       const res = await fetch("https://google.serper.dev/search", {
@@ -714,7 +781,6 @@ async function productHuntSearch(
         const products = organic
           .filter((r: any) => (r.link || "").includes("producthunt.com/posts/"))
           .map((r: any) => {
-            // Extract product name from title (format: "Product Name - Tagline | Product Hunt")
             const titleParts = (r.title || "").split(/\s*[-–—|]\s*/);
             const name = titleParts[0]?.trim() || "";
             const tagline = titleParts.length > 1 ? titleParts.slice(1).filter((p: string) => !p.toLowerCase().includes("product hunt")).join(" - ").trim() : "";
@@ -728,82 +794,19 @@ async function productHuntSearch(
             };
           })
           .filter((p: any) => p.name && p.name.length > 1);
-        
+
         if (products.length > 0) {
-          console.log(`[PRODUCT HUNT] Serper found ${products.length} products for "${topic}"`);
+          console.log(`[PRODUCT HUNT] Serper fallback found ${products.length} products for "${topic}"`);
           return { products };
         }
       }
     } catch (e) {
-      console.error("[PRODUCT HUNT] Serper site search error:", e);
+      console.error("[PRODUCT HUNT] Serper fallback error:", e);
     }
   }
 
-  // Strategy 2: PH GraphQL API with proper search query
-  try {
-    // Use the posts query without topic param (which requires slugs) 
-    // and filter by relevance in the query text
-    const query = `
-      query SearchPosts($query: String!) {
-        posts(order: RANKING, first: ${first}) {
-          edges {
-            node {
-              id
-              name
-              tagline
-              votesCount
-              createdAt
-              url
-              website
-            }
-          }
-        }
-      }
-    `;
-    const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ query, variables: { query: topic } }),
-    });
-
-    if (!res.ok) {
-      console.error(`[PRODUCT HUNT] GraphQL API error (${res.status}): ${await res.text()}`);
-      return { products: [] };
-    }
-
-    const data = await res.json();
-    if (data.errors) {
-      console.error("[PRODUCT HUNT] GraphQL errors:", JSON.stringify(data.errors));
-    }
-    let products = (data.data?.posts?.edges || []).map((e: any) => e.node);
-
-    // Filter by keyword match since we can't do text search in GraphQL
-    const kwLower = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-    products = products.filter((p: any) =>
-      kwLower.some((kw: string) =>
-        (p.name || "").toLowerCase().includes(kw) ||
-        (p.tagline || "").toLowerCase().includes(kw)
-      )
-    );
-
-    return {
-      products: products.map((p: any) => ({
-        name: p.name,
-        tagline: p.tagline,
-        upvotes: p.votesCount,
-        launchDate: p.createdAt,
-        url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
-        website: p.website,
-      })),
-    };
-  } catch (e) {
-    console.error("[PRODUCT HUNT] GraphQL search error:", e);
-    return { products: [] };
-  }
+  console.log(`[PRODUCT HUNT] No results from API or Serper for "${topic}"`);
+  return { products: [] };
 }
 
 // ── Main pipeline ──────────────────────────────────────────────────
