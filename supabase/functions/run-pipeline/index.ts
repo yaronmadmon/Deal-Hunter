@@ -844,14 +844,14 @@ Deno.serve(async (req) => {
     let semanticQueries: string[] = [];
     let primaryKeywords = sanitizedIdea; // fallback
 
-    if (lovableKey) {
+    if (openaiKey) {
       try {
         const semanticStart = Date.now();
-        const semanticRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const semanticRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovableKey}` },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",
