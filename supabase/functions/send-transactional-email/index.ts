@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,10 +11,12 @@ type EmailType = "welcome" | "analysis_complete" | "payment_confirmation" | "sub
 interface EmailRequest {
   type: EmailType;
   to: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
-const templates: Record<EmailType, (data: any) => { subject: string; html: string }> = {
+const toPlainText = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+const templates: Record<EmailType, (data: Record<string, unknown>) => { subject: string; html: string }> = {
   welcome: (data) => ({
     subject: "Welcome to Gold Rush! 🚀",
     html: `
@@ -23,9 +26,9 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
           You're all set to validate your next startup idea with real market data.
         </p>
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
-          You have <strong>${data?.credits ?? 2} free credits</strong> to get started. Each credit lets you run a full market validation analysis.
+          You have <strong>${(data?.credits as number | undefined) ?? 2} free credits</strong> to get started. Each credit lets you run a full market validation analysis.
         </p>
-        <a href="${data?.appUrl || 'https://goldrush.app'}/dashboard" 
+        <a href="${(data?.appUrl as string | undefined) || 'https://goldrushapp.live'}/dashboard" 
            style="display: inline-block; background: #d4af37; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px;">
           Start Your First Analysis →
         </a>
@@ -34,15 +37,15 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
     `,
   }),
   analysis_complete: (data) => ({
-    subject: `Your analysis is ready: ${data?.idea?.slice(0, 50) || "Market Report"}`,
+    subject: `Your analysis is ready: ${((data?.idea as string | undefined)?.slice(0, 50)) || "Market Report"}`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff;">
         <h1 style="color: #1a1a1a; font-size: 24px;">Your Analysis is Ready! 📊</h1>
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
-          We've finished analyzing: <strong>"${data?.idea || 'your idea'}"</strong>
+          We've finished analyzing: <strong>"${(data?.idea as string | undefined) || 'your idea'}"</strong>
         </p>
-        ${data?.score ? `<p style="color: #555; font-size: 16px;">Overall Score: <strong>${data.score}/100</strong></p>` : ''}
-        <a href="${data?.appUrl || 'https://goldrush.app'}/report/${data?.analysisId || ''}" 
+        ${(data?.score ? `<p style="color: #555; font-size: 16px;">Overall Score: <strong>${data.score as number}/100</strong></p>` : '')}
+        <a href="${(data?.appUrl as string | undefined) || 'https://goldrushapp.live'}/report/${(data?.analysisId as string | undefined) || ''}" 
            style="display: inline-block; background: #d4af37; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px;">
           View Full Report →
         </a>
@@ -56,12 +59,12 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff;">
         <h1 style="color: #1a1a1a; font-size: 24px;">Payment Confirmed!</h1>
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
-          <strong>${data?.credits || 0} credits</strong> have been added to your account.
+          <strong>${(data?.credits as number | undefined) || 0} credits</strong> have been added to your account.
         </p>
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
-          Your new balance: <strong>${data?.newBalance || 'N/A'} credits</strong>
+          Your new balance: <strong>${(data?.newBalance as number | string | undefined) ?? 'N/A'} credits</strong>
         </p>
-        <a href="${data?.appUrl || 'https://goldrush.app'}/dashboard" 
+        <a href="${(data?.appUrl as string | undefined) || 'https://goldrushapp.live'}/dashboard" 
            style="display: inline-block; background: #d4af37; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px;">
           Go to Dashboard →
         </a>
@@ -70,23 +73,23 @@ const templates: Record<EmailType, (data: any) => { subject: string; html: strin
     `,
   }),
   subscription_activated: (data) => ({
-    subject: `Your ${data?.plan || 'Gold Rush'} Plan is Active! 🎉`,
+    subject: `Your ${(data?.plan as string | undefined) || 'Gold Rush'} Plan is Active! 🎉`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff;">
-        <h1 style="color: #1a1a1a; font-size: 24px;">Welcome to ${data?.plan || 'Gold Rush'} Plan! 🎉</h1>
+        <h1 style="color: #1a1a1a; font-size: 24px;">Welcome to ${(data?.plan as string | undefined) || 'Gold Rush'} Plan! 🎉</h1>
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
           Your subscription is now active. Here's what you get:
         </p>
         <ul style="color: #555; font-size: 16px; line-height: 1.8;">
-          ${data?.plan === 'Agency' ? '<li>Unlimited reports</li><li>3 team seats</li><li>White label PDF</li><li>Bulk analysis</li><li>Gold Rush Live access</li>' : ''}
-          ${data?.plan === 'Pro' ? '<li>Unlimited reports</li><li>Gold Rush Live access</li><li>Idea tracking</li><li>GitHub trending signals</li>' : ''}
-          ${data?.plan === 'Starter' ? '<li>10 credits per month</li><li>Full 6-card reports</li><li>Blueprint included</li><li>Clean PDF download</li>' : ''}
+          ${(data?.plan === 'Agency' ? '<li>Unlimited reports</li><li>3 team seats</li><li>White label PDF</li><li>Bulk analysis</li><li>Gold Rush Live access</li>' : '')}
+          ${(data?.plan === 'Pro' ? '<li>Unlimited reports</li><li>Gold Rush Live access</li><li>Idea tracking</li><li>GitHub trending signals</li>' : '')}
+          ${(data?.plan === 'Starter' ? '<li>10 credits per month</li><li>Full 6-card reports</li><li>Blueprint included</li><li>Clean PDF download</li>' : '')}
         </ul>
-        ${data?.bonusCredits ? `<p style="color: #555; font-size: 16px; line-height: 1.6;">🎁 We've added <strong>${data.bonusCredits} bonus credits</strong> to get you started!</p>` : ''}
+        ${(data?.bonusCredits ? `<p style="color: #555; font-size: 16px; line-height: 1.6;">🎁 We've added <strong>${data.bonusCredits as number} bonus credits</strong> to get you started!</p>` : '')}
         <p style="color: #555; font-size: 16px; line-height: 1.6;">
-          Your plan renews on <strong>${data?.renewDate || 'next month'}</strong>.
+          Your plan renews on <strong>${(data?.renewDate as string | undefined) || 'next month'}</strong>.
         </p>
-        <a href="${data?.appUrl || 'https://goldrush.app'}/dashboard" 
+        <a href="${(data?.appUrl as string | undefined) || 'https://goldrushapp.live'}/dashboard" 
            style="display: inline-block; background: #d4af37; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 16px;">
           Start Validating Ideas →
         </a>
@@ -101,8 +104,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+
+  const supabaseAdmin = supabaseUrl && serviceRoleKey
+    ? createClient(supabaseUrl, serviceRoleKey)
+    : null;
+
   try {
-    const { type, to, data } = (await req.json()) as EmailRequest;
+    const { type, to, data = {} } = (await req.json()) as EmailRequest;
 
     if (!type || !to || !templates[type]) {
       return new Response(JSON.stringify({ error: "Invalid email type or missing recipient" }), {
@@ -111,58 +122,61 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { subject, html } = templates[type](data || {});
-
-    // Use Lovable's built-in email sending via the Go API
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const projectId = supabaseUrl.replace("https://", "").split(".")[0];
-
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableApiKey) {
-      console.error("[send-email] LOVABLE_API_KEY not configured");
-      return new Response(JSON.stringify({ error: "Email service not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      throw new Error("Email service not configured");
     }
 
-    const emailResponse = await fetch(
-      `https://api.lovable.dev/v1/projects/${projectId}/emails/send`,
+    const { subject, html } = templates[type](data);
+    const messageId = crypto.randomUUID();
+
+    await sendLovableEmail(
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${lovableApiKey}`,
-        },
-        body: JSON.stringify({
-          to,
-          subject,
-          html,
-          purpose: "transactional",
-        }),
-      }
+        to,
+        subject,
+        html,
+        text: toPlainText(html),
+        purpose: "transactional",
+        label: type,
+        external_id: messageId,
+        idempotency_key: messageId,
+      },
+      { apiKey: lovableApiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") }
     );
 
-    if (!emailResponse.ok) {
-      const errText = await emailResponse.text();
-      console.error("[send-email] Failed:", emailResponse.status, errText);
-      // Don't throw — email failures should not block the caller
-      return new Response(JSON.stringify({ sent: false, reason: errText }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+    if (supabaseAdmin) {
+      await supabaseAdmin.from("email_send_log").insert({
+        message_id: messageId,
+        template_name: type,
+        recipient_email: to,
+        status: "sent",
       });
     }
 
-    console.log(`[send-email] Sent ${type} email to ${to}`);
-    return new Response(JSON.stringify({ sent: true }), {
+    return new Response(JSON.stringify({ sent: true, messageId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (err) {
-    console.error("[send-email] Error:", err);
-    return new Response(JSON.stringify({ error: "Email send failed" }), {
-      status: 500,
+    const errorMessage = err instanceof Error ? err.message : "Email send failed";
+    console.error("[send-email] Error:", errorMessage);
+
+    try {
+      const body = (await req.clone().json()) as Partial<EmailRequest>;
+      if (supabaseAdmin && body?.to && body?.type) {
+        await supabaseAdmin.from("email_send_log").insert({
+          template_name: body.type,
+          recipient_email: body.to,
+          status: "failed",
+          error_message: errorMessage.slice(0, 1000),
+        });
+      }
+    } catch {
+      // no-op logging fallback
+    }
+
+    return new Response(JSON.stringify({ sent: false, reason: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
     });
   }
 });

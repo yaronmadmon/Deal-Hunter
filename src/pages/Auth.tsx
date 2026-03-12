@@ -48,12 +48,20 @@ const Auth = () => {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) { toast.error(error.message); return; }
+        navigate("/dashboard");
       } else {
-        const { error } = await signUp(email, password);
+        const { error, needsEmailConfirmation } = await signUp(email, password);
         if (error) { toast.error(error.message); return; }
+
+        if (needsEmailConfirmation) {
+          toast.success("Account created! Check your email to confirm your account.");
+          setMode("login");
+          return;
+        }
+
         toast.success("Account created! You're signed in.");
+        navigate("/dashboard");
       }
-      navigate("/dashboard");
     } finally {
       setSubmitting(false);
     }
