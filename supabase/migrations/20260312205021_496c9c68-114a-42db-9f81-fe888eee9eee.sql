@@ -1,0 +1,1 @@
+INSERT INTO public.admin_emails (email) VALUES ('yaronmadmon@gmail.com');
