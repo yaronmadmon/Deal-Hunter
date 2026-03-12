@@ -50,7 +50,7 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: user.email, limit: 10 });
 
     if (customers.data.length === 0) {
       logStep("No customer found");
@@ -60,32 +60,40 @@ serve(async (req) => {
       });
     }
 
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
+    logStep("Found Stripe customers", { count: customers.data.length, ids: customers.data.map(c => c.id) });
 
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
+    // Check ALL customers for an active subscription (handles duplicate customers)
+    let activeSubscription: any = null;
+    let matchedCustomerId: string | null = null;
 
-    const hasActiveSub = subscriptions.data.length > 0;
+    for (const customer of customers.data) {
+      const subs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: "active",
+        limit: 1,
+      });
+      if (subs.data.length > 0) {
+        activeSubscription = subs.data[0];
+        matchedCustomerId = customer.id;
+        break;
+      }
+    }
+
     let productId = null;
     let priceId = null;
     let subscriptionEnd = null;
     let tier: "starter" | "pro" | "agency" | null = null;
 
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      const item = subscription.items.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    if (activeSubscription) {
+      const item = activeSubscription.items.data[0];
+      subscriptionEnd = new Date(activeSubscription.current_period_end * 1000).toISOString();
       priceId = item.price.id;
       productId = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
 
       // Infer tier from lookup_key first
       tier = inferTier(item.price.lookup_key);
 
-      // If no tier from lookup_key, fetch the product name separately
+      // If no tier from lookup_key, try product name
       if (!tier && productId) {
         try {
           const product = await stripe.products.retrieve(productId as string);
@@ -95,9 +103,9 @@ serve(async (req) => {
         }
       }
 
-      logStep("Active subscription found", { productId, priceId, tier, subscriptionEnd });
+      logStep("Active subscription found", { customerId: matchedCustomerId, productId, priceId, tier, subscriptionEnd });
     } else {
-      logStep("No active subscription found");
+      logStep("No active subscription found across all customers");
     }
 
     return new Response(JSON.stringify({
