@@ -123,14 +123,27 @@ const Dashboard = () => {
       trackEvent("analysis_created", user.id, { idea_length: idea.length });
 
       // Kick off pipeline
-      const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
-        body: { analysisId: data.id, idea },
-      });
+      try {
+        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+          body: { analysisId: data.id, idea },
+        });
 
-      if (pipelineError) {
-        // Mark analysis as failed so it doesn't stay pending forever
+        if (pipelineError) {
+          await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+          const message = pipelineError.message?.includes("429")
+            ? "Rate limit reached. Please try again in a minute."
+            : "Analysis failed to start. Please try again in a few minutes.";
+          toast.error(message);
+          fetchData();
+          return;
+        }
+      } catch (pipelineErr: any) {
         await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-        toast.error("Analysis failed to start. Please try again in a few minutes.");
+        const text = String(pipelineErr?.message || "").toLowerCase();
+        const message = text.includes("429") || text.includes("rate limit")
+          ? "Rate limit reached. Please try again in a minute."
+          : "Analysis failed to start. Please try again in a few minutes.";
+        toast.error(message);
         fetchData();
         return;
       }
@@ -182,13 +195,27 @@ const Dashboard = () => {
       setCredits((c) => Math.max(0, c - 1));
       trackEvent("analysis_created", user.id, { retry: true, original_id: item.id });
 
-      const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
-        body: { analysisId: data.id, idea: item.idea },
-      });
+      try {
+        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+          body: { analysisId: data.id, idea: item.idea },
+        });
 
-      if (pipelineError) {
+        if (pipelineError) {
+          await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
+          const message = pipelineError.message?.includes("429")
+            ? "Rate limit reached. Please try again in a minute."
+            : "Analysis failed to start. Please try again in a few minutes.";
+          toast.error(message);
+          fetchData();
+          return;
+        }
+      } catch (pipelineErr: any) {
         await supabase.from("analyses").update({ status: "failed" }).eq("id", data.id);
-        toast.error("Analysis failed to start. Please try again in a few minutes.");
+        const text = String(pipelineErr?.message || "").toLowerCase();
+        const message = text.includes("429") || text.includes("rate limit")
+          ? "Rate limit reached. Please try again in a minute."
+          : "Analysis failed to start. Please try again in a few minutes.";
+        toast.error(message);
         fetchData();
         return;
       }
