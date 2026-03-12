@@ -2020,7 +2020,15 @@ Produce the JSON report with this EXACT structure:
   "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "name", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {}}], "confidence": "Medium"},
   "founderDecision": {"decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold", "whyFactors": ["3-5 data-backed reasons"], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
   "killShotAnalysis": {"risks": [{"risk": "specific risk referencing data", "severity": "High/Medium/Low", "mitigation": "one sentence — how to survive it"}], "riskLevel": "Low/Medium/High", "interpretation": "2-3 sentences — manageable or deal-breakers? Reference data.", "confidence": "Medium"},
-  "scoreExplanationData": {"summary": "1-2 sentences", "factors": [{"category": "Demand Strength", "explanation": "narrative must match score"}, {"category": "Competition Density", "explanation": "string"}, {"category": "User Sentiment", "explanation": "string"}, {"category": "Market Growth", "explanation": "string"}, {"category": "Opportunity Gap", "explanation": "if <=10, explain weakness clearly"}], "confidence": "Medium"}
+  "scoreExplanationData": {"summary": "1-2 sentences", "factors": [{"category": "Demand Strength", "explanation": "narrative must match score"}, {"category": "Competition Density", "explanation": "string"}, {"category": "User Sentiment", "explanation": "string"}, {"category": "Market Growth", "explanation": "string"}, {"category": "Opportunity Gap", "explanation": "if <=10, explain weakness clearly"}], "confidence": "Medium"},
+  "founderInsight": {
+    "summary": "200-300 word plain-English narrative explaining what the signals in the report may indicate when viewed together. Use neutral observational language like 'The signals suggest...', 'This pattern could indicate...', 'The data appears to show...'. Explain whether interest appears growing or stable, whether the market appears crowded or emerging, what sentiment signals indicate about user satisfaction, whether the category appears validated by existing products. Do NOT recommend building. Do NOT predict success. ONLY interpret patterns in the data.",
+    "marketReality": "2-4 sentences — explain whether signals suggest people recognize the problem and are looking for solutions.",
+    "competitivePressure": "2-4 sentences — explain whether the presence of competitors suggests an active or crowded market.",
+    "possibleGaps": "2-4 sentences — describe areas where user sentiment or competitor signals may indicate unmet needs.",
+    "signalInterpretation": "2-4 sentences — provide a balanced interpretation of what the combined signals may indicate about market dynamics.",
+    "confidence": "High/Medium/Low"
+  }
 }
 
 CRITICAL REMINDERS:

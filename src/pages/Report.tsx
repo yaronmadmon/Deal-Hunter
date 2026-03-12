@@ -28,6 +28,7 @@ import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
+import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
@@ -217,6 +218,9 @@ const Report = () => {
 
         {/* Data Quality Summary */}
         {r.dataQualitySummary && <DataQualitySummary data={r.dataQualitySummary} />}
+
+        {/* Founder Insight — plain-English interpretation */}
+        {r.founderInsight && <FounderInsight data={r.founderInsight} />}
 
         {/* Proof Dashboard — immediate evidence */}
         {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
