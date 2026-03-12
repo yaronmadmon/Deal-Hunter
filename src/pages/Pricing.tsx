@@ -156,7 +156,7 @@ const Pricing = () => {
     setCheckoutLoading(tierKey);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+        body: { tier: tierKey, priceId },
       });
       if (error || !data?.url) {
         toast.error("Failed to start checkout. Please try again.");
