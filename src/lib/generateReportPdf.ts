@@ -856,7 +856,7 @@ export function generateReportPdf(report: MockReportData) {
     if (rs.channels?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("Go-to-Market Channels", m, y); y += 5;
-      drawBulletList(rs.channels, C.teal, "▸");
+      drawBulletList(rs.channels, C.teal, ">");
     }
   }
 
