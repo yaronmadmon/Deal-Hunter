@@ -3203,28 +3203,34 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           let penaltyApplied = false;
           for (const category of reportData.scoreBreakdown) {
-            const cardTitle = categoryToCardTitle[category.label];
-            const card = (reportData.signalCards || []).find((c: any) => c.title === cardTitle);
-            if (!card) continue;
+            // Skip data quality penalty for categories already ceilinged to ≤5 (double-penalty prevention)
+            const categoryValue = Number(category.value) || 0;
+            if (categoryValue <= 5) {
+              console.log(`[DATA QUALITY] Skipping penalty for ${category.label} — already at ${categoryValue} (ceiling-bound)`);
+              continue;
+            }
 
-            const metrics = card.metrics || card.competitors || [];
-            const totalMetrics = metrics.length;
+            const cardTitles = categoryToCardTitle[category.label] || [];
+            const cards = (reportData.signalCards || []).filter((c: any) => cardTitles.includes(c.title));
+            if (cards.length === 0) continue;
+
+            // Aggregate metrics across all mapped cards
+            const allMetrics = cards.flatMap((card: any) => [...(card.metrics || []), ...(card.competitors || [])]);
+            const totalMetrics = allMetrics.length;
             if (totalMetrics === 0) continue;
 
-            const estimatedCount = metrics.filter((m: any) => 
+            const estimatedCount = allMetrics.filter((m: any) => 
               m.dataTier === "estimated" || m.dataSource === "ai_estimated" ||
               m.value === "N/A" || m.value === "Insufficient data" || m.value === null
             ).length;
 
             if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
-              const originalValue = Number(category.value) || 0;
+              const originalValue = categoryValue;
               const penalty = Math.round(originalValue * 0.3);
               category.value = originalValue - penalty;
               penaltyApplied = true;
               console.warn(`[DATA QUALITY PENALTY] ${category.label}: ${estimatedCount}/${totalMetrics} metrics estimated. Score reduced by ${penalty} (${originalValue} -> ${category.value})`);
-              if (card.confidence !== "Low") {
-                card.confidence = "Low";
-              }
+              cards.forEach((card: any) => { if (card.confidence !== "Low") card.confidence = "Low"; });
             }
           }
 
