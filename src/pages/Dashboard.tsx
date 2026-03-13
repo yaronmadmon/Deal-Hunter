@@ -141,7 +141,7 @@ const Dashboard = () => {
       navigate(`/processing/${data.id}`);
 
       // Kick off pipeline (fire-and-forget — processing page tracks status via realtime)
-      supabase.functions.invoke("run-pipeline", {
+      supabase.functions.invoke("start-pipeline", {
         body: { analysisId: data.id, idea },
       }).then(({ error: pipelineError }) => {
         if (pipelineError) {
@@ -201,7 +201,7 @@ const Dashboard = () => {
       toast.success("Retrying analysis…");
       navigate(`/processing/${data.id}`);
 
-      supabase.functions.invoke("run-pipeline", {
+      supabase.functions.invoke("start-pipeline", {
         body: { analysisId: data.id, idea: item.idea },
       }).then(({ error: pipelineError }) => {
         if (pipelineError) {
