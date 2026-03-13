@@ -4051,7 +4051,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           body: JSON.stringify({
             type: "analysis_complete",
             to: userProfile.email,
-            data: { idea: sanitizedIdea, score: overallScore, analysisId },
+            data: { idea: sanitizedIdea, score: finalOverallScore, analysisId },
           }),
         }).catch((e) => console.error("[pipeline] Email send failed:", e));
       }
