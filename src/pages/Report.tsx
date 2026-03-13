@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
-import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye, Loader2 } from "lucide-react";
+import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye, Loader2, Trophy, Brain, Search, Microscope } from "lucide-react";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
@@ -9,7 +9,6 @@ import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
 import { NicheAnalysis } from "@/components/report/NicheAnalysis";
 import { UnitEconomics } from "@/components/report/UnitEconomics";
 import { BuildComplexity } from "@/components/report/BuildComplexity";
-import { ScoreBreakdown } from "@/components/report/ScoreBreakdown";
 import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { OpenSourceLandscape } from "@/components/report/OpenSourceLandscape";
 import { ScoreRing } from "@/components/report/ScoreRing";
@@ -25,14 +24,6 @@ import { MarketExploitMap } from "@/components/report/MarketExploitMap";
 import { CompetitorMatrix } from "@/components/report/CompetitorMatrix";
 import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
-import { ScoreExplanation } from "@/components/report/ScoreExplanation";
-import { DataQualitySummary } from "@/components/report/DataQualitySummary";
-import { ConflictingSignals } from "@/components/report/ConflictingSignals";
-import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBanner";
-import { CrossValidationCard } from "@/components/report/CrossValidationCard";
-import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
-import { ReportComparison } from "@/components/report/ReportComparison";
-import { ScoringJourney } from "@/components/report/ScoringJourney";
 import { ReviewIntelligence } from "@/components/report/ReviewIntelligence";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
@@ -43,6 +34,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { MockReportData } from "@/data/mockReport";
 import { mockReport } from "@/data/mockReport";
 import { toast } from "sonner";
+import { ReportNavigator } from "@/components/report/ReportNavigator";
+import { ReportLayerHeader } from "@/components/report/ReportLayerHeader";
+import { DataQualityGroup } from "@/components/report/DataQualityGroup";
+import { ScoreDeepDive } from "@/components/report/ScoreDeepDive";
 
 /** Section subtitles for card titles */
 const sectionSubtitles: Record<string, string> = {
@@ -208,6 +203,8 @@ const Report = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ReportNavigator />
+
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
         <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
         <div className="flex items-center gap-2">
@@ -222,9 +219,21 @@ const Report = () => {
         </div>
       </nav>
 
-      <main id="report-content" className="max-w-6xl mx-auto px-6 py-10">
-        {/* Header */}
-        <div className="mb-8">
+      <main id="report-content" className="max-w-6xl mx-auto px-6 py-10 lg:pr-24">
+
+        {/* ═══════════════════════════════════════════════════════
+            LAYER 1 — VERDICT
+            ═══════════════════════════════════════════════════════ */}
+        <ReportLayerHeader
+          id="layer-verdict"
+          title="Verdict"
+          subtitle="Your idea at a glance"
+          icon={<Trophy className="w-4 h-4 text-primary" />}
+          className="pt-0"
+        />
+
+        {/* Idea + Score */}
+        <div className="mb-8 mt-4">
           <div className="flex items-start justify-between gap-4 mb-6">
             <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">{r.idea}</h1>
             <Button
@@ -246,14 +255,14 @@ const Report = () => {
             Analysis based on <span className="font-semibold text-foreground">{r.dataSources?.length || totalEvidence}</span> verified data points from {r.dataSources?.length ? `${r.dataSources.length} sources` : "Reddit, App Store, and Google Trends"}.
           </p>
           {r.dataSources && r.dataSources.length > 0 && (
-            <details className="mt-2 mb-8">
-              <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground">
+            <details className="mt-2">
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
                 View {r.dataSources.length} source URLs
               </summary>
               <ul className="mt-1 space-y-0.5">
                 {r.dataSources.map((url: string, i: number) => (
                   <li key={i}>
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate block max-w-md">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block max-w-md">
                       [{i + 1}] {url}
                     </a>
                   </li>
@@ -261,7 +270,7 @@ const Report = () => {
               </ul>
             </details>
           )}
-          <p className="text-[11px] text-muted-foreground mt-1 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
+          <p className="text-xs text-muted-foreground mt-2 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
         {/* Key Stats */}
@@ -272,65 +281,62 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
-        {/* Perplexity Dominance Warning Banner */}
-        {r.pipelineMetrics?.perplexityDominanceBanner && (
-          <PerplexityWarningBanner 
-            percentage={r.pipelineMetrics.perplexityDominanceBanner.percentage} 
-            message={r.pipelineMetrics.perplexityDominanceBanner.message} 
-          />
-        )}
-
-        {/* Source Contamination Warning */}
-        {r.pipelineMetrics?.sourceContamination && r.pipelineMetrics.sourceContamination.length > 0 && (
-          <SourceContaminationBanner sources={r.pipelineMetrics.sourceContamination} />
-        )}
-
-        {/* Data Quality Summary */}
-        {r.dataQualitySummary && (
-          <DataQualitySummary 
-            data={r.dataQualitySummary} 
-            relevanceFilter={r.pipelineMetrics?.relevanceFilter}
-          />
-        )}
-
-        {/* Cross-Validated Signals */}
-        {r.pipelineMetrics?.crossValidatedSignals && r.pipelineMetrics.crossValidatedSignals.length > 0 && (
-          <CrossValidationCard signals={r.pipelineMetrics.crossValidatedSignals} />
-        )}
-
-        {/* Conflicting Evidence */}
-        {r.conflictingSignals && r.conflictingSignals.length > 0 && (
-          <ConflictingSignals signals={r.conflictingSignals} />
-        )}
-
-        {/* Report Comparison Between Runs */}
-        {user && id && (
-          <ReportComparison currentReport={r} currentAnalysisId={id} userId={user.id} />
-        )}
-
-        {/* Founder Insight — plain-English interpretation */}
+        {/* Founder Insight — moved to top (verdict layer) */}
         {r.founderInsight && <FounderInsight data={r.founderInsight} />}
 
-        {/* Proof Dashboard — immediate evidence */}
-        {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
+        {/* Founder Decision — moved to top (verdict layer) */}
+        {r.founderDecision && <FounderDecision data={r.founderDecision} />}
 
-        {/* Evidence Strength — tier-ranked signals */}
-        <EvidenceStrength proofDashboard={r.proofDashboard} />
+        {/* Data Quality & Integrity — collapsed group */}
+        <DataQualityGroup report={r} userId={user?.id} analysisId={id} />
 
-        {/* Keyword Demand */}
-        {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
+
+        {/* ═══════════════════════════════════════════════════════
+            LAYER 2 — EXPLANATION
+            ═══════════════════════════════════════════════════════ */}
+        <ReportLayerHeader
+          id="layer-explanation"
+          title="Explanation"
+          subtitle="Why this score happened"
+          icon={<Brain className="w-4 h-4 text-teal" />}
+        />
+
+        {/* Score Deep Dive (merged explanation/breakdown/journey) */}
+        <ScoreDeepDive report={r} />
 
         {/* Signal Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
           {r.signalCards.map((card) => (
             <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
           ))}
         </div>
 
+        {/* Opportunity */}
+        <OpportunitySection opportunity={r.opportunity} />
+
+
+        {/* ═══════════════════════════════════════════════════════
+            LAYER 3 — EVIDENCE
+            ═══════════════════════════════════════════════════════ */}
+        <ReportLayerHeader
+          id="layer-evidence"
+          title="Evidence"
+          subtitle="Supporting proof and raw signals"
+          icon={<Search className="w-4 h-4 text-success" />}
+        />
+
+        {/* Proof Dashboard */}
+        {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
+
+        {/* Evidence Strength */}
+        <EvidenceStrength proofDashboard={r.proofDashboard} />
+
+        {/* Keyword Demand */}
+        {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
+
         {/* User Quotes */}
         <UserQuotesSection quotes={(() => {
           if (r.userQuotes && r.userQuotes.length > 0) return r.userQuotes.slice(0, 5);
-          // Extract quotes from all signal card evidence
           const extracted = r.signalCards.flatMap(c =>
             c.evidence.map(e => {
               const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
@@ -352,8 +358,32 @@ const Report = () => {
         {/* Open Source Landscape */}
         {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
 
-        {/* Opportunity */}
-        <OpportunitySection opportunity={r.opportunity} />
+
+        {/* ═══════════════════════════════════════════════════════
+            LAYER 4 — DEEP ANALYSIS
+            ═══════════════════════════════════════════════════════ */}
+        <ReportLayerHeader
+          id="layer-deep-analysis"
+          title="Deep Analysis"
+          subtitle="Advanced diagnostics and market intelligence"
+          icon={<Microscope className="w-4 h-4 text-[hsl(262,60%,60%)]" />}
+        />
+
+        {/* Kill Shot Analysis */}
+        {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
+
+        {/* Market Exploit Map */}
+        {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
+
+        {/* Competitor Comparison Matrix */}
+        {r.competitorMatrix && <CompetitorMatrix data={r.competitorMatrix} />}
+
+        {/* Review Intelligence */}
+        {r.reviewIntelligence && r.reviewIntelligence.complaintClusters?.length > 0 && (
+          <div className="mt-6">
+            <ReviewIntelligence data={r.reviewIntelligence} />
+          </div>
+        )}
 
         {/* Niche Deep Dive */}
         {r.nicheAnalysis && <NicheAnalysis data={r.nicheAnalysis} />}
@@ -367,56 +397,36 @@ const Report = () => {
         {/* Build Complexity */}
         {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
 
-        {/* Score Explanation */}
-        {r.scoreExplanationData && <ScoreExplanation data={r.scoreExplanationData} score={r.overallScore} />}
-
-        {/* Scoring Journey — debug panel showing score transformation */}
-        {r.scoringJourney && <ScoringJourney journey={r.scoringJourney} />}
-
-        {/* Score Breakdown */}
-        <ScoreBreakdown
-          breakdown={r.scoreBreakdown}
-          total={r.overallScore}
-          signalStrength={r.signalStrength}
-          explanation={r.scoreExplanation}
-          complexityPenalty={r.buildComplexity?.scorePenalty}
-        />
-
-        {/* Review Intelligence */}
-        {r.reviewIntelligence && r.reviewIntelligence.complaintClusters?.length > 0 && (
-          <div className="mt-12">
-            <ReviewIntelligence data={r.reviewIntelligence} />
-          </div>
-        )}
-
-        {/* Kill Shot Analysis */}
-        {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
-
-        {/* Market Exploit Map */}
-        {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
-
-        {/* Competitor Comparison Matrix */}
-        {r.competitorMatrix && <CompetitorMatrix data={r.competitorMatrix} />}
-
         {/* Recommended Strategy */}
         {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
 
-        {/* Founder Decision Matrix */}
-        {r.founderDecision && <FounderDecision data={r.founderDecision} />}
+        {/* Glossary — collapsed by default */}
+        <details className="mb-6">
+          <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground py-2">
+            📖 Glossary of Terms
+          </summary>
+          <div className="mt-2">
+            <GlossarySection />
+          </div>
+        </details>
 
-        {/* Glossary */}
-        <GlossarySection />
+        {/* Methodology — collapsed by default */}
+        <details className="mb-6">
+          <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground py-2">
+            🔬 Methodology
+          </summary>
+          <div className="mt-2">
+            <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
+          </div>
+        </details>
 
-        {/* Methodology */}
-        <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
-
-        {/* Download & Track CTAs — right after report content */}
+        {/* Download & Track CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 mb-12 justify-center">
           <Button variant="default" size="lg" disabled={pdfGenerating} onClick={async () => {
             setPdfGenerating(true);
             try {
               toast.info("Generating PDF...");
-              await new Promise(resolve => setTimeout(resolve, 50)); // Let UI update
+              await new Promise(resolve => setTimeout(resolve, 50));
               generateReportPdf(r);
               toast.success("PDF downloaded!");
             } catch (err) {
