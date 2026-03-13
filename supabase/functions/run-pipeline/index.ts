@@ -1406,13 +1406,16 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
               const scores: number[] = JSON.parse(scoresMatch[0]);
               let filteredCount = 0;
 
-              // Apply relevance threshold of 5
+              // Apply relevance threshold of 5 — log discarded items for audit
               const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set(), serper_competitor: new Set() };
+              const discardedItems: { source: string; title: string; score: number }[] = [];
+
               itemsToScore.forEach((item, idx) => {
                 const score = scores[idx] ?? 5; // default to 5 if missing
                 if (score < 5) {
                   toRemove[item.source]?.add(item.index);
                   filteredCount++;
+                  discardedItems.push({ source: item.source, title: item.title, score });
                 }
               });
 
@@ -1444,9 +1447,18 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
                 console.log(`[RELEVANCE FILTER] Serper Competitors: ${before} -> ${rawData.serperCompetitors.allResults.length} results (removed ${toRemove.serper_competitor.size} irrelevant)`);
               }
 
+              // Log discarded items for audit trail
+              if (discardedItems.length > 0) {
+                console.log(`[RELEVANCE FILTER] Discarded items: ${JSON.stringify(discardedItems)}`);
+              }
+
               console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
               rawData.relevanceFilterApplied = true;
-              rawData.relevanceFilterStats = { scored: itemsToScore.length, filtered: filteredCount };
+              rawData.relevanceFilterStats = {
+                scored: itemsToScore.length,
+                filtered: filteredCount,
+                discardedItems: discardedItems.slice(0, 20), // Keep top 20 for report
+              };
             }
           } else {
             console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
