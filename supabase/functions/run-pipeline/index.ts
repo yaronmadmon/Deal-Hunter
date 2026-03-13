@@ -2951,11 +2951,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.github?.repos?.length ?? 0) +
             (rawData.perplexityVC?.citations?.length ?? 0);
 
+          // INTEGRITY FIX: Opportunity uses its OWN unique signals, not demand+pain already counted elsewhere
           const opportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
             (rawData.perplexityRevenue?.citations?.length ?? 0) +
             (rawData.perplexityChurn?.citations?.length ?? 0) +
-            demandSignalCount + painSignalCount;
+            (rawData.perplexityBuildCosts?.citations?.length ?? 0);
 
           // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
           const computeCeiling = (signalCount: number, maxScore: number): number => {
