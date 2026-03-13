@@ -59,16 +59,11 @@ const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Notification prefs (stored locally for now)
-  const [emailNotifs, setEmailNotifs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_email_notifs") ?? "true"); } catch { return true; }
-  });
-  const [watchlistAlerts, setWatchlistAlerts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_watchlist_alerts") ?? "true"); } catch { return true; }
-  });
-  const [weeklyDigest, setWeeklyDigest] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_weekly_digest") ?? "false"); } catch { return false; }
-  });
+  // Notification prefs (loaded from DB, fallback to localStorage)
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [watchlistAlerts, setWatchlistAlerts] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   // Billing
   const [creditLog, setCreditLog] = useState<CreditLogEntry[]>([]);
