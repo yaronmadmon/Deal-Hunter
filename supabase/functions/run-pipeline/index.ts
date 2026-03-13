@@ -3267,17 +3267,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // Apply verdict AFTER complexity penalty (final verdict determination)
-        {
-          const fs = reportData.overallScore || 0;
-          const fv = fs >= 75 ? "Build Now"
-            : fs >= 55 ? "Build, But Niche Down"
-            : fs >= 40 ? "Validate Further"
-            : "Do Not Build Yet";
-          if (reportData.founderDecision) {
-            reportData.founderDecision.decision = fv;
-          }
-          reportData.signalStrength = fs >= 70 ? "Strong" : fs >= 45 ? "Moderate" : "Weak";
-        }
+        applyVerdictToReport(reportData);
 
         // ══════════════════════════════════════════════════════════════
         // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
