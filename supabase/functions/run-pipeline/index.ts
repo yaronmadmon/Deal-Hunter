@@ -1270,15 +1270,34 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         })
       );
 
-      serperPromises.push(
-        trackSource("serper_reddit", async () => {
-          // Use short keywords + site:reddit.com
-          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : serperKeywords;
-          const r = await serperSearch(serperKey, `${redditQuery} site:reddit.com`, "search", 30);
-          rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          return r.organic.length;
-        })
-      );
+      // serper_reddit: Run multiple semantic queries to maximize Reddit discovery
+      {
+        // Build 2-3 Reddit queries from semantic keywords: niche + problem-focused
+        const redditQueries: string[] = [];
+        if (semanticQueries.length > 1) redditQueries.push(semanticQueries[1]); // niche query
+        if (semanticQueries.length > 2) redditQueries.push(semanticQueries[2]); // another niche or problem
+        if (rawData.queryStrategy?.problem?.[0]) redditQueries.push(rawData.queryStrategy.problem[0]); // problem query
+        if (redditQueries.length === 0) redditQueries.push(serperKeywords); // fallback
+        // Deduplicate
+        const uniqueRedditQueries = [...new Set(redditQueries)].slice(0, 3);
+        console.log(`[SERPER REDDIT] Using ${uniqueRedditQueries.length} queries: ${JSON.stringify(uniqueRedditQueries)}`);
+
+        const redditAllResults: any[] = [];
+        for (let rqi = 0; rqi < uniqueRedditQueries.length; rqi++) {
+          const rq = uniqueRedditQueries[rqi];
+          serperPromises.push(
+            trackSource(rqi === 0 ? "serper_reddit" : `serper_reddit_${rqi}`, async () => {
+              const r = await serperSearch(serperKey, `${rq} site:reddit.com`, "search", 30);
+              redditAllResults.push(...r.organic);
+              return r.organic.length;
+            })
+          );
+        }
+
+        // After all serper promises resolve, merge and dedupe Reddit results
+        // We'll use a post-processing step (handled below after Promise.all)
+        rawData._redditAllResults = redditAllResults;
+      }
 
       serperPromises.push(
         trackSource("serper_autocomplete", async () => {
@@ -1424,6 +1443,23 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
     const totalFetchDurationMs = Date.now() - fetchStart;
+
+    // ── Post-fetch: Merge and deduplicate Reddit results from multiple queries ──
+    if (rawData._redditAllResults && rawData._redditAllResults.length > 0) {
+      const seen = new Set<string>();
+      const deduped = rawData._redditAllResults.filter((r: any) => {
+        const key = r.link || r.title;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      rawData.serperReddit = { organic: deduped, searchParameters: {}, knowledgeGraph: null };
+      rawData.sources.push(...deduped.map((o: any) => ({ url: o.link, type: "serper" })));
+      console.log(`[SERPER REDDIT] Merged: ${rawData._redditAllResults.length} total → ${deduped.length} unique results`);
+      delete rawData._redditAllResults;
+    } else if (!rawData.serperReddit) {
+      rawData.serperReddit = { organic: [], searchParameters: {}, knowledgeGraph: null };
+    }
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
     if (twitterBearerToken && openaiKey && rawData.perplexityMarket?.content) {
