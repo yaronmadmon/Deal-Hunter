@@ -3015,10 +3015,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             }
 
             // Apply floor (prevent underscoring strong evidence)
+            // INTEGRITY FIX: Never let floors override viability caps (declining trend, mashup penalties)
             if (floor !== undefined && floor > 0 && Number(category.value) < floor) {
-              console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
-              category.value = floor;
-              floorApplied = true;
+              if (viabilityCappedCategories.has(category.label)) {
+                console.warn(`[SIGNAL FLOOR SKIPPED] ${category.label}: viability cap takes priority over floor ${floor}. Keeping at ${category.value}.`);
+              } else {
+                console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
+                category.value = floor;
+                floorApplied = true;
+              }
+            }
             }
           }
 
