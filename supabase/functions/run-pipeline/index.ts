@@ -2787,8 +2787,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const ideaLower = ideaLowerForViability;
           
-          if (matchedDecliningTrend) {
-            console.warn(`[CONCEPT VIABILITY] Declining trend detected: "${matchedDecliningTrend}"`);
+          if (matchedDecliningTrend && trendPosition === "primary") {
+            console.warn(`[CONCEPT VIABILITY] PRIMARY declining trend detected: "${matchedDecliningTrend}" — applying full penalty cascade`);
             
             const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
             if (trendEntry && Number(trendEntry.value) > 8) {
