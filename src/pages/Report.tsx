@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
-import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye } from "lucide-react";
+import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye, Loader2 } from "lucide-react";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
@@ -67,6 +67,7 @@ const Report = () => {
   const [loadingReport, setLoadingReport] = useState(true);
   const [isTracked, setIsTracked] = useState(false);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -398,17 +399,25 @@ const Report = () => {
 
         {/* Download & Track CTAs — right after report content */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 mb-12 justify-center">
-          <Button variant="default" size="lg" onClick={() => {
+          <Button variant="default" size="lg" disabled={pdfGenerating} onClick={async () => {
+            setPdfGenerating(true);
             try {
               toast.info("Generating PDF...");
+              await new Promise(resolve => setTimeout(resolve, 50)); // Let UI update
               generateReportPdf(r);
               toast.success("PDF downloaded!");
             } catch (err) {
               console.error("Report PDF generation failed:", err);
               toast.error("PDF generation failed. Please try again or use a desktop browser.");
+            } finally {
+              setPdfGenerating(false);
             }
           }}>
-            <Download className="mr-1" /> Download Report PDF
+            {pdfGenerating ? (
+              <><Loader2 className="mr-1 w-4 h-4 animate-spin" /> Generating…</>
+            ) : (
+              <><Download className="mr-1" /> Download Report PDF</>
+            )}
           </Button>
           <Button
             variant={isTracked ? "secondary" : "outline"}
@@ -436,6 +445,7 @@ const Report = () => {
             donut: r.signalCards.find(c => c.donut)?.donut,
             scoreBreakdown: r.scoreBreakdown,
           }}
+          buildComplexity={r.buildComplexity}
         />
       </main>
 

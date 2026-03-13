@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CheckCircle2, Loader2, Circle } from "lucide-react";
+import { CheckCircle2, Loader2, Circle, AlertTriangle, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const steps = [
   { label: "Finding competitors in the App Store...", statusMatch: "fetching" },
@@ -15,16 +17,39 @@ const steps = [
 
 const statusOrder = ["pending", "fetching", "analyzing", "complete"];
 
+const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
 const Processing = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [status, setStatus] = useState("pending");
   const [activeStep, setActiveStep] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
+
+  // Timeout watchdog
+  useEffect(() => {
+    timeoutRef.current = setTimeout(() => {
+      setTimedOut(true);
+    }, TIMEOUT_MS);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  // Clear timeout if we reach a terminal state
+  useEffect(() => {
+    if (status === "complete" || status === "failed") {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setTimedOut(false);
+    }
+  }, [status]);
 
   // Animate steps within the same status
   useEffect(() => {
@@ -32,7 +57,6 @@ const Processing = () => {
 
     const interval = setInterval(() => {
       setActiveStep((prev) => {
-        // Find the max step for current status
         const currentIdx = statusOrder.indexOf(status);
         const maxStep = steps.findIndex((s, i) => {
           const stepIdx = statusOrder.indexOf(s.statusMatch);
@@ -59,12 +83,18 @@ const Processing = () => {
   // Initial fetch
   useEffect(() => {
     if (!id) return;
-    supabase.from("analyses").select("status").eq("id", id).single()
+    supabase.from("analyses").select("status, report_data").eq("id", id).single()
       .then(({ data }) => {
         if (data) {
           setStatus(data.status);
           if (data.status === "complete") navigate(`/report/${id}`, { replace: true });
-          if (data.status === "failed") navigate("/dashboard", { replace: true });
+          if (data.status === "failed") {
+            const reportData = data.report_data as any;
+            const message = reportData?.message || reportData?.error;
+            if (message) toast.error(message);
+            else toast.error("Analysis failed. Please try again.");
+            navigate("/dashboard", { replace: true });
+          }
         }
       });
   }, [id, navigate]);
@@ -80,12 +110,15 @@ const Processing = () => {
         table: "analyses",
         filter: `id=eq.${id}`,
       }, (payload) => {
-        const newStatus = (payload.new as { status: string }).status;
-        setStatus(newStatus);
-        if (newStatus === "complete") {
+        const newRow = payload.new as { status: string; report_data?: any };
+        setStatus(newRow.status);
+        if (newRow.status === "complete") {
           setTimeout(() => navigate(`/report/${id}`, { replace: true }), 800);
         }
-        if (newStatus === "failed") {
+        if (newRow.status === "failed") {
+          const message = newRow.report_data?.message || newRow.report_data?.error;
+          if (message) toast.error(message);
+          else toast.error("Analysis failed. Please try again.");
           setTimeout(() => navigate("/dashboard", { replace: true }), 1000);
         }
       })
@@ -93,6 +126,10 @@ const Processing = () => {
 
     return () => { supabase.removeChannel(channel); };
   }, [id, navigate]);
+
+  const handleRetry = () => {
+    navigate("/dashboard");
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
@@ -120,6 +157,23 @@ const Processing = () => {
           );
         })}
       </div>
+
+      {/* Timeout warning */}
+      {timedOut && (
+        <div className="mt-10 w-full max-w-sm rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 text-center animate-in fade-in slide-in-from-bottom-2">
+          <AlertTriangle className="w-6 h-6 text-amber-400 mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">
+            This is taking longer than expected
+          </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            The analysis may still be processing, or it may have encountered an issue. You can wait or go back and retry.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleRetry}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Back to Dashboard
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
