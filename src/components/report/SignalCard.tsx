@@ -62,17 +62,7 @@ const confidenceBadge = (c: string) => {
   return "nogo" as const;
 };
 
-/** Safely display a value — never show null, undefined, NaN, or N/A */
-const safeVal = (val: any): string => {
-  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Insufficient data";
-  }
-  const s = String(val);
-  if (s.toLowerCase() === "unknown" || s.toLowerCase() === "data unavailable") {
-    return "Insufficient data";
-  }
-  return s;
-};
+import { safeValue as safeVal } from "@/lib/safeValue";
 
 const isMutedValue = (val: string) => val === "Insufficient data";
 
