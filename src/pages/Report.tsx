@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
-import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye, Loader2, Trophy, Brain, Search, Microscope } from "lucide-react";
+import { Download, ArrowRight, Bookmark, BookmarkCheck, Eye, Loader2, Trophy, Brain, Search, Microscope, Crosshair, Map, GitCompare, MessageSquare, Target, DollarSign, BarChart3, Wrench, Compass } from "lucide-react";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
