@@ -1444,6 +1444,23 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
     const totalFetchDurationMs = Date.now() - fetchStart;
 
+    // ── Post-fetch: Merge and deduplicate Reddit results from multiple queries ──
+    if (rawData._redditAllResults && rawData._redditAllResults.length > 0) {
+      const seen = new Set<string>();
+      const deduped = rawData._redditAllResults.filter((r: any) => {
+        const key = r.link || r.title;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      rawData.serperReddit = { organic: deduped, searchParameters: {}, knowledgeGraph: null };
+      rawData.sources.push(...deduped.map((o: any) => ({ url: o.link, type: "serper" })));
+      console.log(`[SERPER REDDIT] Merged: ${rawData._redditAllResults.length} total → ${deduped.length} unique results`);
+      delete rawData._redditAllResults;
+    } else if (!rawData.serperReddit) {
+      rawData.serperReddit = { organic: [], searchParameters: {}, knowledgeGraph: null };
+    }
+
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
     if (twitterBearerToken && openaiKey && rawData.perplexityMarket?.content) {
       await trackSource("twitter_influencers", async () => {
