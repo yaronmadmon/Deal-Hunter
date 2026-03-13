@@ -45,7 +45,7 @@ export const FounderDecision = ({ data }: Props) => {
           <span className="text-2xl">{config.icon}</span>
           <h3 className={`font-heading text-lg font-bold ${config.color}`}>{data.decision}</h3>
         </div>
-        <p className="text-sm text-foreground leading-relaxed">{data.reasoning}</p>
+        <p className="text-[15px] text-foreground leading-relaxed">{data.reasoning}</p>
       </div>
 
       {/* Why */}
