@@ -762,7 +762,7 @@ export function generateReportPdf(report: MockReportData) {
     if (mem.topComplaints?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("Top User Complaints", m, y); y += 5;
-      drawBulletList(mem.topComplaints.map(c => `${c.complaint} (${c.frequency})`), C.warning, "●");
+      drawBulletList(mem.topComplaints.map(c => `${c.complaint} (${c.frequency})`), C.warning, "-");
     }
     if (mem.topPraise?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
