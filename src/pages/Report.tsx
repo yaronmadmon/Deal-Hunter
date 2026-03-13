@@ -425,7 +425,7 @@ const Report = () => {
 
         {/* Build Complexity */}
         {r.buildComplexity && (
-          <CollapsibleSection title="Build Complexity" icon={<Wrench className="w-4 h-4 text-muted-foreground" />} summary={`${r.buildComplexity.score || "?"}/10 difficulty`}>
+          <CollapsibleSection title="Build Complexity" icon={<Wrench className="w-4 h-4 text-muted-foreground" />} summary={`${r.buildComplexity.complexityScore || "?"}/10 difficulty`}>
             <BuildComplexity data={r.buildComplexity} />
           </CollapsibleSection>
         )}
