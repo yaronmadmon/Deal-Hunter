@@ -3047,15 +3047,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               satEntry.value = newVal;
               reportData.overallScore = (reportData.overallScore || 0) + delta;
               
-              const boostScore = reportData.overallScore;
-              const boostVerdict = boostScore >= 75 ? "Build Now"
-                : boostScore >= 55 ? "Build, But Niche Down"
-                : boostScore >= 40 ? "Validate Further"
-                : "Do Not Build Yet";
-              if (reportData.founderDecision) {
-                reportData.founderDecision.decision = boostVerdict;
-              }
-              reportData.signalStrength = boostScore >= 70 ? "Strong" : boostScore >= 45 ? "Moderate" : "Weak";
+              applyVerdictToReport(reportData);
             }
           }
         }
