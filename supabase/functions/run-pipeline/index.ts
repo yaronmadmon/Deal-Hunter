@@ -1487,6 +1487,32 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
                 filtered: filteredCount,
                 discardedItems: discardedItems.slice(0, 20), // Keep top 20 for report
               };
+
+              // ══════════════════════════════════════════════════════════
+              // SOURCE CONTAMINATION FLAGGING
+              // If >50% of a source's results were filtered as irrelevant,
+              // flag that source as "contaminated" (low confidence).
+              // ══════════════════════════════════════════════════════════
+              const sourceStats: Record<string, { total: number; filtered: number }> = {};
+              itemsToScore.forEach((item, idx) => {
+                if (!sourceStats[item.source]) sourceStats[item.source] = { total: 0, filtered: 0 };
+                sourceStats[item.source].total++;
+                if ((scores[idx] ?? 5) < 5) sourceStats[item.source].filtered++;
+              });
+
+              const contaminatedSources: { source: string; total: number; filtered: number; contaminationPct: number }[] = [];
+              for (const [source, stats] of Object.entries(sourceStats)) {
+                const pct = Math.round((stats.filtered / stats.total) * 100);
+                if (stats.total >= 2 && pct > 50) {
+                  contaminatedSources.push({ source, total: stats.total, filtered: stats.filtered, contaminationPct: pct });
+                  console.warn(`[SOURCE CONTAMINATION] ${source}: ${pct}% of ${stats.total} results irrelevant — flagged as low confidence`);
+                }
+              }
+
+              rawData.relevanceFilterStats.sourceContamination = contaminatedSources;
+              if (contaminatedSources.length > 0) {
+                console.log(`[SOURCE CONTAMINATION] ${contaminatedSources.length} sources flagged: ${contaminatedSources.map(s => s.source).join(", ")}`);
+              }
             }
           } else {
             console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
@@ -1781,6 +1807,66 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[EVIDENCE LOCK] Demand signals: ${evidenceCoverage.demand} | Competitors validated: ${evidenceCoverage.competitors} | Pricing signals: ${evidenceCoverage.pricing} | Sentiment signals: ${evidenceCoverage.sentiment} | Trend signals: ${evidenceCoverage.trends} | Developer signals: ${evidenceCoverage.developer} | Launch signals: ${evidenceCoverage.launches} | Technical signals: ${evidenceCoverage.technical}`);
     console.log(`[EVIDENCE LOCK] Evidence coverage score: ${totalEvidence} | Confidences: ${JSON.stringify(evidenceConfidences)}`);
+
+    // ══════════════════════════════════════════════════════════════════
+    // MULTI-SOURCE CROSS-VALIDATION SCORING
+    // Identify competitor names, keywords, or claims confirmed by 2+
+    // independent sources. These get a "cross-validated" tag.
+    // ══════════════════════════════════════════════════════════════════
+    const crossValidatedSignals: { claim: string; sources: string[]; category: string }[] = [];
+
+    // 1. Cross-validate competitor names across source types
+    const competitorSourceMap = new Map<string, Set<string>>();
+    for (const comp of (rawData.validatedCompetitors || [])) {
+      const key = normalizeName(comp.name);
+      if (!competitorSourceMap.has(key)) competitorSourceMap.set(key, new Set());
+      (comp.sources || []).forEach((s: string) => competitorSourceMap.get(key)!.add(s));
+    }
+    for (const [name, srcs] of competitorSourceMap) {
+      if (srcs.size >= 2) {
+        crossValidatedSignals.push({
+          claim: `Competitor "${name}" confirmed by multiple sources`,
+          sources: [...srcs],
+          category: "Competition",
+        });
+      }
+    }
+
+    // 2. Cross-validate demand: search interest confirmed by social activity
+    const hasSearchDemand = (rawData.serperTrends?.organic?.length ?? 0) >= 3;
+    const hasSocialDemand = (rawData.twitterCounts?.total_count ?? 0) > 50 || (rawData.hackerNews?.hits?.length ?? 0) >= 2;
+    const hasRedditDemand = (rawData.firecrawlReddit?.results?.length ?? 0) >= 2 || (rawData.serperReddit?.organic?.length ?? 0) >= 3;
+    if (hasSearchDemand && hasSocialDemand) {
+      crossValidatedSignals.push({
+        claim: "Market demand confirmed: search interest AND social discussion activity",
+        sources: ["Serper Google Search", rawData.twitterCounts?.total_count > 0 ? "X/Twitter" : "Hacker News"],
+        category: "Demand",
+      });
+    }
+    if (hasSearchDemand && hasRedditDemand) {
+      crossValidatedSignals.push({
+        claim: "User pain confirmed: search interest AND Reddit/forum discussions",
+        sources: ["Serper Google Search", "Reddit"],
+        category: "Sentiment",
+      });
+    }
+
+    // 3. Cross-validate growth: PH launches + GitHub activity
+    const hasPHLaunches = (rawData.productHunt?.products?.length ?? 0) >= 2;
+    const hasGHActivity = (rawData.github?.repos?.length ?? 0) >= 3;
+    if (hasPHLaunches && hasGHActivity) {
+      crossValidatedSignals.push({
+        claim: "Developer + product interest confirmed: Product Hunt launches AND active GitHub repos",
+        sources: ["Product Hunt", "GitHub"],
+        category: "Growth",
+      });
+    }
+
+    rawData.crossValidatedSignals = crossValidatedSignals;
+    if (crossValidatedSignals.length > 0) {
+      console.log(`[CROSS-VALIDATION] ${crossValidatedSignals.length} signals confirmed by 2+ sources: ${crossValidatedSignals.map(s => s.category).join(", ")}`);
+    }
+
 
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
@@ -3092,6 +3178,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         perplexityDominanceBanner: perplexityDominanceBanner || null,
         fallbackGaps: reportData.fallbackGaps || [],
         queryStrategy: rawData.queryStrategy || null,
+        crossValidatedSignals: rawData.crossValidatedSignals || [],
+        sourceContamination: rawData.relevanceFilterStats?.sourceContamination || [],
         timestamp: new Date().toISOString(),
       };
     }

@@ -378,8 +378,10 @@ export interface MockReportData {
   dataQualitySummary?: { sourceName: string; dataTier: string; signalCount: string; reliabilityNote: string }[];
   founderInsight?: FounderInsightData;
   pipelineMetrics?: {
-    relevanceFilter?: { scored?: number; filtered?: number; discardedItems?: { source: string; title: string; score: number }[] } | null;
+    relevanceFilter?: { scored?: number; filtered?: number; discardedItems?: { source: string; title: string; score: number }[]; sourceContamination?: { source: string; total: number; filtered: number; contaminationPct: number }[] } | null;
     perplexityDominanceBanner?: { percentage: number; message: string } | null;
+    crossValidatedSignals?: { claim: string; sources: string[]; category: string }[];
+    sourceContamination?: { source: string; total: number; filtered: number; contaminationPct: number }[];
     [key: string]: any;
   };
   conflictingSignals?: { signalA: string; sourceA: string; signalB: string; sourceB: string; category: string }[];

@@ -29,6 +29,9 @@ import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
 import { ConflictingSignals } from "@/components/report/ConflictingSignals";
 import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBanner";
+import { CrossValidationCard } from "@/components/report/CrossValidationCard";
+import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
+import { ReportComparison } from "@/components/report/ReportComparison";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -274,6 +277,11 @@ const Report = () => {
           />
         )}
 
+        {/* Source Contamination Warning */}
+        {r.pipelineMetrics?.sourceContamination && r.pipelineMetrics.sourceContamination.length > 0 && (
+          <SourceContaminationBanner sources={r.pipelineMetrics.sourceContamination} />
+        )}
+
         {/* Data Quality Summary */}
         {r.dataQualitySummary && (
           <DataQualitySummary 
@@ -282,9 +290,19 @@ const Report = () => {
           />
         )}
 
+        {/* Cross-Validated Signals */}
+        {r.pipelineMetrics?.crossValidatedSignals && r.pipelineMetrics.crossValidatedSignals.length > 0 && (
+          <CrossValidationCard signals={r.pipelineMetrics.crossValidatedSignals} />
+        )}
+
         {/* Conflicting Evidence */}
         {r.conflictingSignals && r.conflictingSignals.length > 0 && (
           <ConflictingSignals signals={r.conflictingSignals} />
+        )}
+
+        {/* Report Comparison Between Runs */}
+        {user && id && (
+          <ReportComparison currentReport={r} currentAnalysisId={id} userId={user.id} />
         )}
 
         {/* Founder Insight — plain-English interpretation */}
