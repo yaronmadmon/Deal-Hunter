@@ -3030,6 +3030,40 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // LOW COMPETITION BOOST (for non-dead-trend markets)
+        // If validated competitors < 5 and no declining trend detected,
+        // this is a genuine low-competition opportunity — boost Market Saturation.
+        // ══════════════════════════════════════════════════════════════
+        if (!matchedDecliningTrend && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          const competitorCount = Math.max(
+            rawData.validatedCompetitors?.length ?? 0,
+            (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors?.length ?? 0
+          );
+          
+          if (competitorCount > 0 && competitorCount < 5) {
+            const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+            if (satEntry && Number(satEntry.value) < 16) {
+              const boost = competitorCount <= 2 ? 4 : 2;
+              const newVal = Math.min(20, Number(satEntry.value) + boost);
+              console.warn(`[LOW COMPETITION BOOST] Only ${competitorCount} competitors (no dead trend). Market Saturation boosted from ${satEntry.value} to ${newVal}`);
+              const delta = newVal - Number(satEntry.value);
+              satEntry.value = newVal;
+              reportData.overallScore = (reportData.overallScore || 0) + delta;
+              
+              const boostScore = reportData.overallScore;
+              const boostVerdict = boostScore >= 75 ? "Build Now"
+                : boostScore >= 55 ? "Build, But Niche Down"
+                : boostScore >= 40 ? "Validate Further"
+                : "Do Not Build Yet";
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = boostVerdict;
+              }
+              reportData.signalStrength = boostScore >= 70 ? "Strong" : boostScore >= 45 ? "Moderate" : "Weak";
+            }
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
         // found real products, flag inconsistency and lower confidence.
