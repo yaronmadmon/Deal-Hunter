@@ -3233,15 +3233,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[DATA QUALITY PENALTY] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
             reportData.overallScore = newSum;
 
-            const penaltyScore = reportData.overallScore;
-            const penaltyVerdict = penaltyScore >= 75 ? "Build Now"
-              : penaltyScore >= 55 ? "Build, But Niche Down"
-              : penaltyScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = penaltyVerdict;
-            }
-            reportData.signalStrength = penaltyScore >= 70 ? "Strong" : penaltyScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
