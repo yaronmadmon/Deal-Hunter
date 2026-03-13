@@ -169,7 +169,7 @@ const Dashboard = () => {
 
   const handleRetry = async (e: React.MouseEvent, item: AnalysisRow) => {
     e.stopPropagation();
-    if (!user || credits <= 0) {
+    if (!user || (!isAdmin && credits <= 0)) {
       toast.error("No credits remaining.");
       return;
     }
@@ -187,13 +187,15 @@ const Dashboard = () => {
         return;
       }
 
-      const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
-      if (!deducted) {
-        toast.error("Failed to deduct credit");
-        return;
+      if (!isAdmin) {
+        const { data: deducted } = await supabase.rpc("deduct_credit", { analysis_id: data.id });
+        if (!deducted) {
+          toast.error("Failed to deduct credit");
+          return;
+        }
       }
 
-      setCredits((c) => Math.max(0, c - 1));
+      if (!isAdmin) setCredits((c) => Math.max(0, c - 1));
       trackEvent("analysis_created", user.id, { retry: true, original_id: item.id });
 
       toast.success("Retrying analysis…");
