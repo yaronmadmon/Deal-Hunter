@@ -20,7 +20,8 @@ const colorForIndex = (i: number) => {
   return colors[i % colors.length];
 };
 
-const defaultWeights = ["20%", "20%", "20%", "20%", "20%"];
+const defaultWeights = ["25%", "20%", "20%", "15%", "20%"];
+const defaultMaxScores = [25, 20, 20, 15, 20];
 
 export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }: Props) => {
   const strengthVariant = signalStrength === "Strong" ? "go" as const : signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
