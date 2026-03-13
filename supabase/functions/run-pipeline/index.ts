@@ -1437,6 +1437,99 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
     // ══════════════════════════════════════════════════════════════════
+    // UPGRADE 3: COMPETITOR PRICING SCRAPING VIA FIRECRAWL
+    // For the top 3 validated competitors with URLs, scrape their
+    // pricing pages using Firecrawl to get Tier 1 revenue data.
+    // ══════════════════════════════════════════════════════════════════
+    if (firecrawlKey && validatedCompetitors.length > 0) {
+      const topCompsWithUrls = validatedCompetitors
+        .filter((c: any) => c.url && !c.url.includes("reddit.com") && !c.url.includes("news.ycombinator"))
+        .slice(0, 3);
+
+      if (topCompsWithUrls.length > 0) {
+        console.log(`[PRICING SCRAPE] Attempting to scrape pricing for ${topCompsWithUrls.length} competitors`);
+        rawData.competitorPricing = [];
+
+        const pricingPromises = topCompsWithUrls.map(async (comp: any) => {
+          try {
+            // Try to find the pricing page
+            let pricingUrl = "";
+            try {
+              const baseUrl = new URL(comp.url);
+              // Skip app store URLs — try to find the product's own site
+              if (baseUrl.hostname.includes("apps.apple.com") || baseUrl.hostname.includes("play.google.com") || baseUrl.hostname.includes("producthunt.com") || baseUrl.hostname.includes("github.com")) {
+                // Use Firecrawl search to find the pricing page
+                const searchResult = await firecrawlSearch(firecrawlKey, `"${comp.name}" pricing plans`, 3);
+                const pricingResult = searchResult.results.find((r: any) =>
+                  (r.url || "").toLowerCase().includes("pricing") ||
+                  (r.title || "").toLowerCase().includes("pricing")
+                );
+                if (pricingResult) {
+                  pricingUrl = pricingResult.url;
+                }
+              } else {
+                // Direct product URL — try /pricing path first
+                pricingUrl = `${baseUrl.origin}/pricing`;
+              }
+            } catch {
+              return null;
+            }
+
+            if (!pricingUrl) return null;
+
+            console.log(`[PRICING SCRAPE] Scraping pricing for "${comp.name}" from: ${pricingUrl}`);
+            const scrapeResult = await firecrawlScrape(firecrawlKey, pricingUrl);
+
+            if (scrapeResult.markdown && scrapeResult.markdown.length > 50) {
+              // Extract pricing data using a simple pattern match
+              const md = scrapeResult.markdown;
+              const priceMatches = md.match(/\$[\d,.]+(?:\s*\/\s*(?:mo|month|yr|year|user|seat))?/gi) || [];
+              const planMatches = md.match(/(?:free|starter|basic|pro|premium|enterprise|business|team|personal|hobby)\s*(?:plan|tier)?/gi) || [];
+
+              const pricingData = {
+                competitorName: comp.name,
+                url: pricingUrl,
+                rawPrices: [...new Set(priceMatches)].slice(0, 8),
+                planNames: [...new Set(planMatches)].slice(0, 6),
+                markdownSnippet: md.slice(0, 1500),
+                scrapedAt: new Date().toISOString(),
+              };
+
+              rawData.competitorPricing.push(pricingData);
+
+              // Inject as verified pricing signal
+              evidenceBlock.pricingSignals.push({
+                signal: `${comp.name} Pricing (scraped)`,
+                value: `Plans: ${pricingData.planNames.join(", ") || "See page"}. Prices: ${pricingData.rawPrices.join(", ") || "Not extracted"}`,
+                source: "Firecrawl Pricing Scrape",
+                sourceUrl: pricingUrl,
+                tier: "verified",
+              });
+
+              console.log(`[PRICING SCRAPE] "${comp.name}": Found ${priceMatches.length} prices, ${planMatches.length} plan names`);
+              return pricingData;
+            }
+            return null;
+          } catch (e) {
+            console.warn(`[PRICING SCRAPE] Failed for "${comp.name}":`, e);
+            return null;
+          }
+        });
+
+        await Promise.all(pricingPromises);
+        const scrapedCount = rawData.competitorPricing.filter(Boolean).length;
+        console.log(`[PRICING SCRAPE] Successfully scraped pricing for ${scrapedCount}/${topCompsWithUrls.length} competitors`);
+
+        // Track in pipeline metrics
+        pipelineMetrics["firecrawl_pricing"] = {
+          status: scrapedCount > 0 ? "ok" : "empty",
+          durationMs: 0,
+          signalCount: scrapedCount,
+        };
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
     // Only verified, categorized signals reach the AI — no narratives.
     // ══════════════════════════════════════════════════════════════════
@@ -2489,6 +2582,59 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           totalEvidence,
           validations: evidenceValidations,
         };
+
+        // ══════════════════════════════════════════════════════════════
+        // POST-AI DATATIER INTEGRITY VALIDATION
+        // Scan all metrics/sections: if dataTier === "verified" but
+        // sourceUrl is null/empty, auto-downgrade to "estimated".
+        // ══════════════════════════════════════════════════════════════
+        let dataTierDowngrades = 0;
+
+        const downgradeIfMissingUrl = (obj: any, path: string) => {
+          if (!obj || typeof obj !== "object") return;
+
+          // Check this object itself
+          if (obj.dataTier === "verified" && !obj.sourceUrl) {
+            obj.dataTier = "estimated";
+            obj.signalNote = (obj.signalNote || "") + " [Auto-downgraded: no source URL for verified claim]";
+            dataTierDowngrades++;
+            console.warn(`[DATATIER FIX] ${path}: downgraded "verified" → "estimated" (no sourceUrl)`);
+          }
+
+          // Recurse into arrays
+          if (Array.isArray(obj)) {
+            obj.forEach((item: any, i: number) => downgradeIfMissingUrl(item, `${path}[${i}]`));
+            return;
+          }
+
+          // Recurse into known nested structures
+          for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (Array.isArray(val)) {
+              val.forEach((item: any, i: number) => downgradeIfMissingUrl(item, `${path}.${key}[${i}]`));
+            } else if (val && typeof val === "object" && val.dataTier) {
+              downgradeIfMissingUrl(val, `${path}.${key}`);
+            }
+          }
+        };
+
+        // Scan signal cards (metrics, competitors)
+        (reportData.signalCards || []).forEach((card: any, ci: number) => {
+          (card.metrics || []).forEach((m: any, mi: number) => downgradeIfMissingUrl(m, `signalCards[${ci}].metrics[${mi}]`));
+          (card.competitors || []).forEach((c: any, ci2: number) => downgradeIfMissingUrl(c, `signalCards[${ci}].competitors[${ci2}]`));
+        });
+
+        // Scan top-level report sections
+        for (const sectionKey of ["unitEconomics", "revenueBenchmark", "nicheAnalysis", "buildComplexity", "appStoreIntelligence", "keywordDemand", "proofDashboard"]) {
+          if (reportData[sectionKey]) {
+            downgradeIfMissingUrl(reportData[sectionKey], sectionKey);
+          }
+        }
+
+        if (dataTierDowngrades > 0) {
+          evidenceValidations.push(`DataTier integrity: ${dataTierDowngrades} "verified" claims downgraded to "estimated" (missing sourceUrl)`);
+          console.warn(`[DATATIER FIX] Total downgrades: ${dataTierDowngrades}`);
+        }
 
         if (evidenceValidations.length > 0) {
           console.warn(`[EVIDENCE LOCK] Post-AI validations applied: ${evidenceValidations.join(" | ")}`);
