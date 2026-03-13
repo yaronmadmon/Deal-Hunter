@@ -698,6 +698,62 @@ async function productHuntSearch(
 ): Promise<{ products: any[] }> {
   // Strategy 1: PH GraphQL API — fetch top posts and filter by keyword
   if (apiKey) {
+    // Strategy 1a: Topic-based query (more targeted discovery)
+    try {
+      const topicSlug = topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const topicQuery = `
+        query {
+          topic(slug: "${topicSlug}") {
+            posts(first: 20) {
+              edges {
+                node {
+                  id
+                  name
+                  tagline
+                  votesCount
+                  createdAt
+                  url
+                  website
+                }
+              }
+            }
+          }
+        }
+      `;
+      const topicRes = await fetch("https://api.producthunt.com/v2/api/graphql", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query: topicQuery }),
+      });
+
+      if (topicRes.ok) {
+        const topicData = await topicRes.json();
+        if (!topicData.errors && topicData.data?.topic?.posts?.edges) {
+          const topicPosts = topicData.data.topic.posts.edges.map((e: any) => e.node);
+          if (topicPosts.length > 0) {
+            console.log(`[PRODUCT HUNT] Topic query "${topicSlug}" found ${topicPosts.length} products`);
+            return {
+              products: topicPosts.slice(0, first).map((p: any) => ({
+                name: p.name,
+                tagline: p.tagline,
+                upvotes: p.votesCount,
+                launchDate: p.createdAt,
+                url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+                website: p.website,
+              })),
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[PRODUCT HUNT] Topic query failed:", e);
+    }
+
+    // Strategy 1b: Global ranking with keyword filter (original approach)
     try {
       const query = `
         query {
@@ -730,7 +786,6 @@ async function productHuntSearch(
         const data = await res.json();
         if (!data.errors) {
           const allPosts = (data.data?.posts?.edges || []).map((e: any) => e.node);
-          // Filter by keyword match in name/tagline
           const kwLower = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
           const matched = allPosts.filter((p: any) =>
             kwLower.some((kw: string) =>
@@ -773,7 +828,7 @@ async function productHuntSearch(
           "X-API-KEY": serperKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: first }),
+        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: Math.max(first, 10) }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1351,13 +1406,16 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
               const scores: number[] = JSON.parse(scoresMatch[0]);
               let filteredCount = 0;
 
-              // Apply relevance threshold of 5
+              // Apply relevance threshold of 5 — log discarded items for audit
               const toRemove: Record<string, Set<number>> = { github: new Set(), hackernews: new Set(), producthunt: new Set(), serper_competitor: new Set() };
+              const discardedItems: { source: string; title: string; score: number }[] = [];
+
               itemsToScore.forEach((item, idx) => {
                 const score = scores[idx] ?? 5; // default to 5 if missing
                 if (score < 5) {
                   toRemove[item.source]?.add(item.index);
                   filteredCount++;
+                  discardedItems.push({ source: item.source, title: item.title, score });
                 }
               });
 
@@ -1389,9 +1447,18 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
                 console.log(`[RELEVANCE FILTER] Serper Competitors: ${before} -> ${rawData.serperCompetitors.allResults.length} results (removed ${toRemove.serper_competitor.size} irrelevant)`);
               }
 
+              // Log discarded items for audit trail
+              if (discardedItems.length > 0) {
+                console.log(`[RELEVANCE FILTER] Discarded items: ${JSON.stringify(discardedItems)}`);
+              }
+
               console.log(`[RELEVANCE FILTER] Total: scored ${itemsToScore.length} items, filtered ${filteredCount} irrelevant in ${Date.now() - filterStart}ms`);
               rawData.relevanceFilterApplied = true;
-              rawData.relevanceFilterStats = { scored: itemsToScore.length, filtered: filteredCount };
+              rawData.relevanceFilterStats = {
+                scored: itemsToScore.length,
+                filtered: filteredCount,
+                discardedItems: discardedItems.slice(0, 20), // Keep top 20 for report
+              };
             }
           } else {
             console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
@@ -2359,13 +2426,19 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             demandSignalCount + painSignalCount;
 
-          // Ceiling rules: [signalThreshold, maxScore]
-          // 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
+          // Ceiling rules: 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
           const computeCeiling = (signalCount: number): number => {
             if (signalCount === 0) return 5;
             if (signalCount <= 2) return 10;
             if (signalCount <= 4) return 15;
             return 20;
+          };
+
+          // Floor rules: 5-9 signals → min 8/20, 10+ signals → min 12/20
+          const computeFloor = (signalCount: number): number => {
+            if (signalCount >= 10) return 12;
+            if (signalCount >= 5) return 8;
+            return 0;
           };
 
           const ceilingMap: Record<string, number> = {
@@ -2376,39 +2449,58 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             "Opportunity": computeCeiling(opportunitySignals),
           };
 
+          const floorMap: Record<string, number> = {
+            "Trend Momentum": computeFloor(trendSignals),
+            "Market Saturation": computeFloor(marketSignals),
+            "Sentiment": computeFloor(sentimentSignals),
+            "Growth": computeFloor(growthSignals),
+            "Opportunity": computeFloor(opportunitySignals),
+          };
+
           let ceilingApplied = false;
+          let floorApplied = false;
           for (const category of reportData.scoreBreakdown) {
             const ceiling = ceilingMap[category.label];
+            const floor = floorMap[category.label];
+            const signalCount = category.label === "Trend Momentum" ? trendSignals :
+              category.label === "Market Saturation" ? marketSignals :
+              category.label === "Sentiment" ? sentimentSignals :
+              category.label === "Growth" ? growthSignals : opportunitySignals;
+
+            // Apply ceiling (cap overscoring)
             if (ceiling !== undefined && Number(category.value) > ceiling) {
-              console.warn(`[SIGNAL CEILING] ${category.label}: only ${
-                category.label === "Trend Momentum" ? trendSignals :
-                category.label === "Market Saturation" ? marketSignals :
-                category.label === "Sentiment" ? sentimentSignals :
-                category.label === "Growth" ? growthSignals : opportunitySignals
-              } signals → ceiling ${ceiling}/20. Capping from ${category.value}.`);
+              console.warn(`[SIGNAL CEILING] ${category.label}: only ${signalCount} signals → ceiling ${ceiling}/20. Capping from ${category.value}.`);
               category.value = ceiling;
               ceilingApplied = true;
             }
+
+            // Apply floor (prevent underscoring strong evidence)
+            if (floor !== undefined && floor > 0 && Number(category.value) < floor) {
+              console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
+              category.value = floor;
+              floorApplied = true;
+            }
           }
 
-          if (ceilingApplied) {
+          if (ceilingApplied || floorApplied) {
             const newSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
-            console.warn(`[SIGNAL CEILING] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
+            console.warn(`[SIGNAL BOUNDS] Overall score adjusted: ${reportData.overallScore} -> ${newSum} (ceilings: ${ceilingApplied}, floors: ${floorApplied})`);
             reportData.overallScore = newSum;
 
-            const ceilScore = reportData.overallScore;
-            const ceilVerdict = ceilScore >= 75 ? "Build Now"
-              : ceilScore >= 55 ? "Build, But Niche Down"
-              : ceilScore >= 40 ? "Validate Further"
+            const boundScore = reportData.overallScore;
+            const boundVerdict = boundScore >= 75 ? "Build Now"
+              : boundScore >= 55 ? "Build, But Niche Down"
+              : boundScore >= 40 ? "Validate Further"
               : "Do Not Build Yet";
             if (reportData.founderDecision) {
-              reportData.founderDecision.decision = ceilVerdict;
+              reportData.founderDecision.decision = boundVerdict;
             }
-            reportData.signalStrength = ceilScore >= 70 ? "Strong" : ceilScore >= 45 ? "Moderate" : "Weak";
+            reportData.signalStrength = boundScore >= 70 ? "Strong" : boundScore >= 45 ? "Moderate" : "Weak";
           }
 
           console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
           console.log(`[SIGNAL CEILINGS] Trend: ${ceilingMap["Trend Momentum"]}, Market: ${ceilingMap["Market Saturation"]}, Sentiment: ${ceilingMap["Sentiment"]}, Growth: ${ceilingMap["Growth"]}, Opportunity: ${ceilingMap["Opportunity"]}`);
+          console.log(`[SIGNAL FLOORS] Trend: ${floorMap["Trend Momentum"]}, Market: ${floorMap["Market Saturation"]}, Sentiment: ${floorMap["Sentiment"]}, Growth: ${floorMap["Growth"]}, Opportunity: ${floorMap["Opportunity"]}`);
         }
 
         // ══════════════════════════════════════════════════════════════

@@ -265,7 +265,12 @@ const Report = () => {
         ]} />
 
         {/* Data Quality Summary */}
-        {r.dataQualitySummary && <DataQualitySummary data={r.dataQualitySummary} />}
+        {r.dataQualitySummary && (
+          <DataQualitySummary 
+            data={r.dataQualitySummary} 
+            relevanceFilter={r.pipelineMetrics?.relevanceFilter}
+          />
+        )}
 
         {/* Founder Insight — plain-English interpretation */}
         {r.founderInsight && <FounderInsight data={r.founderInsight} />}
