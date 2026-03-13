@@ -206,11 +206,18 @@ async function twitterSearch(
       author_username: usersMap[t.author_id]?.username || "unknown",
       author_followers: usersMap[t.author_id]?.public_metrics?.followers_count || 0,
     }));
-    // Filter 10+ likes and sort by engagement
+    // Filter by engagement — raise threshold for hype-prone keywords
+    const hypeKeywords = ["crypto", "bitcoin", "blockchain", "web3", "nft", "ai agent", "trading bot", "defi", "token"];
+    const queryLower = query.toLowerCase();
+    const isHypeTopic = hypeKeywords.some(kw => queryLower.includes(kw));
+    const likeThreshold = isHypeTopic ? 5 : 1;
     const filtered = tweets
-      .filter((t: any) => t.like_count >= 1)
+      .filter((t: any) => t.like_count >= likeThreshold)
       .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
       .slice(0, 30);
+    if (isHypeTopic) {
+      console.log(`[TWITTER HYPE FILTER] Hype topic detected ("${queryLower}"). Like threshold raised to ${likeThreshold}. Kept ${filtered.length}/${tweets.length} tweets.`);
+    }
     return { tweets: filtered, total_fetched: tweets.length };
   } catch (e) {
     console.error("Twitter search error:", e);
