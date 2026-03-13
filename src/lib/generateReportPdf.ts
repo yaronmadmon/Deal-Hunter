@@ -457,7 +457,7 @@ export function generateReportPdf(report: MockReportData) {
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     setColor(C.indigo);
-    const insightLines = doc.splitTextToSize(`💡 ${card.insight}`, cw - 4);
+    const insightLines = doc.splitTextToSize(`> ${card.insight}`, cw - 4);
     writeLines(insightLines, m + 2, 4);
     y += 2;
 
