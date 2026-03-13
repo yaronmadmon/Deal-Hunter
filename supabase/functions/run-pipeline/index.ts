@@ -2740,12 +2740,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
         // Detect declining trends, market mashups, and signal contamination.
         // ══════════════════════════════════════════════════════════════
-        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
-          const ideaLower = (idea || "").toLowerCase();
+        // Hoist declining trend detection so downstream checks (graveyard signal) can reference it
+        const ideaLowerForViability = (idea || "").toLowerCase();
+        const decliningTrends = ["nft", "metaverse", "web3", "crypto kitties", "play to earn", "p2e", "ico", "defi yield"];
+        const matchedDecliningTrend = decliningTrends.find(t => ideaLowerForViability.includes(t)) || null;
 
-          // 1. DEAD/DECLINING TREND DETECTION
-          const decliningTrends = ["nft", "metaverse", "web3", "crypto kitties", "play to earn", "p2e", "ico", "defi yield"];
-          const matchedDecliningTrend = decliningTrends.find(t => ideaLower.includes(t));
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          const ideaLower = ideaLowerForViability;
           
           if (matchedDecliningTrend) {
             console.warn(`[CONCEPT VIABILITY] Declining trend detected: "${matchedDecliningTrend}"`);
