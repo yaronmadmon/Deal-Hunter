@@ -35,7 +35,7 @@ export function FounderInsight({ data }: FounderInsightProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
+          <p className="text-[15px] text-foreground/90 leading-relaxed whitespace-pre-line">
             {data.summary}
           </p>
         </CardContent>
