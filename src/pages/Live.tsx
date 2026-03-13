@@ -4,34 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowRight,
-  TrendingUp,
-  Rocket,
-  MessageSquare,
-  Layers,
-  Sparkles,
-  RefreshCw,
-  Flame,
-  Lock,
-  Trophy,
-  Code,
-  ExternalLink,
-  Star,
-  GitFork,
-  Search,
-  Newspaper,
-  Smartphone,
-  Twitter,
-  Heart,
-  Repeat,
-  Lightbulb,
-  Target,
-  Filter,
-  ChevronDown,
-  ChevronUp,
-  Zap,
-  Eye,
-  Edit3,
+  ArrowRight, TrendingUp, Rocket, MessageSquare, Layers, Sparkles,
+  RefreshCw, Flame, Lock, Trophy, Code, ExternalLink, Star, GitFork,
+  Search, Newspaper, Smartphone, Twitter, Heart, Repeat, Lightbulb,
+  Target, Filter, ChevronDown, ChevronUp, Zap, Eye, Edit3, AlertTriangle,
+  CheckCircle2, Bot, Globe, ArrowUpRight, ArrowDownRight, Minus, Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,33 +16,33 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { toast } from "sonner";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /* ── Types ── */
+type DataReliability = "verified_api" | "web_scraper" | "ai_estimated";
+
 interface TrendingItem { keyword: string; spike: string; snippet: string; }
 interface PHItem { name: string; tagline: string; upvotes: number; category: string; }
-interface RedditItem { title: string; problemSummary?: string; subreddit: string; upvotes: number; }
+interface RedditItem { title: string; problemSummary?: string; subreddit: string; upvotes: number; commentCount?: number; url?: string; }
 interface NicheItem { name: string; description: string; }
 interface HNItem { title: string; points: number; comments: number; author: string; url: string; hnUrl: string; createdAt: string; }
-interface BreakoutItem { name: string; originalSignal?: string; category: string; score: number; signalStrength: string; summary: string; suggestedIdea?: string; whyNow?: string; generatedAt: string; }
-interface GitHubTrendingItem { name: string; description: string; stars: number; forks: number; language: string | null; url: string; createdAt: string; }
-interface GoogleTrendItem { title: string; snippet: string; url: string; date?: string | null; type: "search" | "news"; }
+interface BreakoutItem { name: string; originalSignal?: string; category: string; score: number; signalStrength: string; summary: string; suggestedIdea?: string; whyNow?: string; generatedAt: string; _reliability?: DataReliability; }
+interface GitHubTrendingItem { name: string; description: string; stars: number; forks: number; language: string | null; url: string; createdAt: string; starsPerDay?: number; }
+interface GoogleSearchItem { title: string; snippet: string; url: string; date?: string | null; type: "search" | "news"; }
 interface AppStoreItem { name: string; platform: string; snippet?: string; category?: string; url?: string; source?: string; }
 interface TwitterBuzzItem { text: string; likes: number; retweets: number; replies: number; impressions: number; tweetId: string; createdAt: string; source?: string; topic?: string; }
 interface MarketGap { title: string; category: string; insight: string; suggestedIdea: string; confidenceLevel: string; signalSources: string[]; }
 interface EnrichedSignal {
   _source: string; _signalScore: number; _confidence: string; _momentum: string;
+  _reliability?: DataReliability; _velocityDelta?: number | null; _recency?: number;
   _category?: string; _opportunityGap?: string; _suggestedIdea?: string; _whyNow?: string;
   keyword?: string; name?: string; title?: string; text?: string; problemSummary?: string;
   tagline?: string; snippet?: string; description?: string;
@@ -73,19 +50,10 @@ interface EnrichedSignal {
 }
 
 const CATEGORIES = [
-  "All",
-  "AI & Machine Learning",
-  "Developer Tools",
-  "Productivity",
-  "E-Commerce & Retail",
-  "Health & Wellness",
-  "Social & Community",
-  "Fintech & Payments",
-  "Education",
-  "Utilities",
-  "Creative Tools",
-  "Infrastructure",
-  "Other",
+  "All", "AI & Machine Learning", "Developer Tools", "Productivity",
+  "E-Commerce & Retail", "Health & Wellness", "Social & Community",
+  "Fintech & Payments", "Education", "Utilities", "Creative Tools",
+  "Infrastructure", "Other",
 ];
 
 const SOURCE_ICONS: Record<string, React.ReactNode> = {
@@ -95,7 +63,8 @@ const SOURCE_ICONS: Record<string, React.ReactNode> = {
   growing_niches: <Layers className="w-3.5 h-3.5" />,
   hacker_news: <Code className="w-3.5 h-3.5" />,
   github_trending: <Star className="w-3.5 h-3.5" />,
-  google_trends: <Search className="w-3.5 h-3.5" />,
+  google_search: <Search className="w-3.5 h-3.5" />,
+  google_trends: <Search className="w-3.5 h-3.5" />, // backward compat
   app_store_trends: <Smartphone className="w-3.5 h-3.5" />,
   twitter_buzz: <Twitter className="w-3.5 h-3.5" />,
 };
@@ -107,12 +76,28 @@ const SOURCE_LABELS: Record<string, string> = {
   growing_niches: "Growing Niche",
   hacker_news: "Hacker News",
   github_trending: "GitHub",
-  google_trends: "Google",
+  google_search: "Google Search",
+  google_trends: "Google Search", // backward compat
   app_store_trends: "App Store",
   twitter_buzz: "X/Twitter",
 };
 
+// Default reliability per source (overridden by _reliability from backend)
+const DEFAULT_SOURCE_RELIABILITY: Record<string, DataReliability> = {
+  product_hunt: "verified_api",
+  hacker_news: "verified_api",
+  github_trending: "verified_api",
+  twitter_buzz: "verified_api",
+  reddit_pain_points: "verified_api",
+  google_search: "web_scraper",
+  google_trends: "web_scraper",
+  app_store_trends: "web_scraper",
+  trending_searches: "ai_estimated",
+  growing_niches: "ai_estimated",
+};
+
 const CACHE_HOURS = 4;
+const STALE_THRESHOLD_HOURS = 8;
 
 const Live = () => {
   const navigate = useNavigate();
@@ -127,13 +112,15 @@ const Live = () => {
   const [niches, setNiches] = useState<NicheItem[]>([]);
   const [hackerNews, setHackerNews] = useState<HNItem[]>([]);
   const [githubTrending, setGithubTrending] = useState<GitHubTrendingItem[]>([]);
-  const [googleTrends, setGoogleTrends] = useState<GoogleTrendItem[]>([]);
+  const [googleSearch, setGoogleSearch] = useState<GoogleSearchItem[]>([]);
   const [appStoreTrends, setAppStoreTrends] = useState<AppStoreItem[]>([]);
   const [twitterBuzz, setTwitterBuzz] = useState<TwitterBuzzItem[]>([]);
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [enrichedOpportunities, setEnrichedOpportunities] = useState<EnrichedSignal[]>([]);
   const [marketGaps, setMarketGaps] = useState<MarketGap[]>([]);
 
+  // Per-source timestamps
+  const [sourceTimestamps, setSourceTimestamps] = useState<Record<string, string>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -172,6 +159,7 @@ const Live = () => {
 
     let latestTime: Date | null = null;
     const seen = new Set<string>();
+    const timestamps: Record<string, string> = {};
 
     for (const row of data) {
       if (seen.has(row.section_name)) continue;
@@ -181,6 +169,11 @@ const Live = () => {
       const time = new Date(row.created_at);
       if (!latestTime || time > latestTime) latestTime = time;
 
+      // Track per-source timestamps
+      if (row.section_name !== "source_timestamps") {
+        timestamps[row.section_name] = row.created_at;
+      }
+
       switch (row.section_name) {
         case "trending_searches": if (Array.isArray(payload)) setTrending(payload); break;
         case "product_hunt": if (Array.isArray(payload)) setProductHunt(payload); break;
@@ -188,15 +181,18 @@ const Live = () => {
         case "growing_niches": if (Array.isArray(payload)) setNiches(payload); break;
         case "hacker_news": if (Array.isArray(payload)) setHackerNews(payload); break;
         case "github_trending": if (Array.isArray(payload)) setGithubTrending(payload); break;
-        case "google_trends": if (Array.isArray(payload)) setGoogleTrends(payload); break;
+        case "google_search": if (Array.isArray(payload)) setGoogleSearch(payload); break;
+        case "google_trends": if (Array.isArray(payload)) setGoogleSearch(payload); break; // backward compat
         case "app_store_trends": if (Array.isArray(payload)) setAppStoreTrends(payload); break;
         case "twitter_buzz": if (Array.isArray(payload)) setTwitterBuzz(payload); break;
         case "breakout_idea": if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]); break;
         case "enriched_opportunities": if (Array.isArray(payload)) setEnrichedOpportunities(payload); break;
         case "market_gaps": if (Array.isArray(payload)) setMarketGaps(payload); break;
+        case "source_timestamps": if (payload && typeof payload === "object") Object.assign(timestamps, payload); break;
       }
     }
 
+    setSourceTimestamps(timestamps);
     if (latestTime) setLastUpdated(latestTime);
     return latestTime;
   }, []);
@@ -249,6 +245,20 @@ const Live = () => {
     if (selectedCategory === "All") return marketGaps;
     return marketGaps.filter(g => g.category === selectedCategory);
   }, [marketGaps, selectedCategory]);
+
+  // Detect stale sources
+  const staleSources = useMemo(() => {
+    const stale: string[] = [];
+    const now = Date.now();
+    for (const [src, ts] of Object.entries(sourceTimestamps)) {
+      if (src === "source_timestamps" || src === "enriched_opportunities" || src === "market_gaps" || src === "breakout_idea") continue;
+      const age = now - new Date(ts).getTime();
+      if (age > STALE_THRESHOLD_HOURS * 60 * 60 * 1000) {
+        stale.push(src);
+      }
+    }
+    return stale;
+  }, [sourceTimestamps]);
 
   const openValidateDialog = (suggestedIdea: string, originalSignal: string) => {
     setValidateDialog({ open: true, idea: suggestedIdea, originalSignal });
@@ -334,6 +344,7 @@ const Live = () => {
   if (loading) return null;
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto border-b border-border/50">
@@ -395,6 +406,22 @@ const Live = () => {
         ) : (
           <div className="space-y-6">
 
+            {/* ── Stale Data Warning Banner ── */}
+            {staleSources.length > 0 && !loadingData && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-warning">Some data sources are stale (&gt;{STALE_THRESHOLD_HOURS}h old)</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {staleSources.map(s => SOURCE_LABELS[s] || s).join(", ")} — hit Refresh to update
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={refreshFeed} disabled={refreshing} className="text-xs shrink-0">
+                  <RefreshCw className="w-3 h-3 mr-1" /> Refresh
+                </Button>
+              </div>
+            )}
+
             {/* ── Category Filter Bar ── */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
               <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -427,6 +454,7 @@ const Live = () => {
                     <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-[10px]">
                       AI-Identified Gap
                     </Badge>
+                    <ReliabilityBadge reliability={breakout._reliability} />
                   </div>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -475,7 +503,7 @@ const Live = () => {
               </Card>
             ) : null}
 
-            {/* ── Market Gaps (cross-signal pattern recognition) ── */}
+            {/* ── Market Gaps ── */}
             {loadingData ? (
               <Card className="border border-primary/20 bg-gradient-to-br from-primary/5 to-background">
                 <CardContent className="p-6">
@@ -563,12 +591,13 @@ const Live = () => {
                             <div key={i} className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/20 transition-colors">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0">
-                                  {/* Source + Category */}
-                                  <div className="flex items-center gap-2 mb-1.5">
+                                  {/* Source + Category + Reliability */}
+                                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                     <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                                       {SOURCE_ICONS[opp._source] || null}
                                       {SOURCE_LABELS[opp._source] || opp._source}
                                     </span>
+                                    <ReliabilityBadge reliability={opp._reliability || DEFAULT_SOURCE_RELIABILITY[opp._source]} />
                                     {opp._category && opp._category !== "Other" && (
                                       <Badge variant="secondary" className="text-[9px]">{opp._category}</Badge>
                                     )}
@@ -580,9 +609,10 @@ const Live = () => {
                                         "bg-muted text-muted-foreground"
                                       }`}>{opp._momentum}</Badge>
                                     )}
+                                    <VelocityDelta delta={opp._velocityDelta} />
                                   </div>
 
-                                  {/* Signal name (what's trending) */}
+                                  {/* Signal name */}
                                   <p className="font-medium text-foreground text-sm mb-1">
                                     📡 {label}
                                   </p>
@@ -652,11 +682,13 @@ const Live = () => {
               {/* Trending Searches */}
               <CollapsibleSourceCard
                 icon={<TrendingUp className="w-5 h-5 text-green-500" />}
-                title="Trending Searches"
+                title="Search Trends"
                 loading={loadingData}
                 count={trending.length}
                 expanded={expandedSources.has("trending")}
                 onToggle={() => toggleSource("trending")}
+                reliability="ai_estimated"
+                timestamp={sourceTimestamps["trending_searches"]}
               >
                 {trending.length === 0 ? <EmptyCategory category="search trends" /> : (
                   <div className="space-y-2">
@@ -675,6 +707,8 @@ const Live = () => {
                 count={productHunt.length}
                 expanded={expandedSources.has("ph")}
                 onToggle={() => toggleSource("ph")}
+                reliability={productHunt[0] && (productHunt[0] as any)._reliability || "verified_api"}
+                timestamp={sourceTimestamps["product_hunt"]}
               >
                 {productHunt.length === 0 ? <EmptyCategory category="product launches" /> : (
                   <div className="space-y-2">
@@ -693,11 +727,13 @@ const Live = () => {
                 count={reddit.length}
                 expanded={expandedSources.has("reddit")}
                 onToggle={() => toggleSource("reddit")}
+                reliability={reddit[0] && (reddit[0] as any)._reliability || "verified_api"}
+                timestamp={sourceTimestamps["reddit_pain_points"]}
               >
                 {reddit.length === 0 ? <EmptyCategory category="startup problems" /> : (
                   <div className="space-y-2">
                     {reddit.map((r, i) => (
-                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} />
+                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<div className="flex items-center gap-2"><span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>{r.commentCount != null && <span className="text-[10px] text-muted-foreground">{r.commentCount} comments</span>}</div>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} linkUrl={r.url} />
                     ))}
                   </div>
                 )}
@@ -711,6 +747,8 @@ const Live = () => {
                 count={niches.length}
                 expanded={expandedSources.has("niches")}
                 onToggle={() => toggleSource("niches")}
+                reliability="ai_estimated"
+                timestamp={sourceTimestamps["growing_niches"]}
               >
                 {niches.length === 0 ? <EmptyCategory category="growing niches" /> : (
                   <div className="space-y-2">
@@ -729,6 +767,8 @@ const Live = () => {
                 count={hackerNews.length}
                 expanded={expandedSources.has("hn")}
                 onToggle={() => toggleSource("hn")}
+                reliability="verified_api"
+                timestamp={sourceTimestamps["hacker_news"]}
               >
                 {hackerNews.length === 0 ? <EmptyCategory category="developer buzz" /> : (
                   <div className="space-y-2">
@@ -747,28 +787,32 @@ const Live = () => {
                 count={githubTrending.length}
                 expanded={expandedSources.has("github")}
                 onToggle={() => toggleSource("github")}
+                reliability="verified_api"
+                timestamp={sourceTimestamps["github_trending"]}
               >
                 {githubTrending.length === 0 ? <EmptyCategory category="open source" /> : (
                   <div className="space-y-2">
                     {githubTrending.map((repo, i) => (
-                      <RawSignalRow key={i} label={repo.name} subtitle={repo.description} meta={<div className="flex items-center gap-2"><span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}</span>{repo.language && <Badge variant="outline" className="text-[9px] px-1 py-0">{repo.language}</Badge>}</div>} signal={repo as any} onValidate={() => openValidateDialog(`A hosted/managed version of ${repo.name.split("/").pop()}`, repo.name)} linkUrl={repo.url} />
+                      <RawSignalRow key={i} label={repo.name} subtitle={repo.description} meta={<div className="flex items-center gap-2"><span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}</span>{repo.starsPerDay != null && <span className="text-[10px] text-green-500 font-medium">⚡ {repo.starsPerDay}/day</span>}{repo.language && <Badge variant="outline" className="text-[9px] px-1 py-0">{repo.language}</Badge>}</div>} signal={repo as any} onValidate={() => openValidateDialog(`A hosted/managed version of ${repo.name.split("/").pop()}`, repo.name)} linkUrl={repo.url} />
                     ))}
                   </div>
                 )}
               </CollapsibleSourceCard>
 
-              {/* Google Trends */}
+              {/* Google Search (renamed from Google Trends) */}
               <CollapsibleSourceCard
                 icon={<Search className="w-5 h-5 text-primary" />}
-                title="Google & News"
+                title="Google Search & News"
                 loading={loadingData}
-                count={googleTrends.length}
+                count={googleSearch.length}
                 expanded={expandedSources.has("google")}
                 onToggle={() => toggleSource("google")}
+                reliability="web_scraper"
+                timestamp={sourceTimestamps["google_search"] || sourceTimestamps["google_trends"]}
               >
-                {googleTrends.length === 0 ? <EmptyCategory category="Google trends" /> : (
+                {googleSearch.length === 0 ? <EmptyCategory category="search results" /> : (
                   <div className="space-y-2">
-                    {googleTrends.map((item, i) => (
+                    {googleSearch.map((item, i) => (
                       <RawSignalRow key={i} label={item.title} subtitle={item.snippet} meta={<Badge variant="secondary" className="text-[9px]">{item.type === "news" ? "News" : "Search"}</Badge>} signal={item as any} onValidate={() => openValidateDialog(`Build a tool related to: ${item.title}`, item.title)} linkUrl={item.url} />
                     ))}
                   </div>
@@ -783,6 +827,8 @@ const Live = () => {
                 count={appStoreTrends.length}
                 expanded={expandedSources.has("appstore")}
                 onToggle={() => toggleSource("appstore")}
+                reliability={appStoreTrends[0] && (appStoreTrends[0] as any)._reliability || "web_scraper"}
+                timestamp={sourceTimestamps["app_store_trends"]}
               >
                 {appStoreTrends.length === 0 ? <EmptyCategory category="app store trends" /> : (
                   <div className="space-y-2">
@@ -801,6 +847,8 @@ const Live = () => {
                 count={twitterBuzz.length}
                 expanded={expandedSources.has("twitter")}
                 onToggle={() => toggleSource("twitter")}
+                reliability={twitterBuzz[0] && (twitterBuzz[0] as any)._reliability || "verified_api"}
+                timestamp={sourceTimestamps["twitter_buzz"]}
               >
                 {twitterBuzz.length === 0 ? <EmptyCategory category="Twitter buzz" /> : (
                   <div className="space-y-2">
@@ -815,7 +863,7 @@ const Live = () => {
         )}
       </main>
 
-      {/* Validate Dialog - editable idea before spending a credit */}
+      {/* Validate Dialog */}
       <Dialog open={validateDialog.open} onOpenChange={(open) => !open && setValidateDialog({ open: false, idea: "", originalSignal: "" })}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -867,16 +915,74 @@ const Live = () => {
         © 2026 Gold Rush
       </footer>
     </div>
+    </TooltipProvider>
   );
 };
 
 /* ── Sub-components ── */
 
+function ReliabilityBadge({ reliability }: { reliability?: DataReliability }) {
+  if (!reliability) return null;
+  const config = {
+    verified_api: { label: "Verified API", icon: CheckCircle2, className: "bg-success/15 text-green-600 dark:text-green-400 border-success/25", tooltip: "Data sourced directly from an official API" },
+    web_scraper: { label: "Web Scraped", icon: Globe, className: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25", tooltip: "Data collected by scraping web pages" },
+    ai_estimated: { label: "AI Estimated", icon: Bot, className: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/25", tooltip: "Data generated or estimated by AI — may not be factual" },
+  };
+  const c = config[reliability];
+  if (!c) return null;
+  const Icon = c.icon;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-normal gap-0.5 cursor-help ${c.className}`}>
+          <Icon className="w-2.5 h-2.5" />
+          {c.label}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-[200px]">
+        {c.tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function VelocityDelta({ delta }: { delta?: number | null }) {
+  if (delta == null) return null;
+  if (delta === 0) return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground">
+      <Minus className="w-2.5 h-2.5" /> 0
+    </span>
+  );
+  return delta > 0 ? (
+    <span className="inline-flex items-center gap-0.5 text-[9px] text-green-600 font-medium">
+      <ArrowUpRight className="w-2.5 h-2.5" /> +{delta}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-0.5 text-[9px] text-red-500 font-medium">
+      <ArrowDownRight className="w-2.5 h-2.5" /> {delta}
+    </span>
+  );
+}
+
+function SourceFreshness({ timestamp }: { timestamp?: string }) {
+  if (!timestamp) return null;
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000));
+  const isStale = mins > STALE_THRESHOLD_HOURS * 60;
+  const label = mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[9px] ${isStale ? "text-warning" : "text-muted-foreground"}`}>
+      <Clock className="w-2.5 h-2.5" /> {label}
+    </span>
+  );
+}
+
 function CollapsibleSourceCard({
-  icon, title, loading, count, expanded, onToggle, children
+  icon, title, loading, count, expanded, onToggle, children,
+  reliability, timestamp,
 }: {
   icon: React.ReactNode; title: string; loading: boolean; count: number;
   expanded: boolean; onToggle: () => void; children: React.ReactNode;
+  reliability?: DataReliability; timestamp?: string;
 }) {
   return (
     <Collapsible open={expanded} onOpenChange={onToggle}>
@@ -886,8 +992,12 @@ function CollapsibleSourceCard({
             <CardTitle className="flex items-center gap-2 text-sm font-heading">
               {icon} {title}
               <Badge variant="secondary" className="text-[9px]">{count}</Badge>
+              <ReliabilityBadge reliability={reliability} />
             </CardTitle>
-            {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            <div className="flex items-center gap-2">
+              <SourceFreshness timestamp={timestamp} />
+              {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </div>
           </CollapsibleTrigger>
         </CardHeader>
         <CollapsibleContent>
