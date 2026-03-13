@@ -733,7 +733,7 @@ const Live = () => {
                 {reddit.length === 0 ? <EmptyCategory category="startup problems" /> : (
                   <div className="space-y-2">
                     {reddit.map((r, i) => (
-                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<div className="flex items-center gap-2"><span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>{r.commentCount != null && <span className="text-[10px] text-muted-foreground">{r.commentCount} comments</span>}</div>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} linkUrl={r.url} />
+                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<div className="flex items-center gap-2"><span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>{r.commentCount != null && <span className="text-[10px] text-muted-foreground">{r.commentCount} comments</span>}</div>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} linkUrl={r.url || (r.subreddit ? `https://www.reddit.com/${r.subreddit}/search/?q=${encodeURIComponent(r.title?.slice(0, 60) || "")}` : undefined)} />
                     ))}
                   </div>
                 )}
