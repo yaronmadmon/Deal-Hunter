@@ -1373,11 +1373,12 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
-    // Run Hacker News search — use SEMANTIC keywords
+    // Run Hacker News search — use SHORT semantic keywords (not full idea text)
     const hnPromises: Promise<void>[] = [];
+    const hnQuery = semanticQueries.length > 0 ? semanticQueries[0] : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(primaryKeywords, 30);
+        const r = await hackerNewsSearch(hnQuery, 30);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
