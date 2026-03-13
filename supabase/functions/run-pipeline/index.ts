@@ -956,22 +956,29 @@ Deno.serve(async (req) => {
     const pipelineUserId = analysisRecord?.user_id;
 
     if (pipelineUserId) {
-      // ── Suspension check ──
-      const { data: profileData } = await supabase.from("profiles").select("suspended").eq("id", pipelineUserId).single();
-      if (profileData?.suspended) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
-        return new Response(JSON.stringify({ error: "Account suspended" }), { status: 403, headers: corsHeaders });
+      // ── Check if user is admin ──
+      const { data: isAdminData } = await supabase.rpc("is_admin", { _user_id: pipelineUserId });
+      const isAdminUser = isAdminData === true;
+
+      // ── Suspension check (skip for admins) ──
+      if (!isAdminUser) {
+        const { data: profileData } = await supabase.from("profiles").select("suspended").eq("id", pipelineUserId).single();
+        if (profileData?.suspended) {
+          await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
+          return new Response(JSON.stringify({ error: "Account suspended" }), { status: 403, headers: corsHeaders });
+        }
       }
 
-      // ── Rate limiting ──
-      const { data: countData } = await supabase.rpc("analyses_count_last_hour", { _user_id: pipelineUserId });
-      const hourlyCount = countData ?? 0;
-      // Check subscription plan for limit
-      const { data: subData } = await supabase.from("subscriptions").select("plan").eq("user_id", pipelineUserId).single();
-      const maxPerHour = subData?.plan === "pro" || subData?.plan === "agency" ? 10 : 3;
-      if (hourlyCount > maxPerHour) {
-        await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), { status: 429, headers: corsHeaders });
+      // ── Rate limiting (skip for admins) ──
+      if (!isAdminUser) {
+        const { data: countData } = await supabase.rpc("analyses_count_last_hour", { _user_id: pipelineUserId });
+        const hourlyCount = countData ?? 0;
+        const { data: subData } = await supabase.from("subscriptions").select("plan").eq("user_id", pipelineUserId).single();
+        const maxPerHour = subData?.plan === "pro" || subData?.plan === "agency" ? 10 : 3;
+        if (hourlyCount > maxPerHour) {
+          await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), { status: 429, headers: corsHeaders });
+        }
       }
     }
 
