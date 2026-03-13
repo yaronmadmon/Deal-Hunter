@@ -3027,13 +3027,96 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // LOW COMPETITION BOOST (for non-dead-trend markets)
-        // If validated competitors < 5 and no declining trend detected,
-        // this is a genuine low-competition opportunity — boost Market Saturation.
+        // COMPETITOR COUNT VALIDATION (uses validated competitors)
+        // Cross-check: if AI says 0 competitors but validated pipeline
+        // found real products, flag inconsistency and lower confidence.
+        // Moved BEFORE Low Competition Boost to establish competitor facts first.
         // ══════════════════════════════════════════════════════════════
-        if (!matchedDecliningTrend && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+        const validatedCount = rawData.validatedCompetitors?.length ?? 0;
+        const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
+        const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
+        const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
+
+        if (aiCompetitorCount === 0 && (validatedCount >= 1 || competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but validated pipeline found ${validatedCount} real products (discovery: ${competitorDiscoveryCount}, snapshot: ${aiCompetitorListCount}). Correcting.`);
+          if (reportData.nicheAnalysis) {
+            reportData.nicheAnalysis.directCompetitors = Math.max(validatedCount, aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${validatedCount} validated real products were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+          }
+          if (competitorSnapshotCard) {
+            if (competitorSnapshotCard.confidence === "High") competitorSnapshotCard.confidence = "Medium";
+          }
+          const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+          if (saturationCard && saturationCard.confidence === "High") {
+            saturationCard.confidence = "Medium";
+            console.warn(`[COMPETITOR VALIDATION] Lowered Market Saturation confidence to Medium due to competitor count inconsistency`);
+          }
+        }
+        if (validatedCount >= 5 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Validated pipeline found ${validatedCount} real products but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+          if (competitorSnapshotCard.confidence !== "Low") competitorSnapshotCard.confidence = "Medium";
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
+        }
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
+
+        // ══════════════════════════════════════════════════════════════
+        // GRAVEYARD SIGNAL DETECTION (runs BEFORE Low Competition Boost)
+        // When a declining trend is detected AND competition is very low,
+        // this is NOT a blue ocean — it's an abandoned market.
+        // ══════════════════════════════════════════════════════════════
+        let graveyardDetected = false;
+        if (matchedDecliningTrend && trendPosition === "primary") {
+          const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
+          
+          if (totalCompetitorEvidence <= 3) {
+            graveyardDetected = true;
+            console.warn(`[GRAVEYARD SIGNAL] PRIMARY declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
+            if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+              const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+              if (satEntry && Number(satEntry.value) > 8) {
+                console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
+                satEntry.value = 8;
+              }
+              if (satEntry) {
+                satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned.`.trim();
+              }
+            }
+            if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
+              const hasGraveyardRisk = reportData.killShotAnalysis.risks.some((r: any) =>
+                r.risk?.toLowerCase().includes("graveyard") || r.risk?.toLowerCase().includes("abandoned market")
+              );
+              if (!hasGraveyardRisk) {
+                reportData.killShotAnalysis.risks.unshift({
+                  risk: `Graveyard Signal: Only ${totalCompetitorEvidence} competitor(s) found in the ${matchedDecliningTrend.toUpperCase()} space. Low competitor count here does not mean opportunity — it means the market was tried and abandoned.`,
+                  severity: "High",
+                  mitigation: "Search for defunct products in this space to understand why they failed. Only proceed if you can prove sustained user demand exists today."
+                });
+              }
+            }
+            const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+            if (saturationCard) {
+              saturationCard.confidence = "Low";
+              saturationCard.insight = `${saturationCard.insight || ""} ⚠️ Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
+            }
+          }
+
+          const competitivePressureCard = (reportData.signalCards || []).find((c: any) =>
+            c.title === "Competitor Snapshot" || c.title === "Competitive Pressure"
+          );
+          if (competitivePressureCard) {
+            competitivePressureCard.insight = `${competitivePressureCard.insight || ""} Note: Several competitors may have existed during the peak of the "${matchedDecliningTrend}" trend but are no longer active.`.trim();
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // LOW COMPETITION BOOST (for non-dead-trend markets)
+        // Skipped if graveyard signal was detected — low competition
+        // on a dead trend is NOT an opportunity.
+        // ══════════════════════════════════════════════════════════════
+        if (!matchedDecliningTrend && !graveyardDetected && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const competitorCount = Math.max(
-            rawData.validatedCompetitors?.length ?? 0,
+            validatedCount,
             (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors?.length ?? 0
           );
           
@@ -3046,7 +3129,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               const delta = newVal - Number(satEntry.value);
               satEntry.value = newVal;
               reportData.overallScore = (reportData.overallScore || 0) + delta;
-              
               applyVerdictToReport(reportData);
             }
           }
