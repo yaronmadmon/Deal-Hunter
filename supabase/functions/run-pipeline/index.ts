@@ -2715,8 +2715,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           const growthSignals =
             (rawData.productHunt?.products?.length ?? 0) +
             (rawData.github?.repos?.length ?? 0) +
-            (rawData.perplexityVC?.citations?.length ?? 0) +
-            (rawData.hackerNews?.hits?.length ?? 0);
+            (rawData.perplexityVC?.citations?.length ?? 0);
 
           const opportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
