@@ -2748,19 +2748,19 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
 
           const ceilingMap: Record<string, number> = {
-            "Trend Momentum": computeCeiling(trendSignals),
-            "Market Saturation": computeCeiling(marketSignals),
-            "Sentiment": computeCeiling(sentimentSignals),
-            "Growth": computeCeiling(growthSignals),
-            "Opportunity": computeCeiling(opportunitySignals),
+            "Trend Momentum": computeCeiling(trendSignals, categoryMaxMap["Trend Momentum"]),
+            "Market Saturation": computeCeiling(marketSignals, categoryMaxMap["Market Saturation"]),
+            "Sentiment": computeCeiling(sentimentSignals, categoryMaxMap["Sentiment"]),
+            "Growth": computeCeiling(growthSignals, categoryMaxMap["Growth"]),
+            "Opportunity": computeCeiling(opportunitySignals, categoryMaxMap["Opportunity"]),
           };
 
           const floorMap: Record<string, number> = {
-            "Trend Momentum": computeFloor(trendSignals),
-            "Market Saturation": computeFloor(marketSignals),
-            "Sentiment": computeFloor(sentimentSignals),
-            "Growth": computeFloor(growthSignals),
-            "Opportunity": computeFloor(opportunitySignals),
+            "Trend Momentum": computeFloor(trendSignals, categoryMaxMap["Trend Momentum"]),
+            "Market Saturation": computeFloor(marketSignals, categoryMaxMap["Market Saturation"]),
+            "Sentiment": computeFloor(sentimentSignals, categoryMaxMap["Sentiment"]),
+            "Growth": computeFloor(growthSignals, categoryMaxMap["Growth"]),
+            "Opportunity": computeFloor(opportunitySignals, categoryMaxMap["Opportunity"]),
           };
 
           let ceilingApplied = false;
