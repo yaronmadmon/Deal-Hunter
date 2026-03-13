@@ -3071,11 +3071,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // When a declining trend is detected AND competition is very low,
         // this is NOT a blue ocean — it's an abandoned market.
         // ══════════════════════════════════════════════════════════════
-        if (matchedDecliningTrend) {
+        if (matchedDecliningTrend && trendPosition === "primary") {
           const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
           
           if (totalCompetitorEvidence <= 3) {
-            console.warn(`[GRAVEYARD SIGNAL] Declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
+            console.warn(`[GRAVEYARD SIGNAL] PRIMARY declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
 
             // Cap Market Saturation at 8/20
             if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
@@ -3084,7 +3084,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
                 satEntry.value = 8;
               }
-              // Also update the explanation to make it visible to founders
               if (satEntry) {
                 satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned. Previous players likely exited as user interest declined.`.trim();
               }
