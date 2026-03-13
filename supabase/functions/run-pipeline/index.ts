@@ -3203,7 +3203,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         const b2bKeywords = ["medicaid", "medicare", "compliance", "enterprise", "b2b", "saas", "erp", "hipaa", 
           "nursing home", "assisted living", "hospital", "insurance", "legal", "regulatory", "procurement",
           "accounting", "payroll", "fleet", "logistics", "supply chain", "warehouse"];
-        const isB2BIdea = b2bKeywords.some(kw => (idea || "").toLowerCase().includes(kw));
+        const ideaLower = (idea || "").toLowerCase();
+        const b2bMatchCount = b2bKeywords.filter(kw => ideaLower.includes(kw)).length;
+        const isB2BIdea = b2bMatchCount >= 2;
+        if (b2bMatchCount === 1) {
+          console.log(`[B2B NICHE MODE] Only 1 keyword match — insufficient for B2B classification (requires 2+)`);
+        }
         
         if (isB2BIdea && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           console.log(`[B2B NICHE MODE] Detected B2B/enterprise idea — adjusting Growth weighting`);
