@@ -398,7 +398,16 @@ const Report = () => {
 
         {/* Download & Track CTAs — right after report content */}
         <div className="flex flex-col sm:flex-row gap-3 mt-10 mb-12 justify-center">
-          <Button variant="default" size="lg" onClick={() => generateReportPdf(r)}>
+          <Button variant="default" size="lg" onClick={() => {
+            try {
+              toast.info("Generating PDF...");
+              generateReportPdf(r);
+              toast.success("PDF downloaded!");
+            } catch (err) {
+              console.error("Report PDF generation failed:", err);
+              toast.error("PDF generation failed. Please try again or use a desktop browser.");
+            }
+          }}>
             <Download className="mr-1" /> Download Report PDF
           </Button>
           <Button

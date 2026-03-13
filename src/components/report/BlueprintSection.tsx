@@ -162,7 +162,16 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
       </div>
 
       <div className="flex justify-center mt-8">
-        <Button variant="default" size="lg" onClick={() => generateBlueprintPdf(blueprint, idea, pdfContext)}>
+        <Button variant="default" size="lg" onClick={() => {
+          try {
+            toast.info("Generating Blueprint PDF...");
+            generateBlueprintPdf(blueprint, idea, pdfContext);
+            toast.success("Blueprint PDF downloaded!");
+          } catch (err) {
+            console.error("Blueprint PDF generation failed:", err);
+            toast.error("PDF generation failed. Please try again or use a desktop browser.");
+          }
+        }}>
           <Download className="mr-1" /> Download Blueprint PDF
         </Button>
       </div>

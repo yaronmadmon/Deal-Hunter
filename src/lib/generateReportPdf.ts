@@ -496,7 +496,7 @@ export function generateReportPdf(report: MockReportData) {
   report.opportunity.featureGaps.forEach((g) => {
     checkPage(5);
     setColor(C.indigo);
-    doc.text("▸", m + 2, y);
+    doc.text(">", m + 2, y);
     setColor(C.text);
     const gl = doc.splitTextToSize(g, cw - 8);
     writeLines(gl, m + 7, 4.5);
@@ -513,7 +513,7 @@ export function generateReportPdf(report: MockReportData) {
   report.opportunity.underservedUsers.forEach((u) => {
     checkPage(5);
     setColor(C.teal);
-    doc.text("▸", m + 2, y);
+    doc.text(">", m + 2, y);
     setColor(C.text);
     const ul = doc.splitTextToSize(u, cw - 8);
     writeLines(ul, m + 7, 4.5);
@@ -621,13 +621,15 @@ export function generateReportPdf(report: MockReportData) {
   };
 
   // ── Helper: bullet list ──
-  const drawBulletList = (items: string[], bulletColor: [number, number, number], bullet = "▸") => {
+  const drawBulletList = (items: string[], bulletColor: [number, number, number], bullet = ">") => {
+    // Sanitize bullet for jsPDF (no Unicode symbols)
+    const safeBullet = bullet.replace(/[^\x20-\x7E]/g, "-");
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     items.forEach((item) => {
       checkPage(6);
       setColor(bulletColor);
-      doc.text(bullet, m + 2, y);
+      doc.text(safeBullet, m + 2, y);
       setColor(C.text);
       const lines = doc.splitTextToSize(item, cw - 10);
       writeLines(lines, m + 7, 4);
@@ -1030,6 +1032,325 @@ export function generateReportPdf(report: MockReportData) {
         y += 4.5;
       });
       y += 3;
+    });
+    y += 2;
+  }
+
+  // ── Niche Analysis ──
+  if (report.nicheAnalysis) {
+    const na = report.nicheAnalysis;
+    drawSectionTitle("Niche Analysis", "Addressable market deep-dive");
+
+    const naFields = [
+      { label: "SAM Estimate", value: na.samEstimate },
+      { label: "SAM %", value: na.samPercentage },
+      { label: "Competitor Clarity", value: na.competitorClarity },
+      { label: "Direct Competitors", value: String(na.directCompetitors) },
+    ];
+    naFields.forEach(f => {
+      checkPage(5);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(f.label + ":", m + 2, y);
+      doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text(safePdfText(f.value), m + 45, y);
+      y += 5;
+    });
+    y += 2;
+    if (na.samReasoning) {
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const rl = doc.splitTextToSize(na.samReasoning, cw);
+      writeLines(rl, m + 2, 4); y += 2;
+    }
+    if (na.competitorDetail) {
+      doc.setFontSize(8); doc.setFont("helvetica", "italic"); setColor(C.muted);
+      const cl = doc.splitTextToSize(na.competitorDetail, cw);
+      writeLines(cl, m + 2, 4); y += 2;
+    }
+    if (na.xSignalInterpretation) {
+      doc.setFontSize(7); setColor(C.muted); doc.setFont("helvetica", "normal");
+      const xl = doc.splitTextToSize("X/Twitter: " + na.xSignalInterpretation, cw);
+      writeLines(xl, m + 2, 3.5); y += 2;
+    }
+  }
+
+  // ── Unit Economics ──
+  if (report.unitEconomics) {
+    const ue = report.unitEconomics;
+    drawSectionTitle("Unit Economics");
+
+    const ueFields = [
+      { label: "Realistic ARPU", value: ue.realisticArpu },
+      { label: "LTV Estimate", value: ue.ltvEstimate },
+      { label: "Privacy Premium", value: ue.privacyPremium },
+    ];
+    ueFields.forEach(f => {
+      checkPage(5);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(f.label + ":", m + 2, y);
+      doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text(safePdfText(f.value), m + 45, y);
+      y += 5;
+    });
+    y += 2;
+    if (ue.arpuReasoning) {
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const al = doc.splitTextToSize(ue.arpuReasoning, cw);
+      writeLines(al, m + 2, 4); y += 2;
+    }
+    if (ue.churnBenchmarks?.length) {
+      checkPage(8 + ue.churnBenchmarks.length * 6);
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Churn Benchmarks", m, y); y += 5;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+      ue.churnBenchmarks.forEach(cb => {
+        checkPage(5);
+        setColor(C.text);
+        doc.text(`${safePdfText(cb.name)}: ${safePdfText(cb.churnRate)}`, m + 4, y);
+        doc.setFontSize(6); setColor(C.muted);
+        doc.text(`(${safePdfText(cb.source)})`, m + 4 + doc.getTextWidth(`${safePdfText(cb.name)}: ${safePdfText(cb.churnRate)}`) + 2, y);
+        doc.setFontSize(8);
+        y += 5;
+      });
+    }
+    if (ue.churnImplication) {
+      doc.setFontSize(7); doc.setFont("helvetica", "italic"); setColor(C.muted);
+      const ci = doc.splitTextToSize(ue.churnImplication, cw);
+      writeLines(ci, m + 2, 3.5); y += 2;
+    }
+  }
+
+  // ── Build Complexity ──
+  if (report.buildComplexity) {
+    const bc = report.buildComplexity;
+    drawSectionTitle("Build Complexity");
+
+    const bcFields = [
+      { label: "MVP Timeline", value: bc.mvpTimeline },
+      { label: "Estimated Cost", value: bc.estimatedCost },
+      { label: "Voice API Costs", value: bc.voiceApiCosts },
+    ];
+    bcFields.forEach(f => {
+      if (!f.value) return;
+      checkPage(5);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(f.label + ":", m + 2, y);
+      doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text(safePdfText(f.value), m + 45, y);
+      y += 5;
+    });
+    y += 2;
+    if (bc.mvpScope?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("MVP Scope", m, y); y += 5;
+      drawBulletList(bc.mvpScope, C.indigo, "-");
+    }
+    if (bc.techChallenges?.length) {
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text("Technical Challenges", m, y); y += 5;
+      drawBulletList(bc.techChallenges, C.danger, "-");
+    }
+    if (bc.onDeviceNote) {
+      doc.setFontSize(7); doc.setFont("helvetica", "italic"); setColor(C.muted);
+      const on = doc.splitTextToSize(bc.onDeviceNote, cw);
+      writeLines(on, m + 2, 3.5); y += 2;
+    }
+  }
+
+  // ── Open Source Landscape ──
+  if (report.githubRepos?.length) {
+    drawSectionTitle("Open Source Landscape", "Related GitHub repositories");
+
+    const repos = report.githubRepos.slice(0, 8);
+    repos.forEach(repo => {
+      checkPage(12);
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.indigo);
+      doc.text(safePdfText(repo.name), m + 2, y);
+      doc.setFontSize(6); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(`Stars: ${repo.stars}  Forks: ${repo.forks}  Issues: ${repo.openIssues}`, m + 2 + doc.getTextWidth(safePdfText(repo.name)) + 3, y);
+      y += 4;
+      if (repo.description) {
+        doc.setFontSize(7); setColor(C.text);
+        const dl = doc.splitTextToSize(safePdfText(repo.description), cw - 4);
+        writeLines(dl.slice(0, 2), m + 4, 3.5);
+      }
+      y += 3;
+    });
+  }
+
+  // ── Founder Insight ──
+  if (report.founderInsight) {
+    const fi = report.founderInsight;
+    drawSectionTitle("Founder Insight", "Plain-English interpretation");
+
+    if (fi.summary) {
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const sl = doc.splitTextToSize(fi.summary, cw);
+      writeLines(sl, m + 2, 4.5); y += 3;
+    }
+    const fiSections = [
+      { label: "Market Reality", value: fi.marketReality },
+      { label: "Competitive Pressure", value: fi.competitivePressure },
+      { label: "Possible Gaps", value: fi.possibleGaps },
+      { label: "Signal Interpretation", value: fi.signalInterpretation },
+    ];
+    fiSections.forEach(s => {
+      if (!s.value) return;
+      checkPage(10);
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); setColor(C.indigo);
+      doc.text(s.label, m + 2, y); y += 4;
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      const vl = doc.splitTextToSize(s.value, cw - 4);
+      writeLines(vl, m + 4, 4); y += 2;
+    });
+  }
+
+  // ── Data Quality Summary ──
+  if (report.dataQualitySummary?.length) {
+    drawSectionTitle("Data Quality Summary", "Source reliability overview");
+
+    const dqs = report.dataQualitySummary;
+    // Table header
+    const dqCols = [m, m + 40, m + 65, m + 90];
+    checkPage(8 + dqs.length * 6);
+    setFill([241, 245, 249]);
+    doc.roundedRect(m, y - 1, cw, 7, 1, 1, "F");
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); setColor(C.muted);
+    ["Source", "Data Tier", "Signals", "Reliability"].forEach((h, i) => doc.text(h, dqCols[i], y + 3));
+    y += 8;
+
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+    dqs.forEach((row, i) => {
+      checkPage(6);
+      if (i % 2 === 0) { setFill([248, 250, 252]); doc.rect(m, y - 2.5, cw, 6, "F"); }
+      setColor(C.text);
+      doc.text(safePdfText(row.sourceName), dqCols[0], y + 1);
+      setColor(C.muted);
+      doc.text(safePdfText(row.dataTier), dqCols[1], y + 1);
+      doc.text(safePdfText(row.signalCount), dqCols[2], y + 1);
+      doc.text(doc.splitTextToSize(safePdfText(row.reliabilityNote), cw - (dqCols[3] - m))[0] || "", dqCols[3], y + 1);
+      y += 6;
+    });
+    y += 3;
+  }
+
+  // ── Conflicting Signals ──
+  if (report.conflictingSignals?.length) {
+    drawSectionTitle("Conflicting Evidence", "Where data sources disagree");
+
+    report.conflictingSignals.forEach(cs => {
+      checkPage(14);
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); setColor(C.gold);
+      doc.text(safePdfText(cs.category), m + 2, y); y += 4;
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); setColor(C.text);
+      doc.text(`Signal A (${safePdfText(cs.sourceA)}): ${safePdfText(cs.signalA)}`, m + 4, y); y += 4;
+      doc.text(`Signal B (${safePdfText(cs.sourceB)}): ${safePdfText(cs.signalB)}`, m + 4, y); y += 5;
+    });
+  }
+
+  // ── Cross-Validated Signals ──
+  if (report.pipelineMetrics?.crossValidatedSignals?.length) {
+    drawSectionTitle("Cross-Validated Signals", "Claims confirmed by multiple sources");
+
+    report.pipelineMetrics.crossValidatedSignals.forEach(cv => {
+      checkPage(8);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
+      doc.text("+ " + safePdfText(cv.claim), m + 2, y);
+      doc.setFontSize(6); setColor(C.muted);
+      doc.text(`[${cv.sources.join(", ")}]`, m + 6 + doc.getTextWidth(safePdfText(cv.claim)), y);
+      y += 5;
+    });
+    y += 2;
+  }
+
+  // ── Perplexity Warning ──
+  if (report.pipelineMetrics?.perplexityDominanceBanner && report.pipelineMetrics.perplexityDominanceBanner.percentage > 60) {
+    checkPage(14);
+    setFill([255, 251, 235]);
+    doc.roundedRect(m, y - 2, cw, 12, 2, 2, "F");
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); setColor(C.warning);
+    doc.text(`Data Quality Warning - ${report.pipelineMetrics.perplexityDominanceBanner.percentage}% AI-Synthesized`, m + 4, y + 2);
+    doc.setFontSize(7); doc.setFont("helvetica", "normal"); setColor(C.muted);
+    const wl = doc.splitTextToSize(report.pipelineMetrics.perplexityDominanceBanner.message, cw - 8);
+    doc.text(wl[0] || "", m + 4, y + 7);
+    y += 15;
+  }
+
+  // ── Source Contamination ──
+  if (report.pipelineMetrics?.sourceContamination?.length) {
+    drawSectionTitle("Source Contamination", "Filtered low-quality data");
+
+    report.pipelineMetrics.sourceContamination.forEach(sc => {
+      checkPage(5);
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); setColor(C.text);
+      doc.text(`${safePdfText(sc.source)}: ${sc.filtered}/${sc.total} filtered (${sc.contaminationPct}% contamination)`, m + 4, y);
+      y += 4;
+    });
+    y += 2;
+  }
+
+  // ── Glossary ──
+  {
+    drawSectionTitle("Glossary");
+    const terms = [
+      { term: "Signal Score", def: "Composite 0-100 rating based on trend momentum, market saturation, sentiment, and growth signals." },
+      { term: "SAM", def: "Serviceable Addressable Market - the portion of the total market you can realistically capture." },
+      { term: "ARPU", def: "Average Revenue Per User - monthly revenue divided by active users." },
+      { term: "LTV", def: "Lifetime Value - total revenue expected from one customer over their lifetime." },
+      { term: "Kill Shot", def: "A critical risk that could prevent the product from succeeding regardless of execution quality." },
+      { term: "MVP", def: "Minimum Viable Product - the simplest version that tests the core value proposition." },
+    ];
+    terms.forEach(t => {
+      checkPage(8);
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); setColor(C.indigo);
+      doc.text(t.term, m + 2, y);
+      doc.setFont("helvetica", "normal"); setColor(C.text);
+      const dl = doc.splitTextToSize(t.def, cw - doc.getTextWidth(t.term) - 8);
+      doc.text(dl[0] || "", m + 4 + doc.getTextWidth(t.term), y);
+      if (dl.length > 1) { y += 3.5; writeLines(dl.slice(1), m + 4, 3.5); }
+      y += 4.5;
+    });
+  }
+
+  // ── Methodology ──
+  if (report.methodology) {
+    const mt = report.methodology;
+    drawSectionTitle("Methodology", "How this report was generated");
+
+    const mtFields = [
+      { label: "Total Sources", value: String(mt.totalSources) },
+      { label: "Data Points", value: String(mt.dataPoints) },
+      { label: "Analysis Date", value: mt.analysisDate },
+      { label: "Perplexity Queries", value: String(mt.perplexityQueries) },
+      { label: "Firecrawl Scrapes", value: String(mt.firecrawlScrapes) },
+    ];
+    if (mt.serperSearches) mtFields.push({ label: "Serper Searches", value: String(mt.serperSearches) });
+    if (mt.githubSearches) mtFields.push({ label: "GitHub Searches", value: String(mt.githubSearches) });
+    if (mt.twitterSearches) mtFields.push({ label: "X/Twitter Searches", value: String(mt.twitterSearches) });
+
+    mtFields.forEach(f => {
+      checkPage(5);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.muted);
+      doc.text(f.label + ":", m + 2, y);
+      doc.setFont("helvetica", "bold"); setColor(C.text);
+      doc.text(safePdfText(f.value), m + 45, y);
+      y += 5;
+    });
+    y += 2;
+    if (mt.confidenceNote) {
+      doc.setFontSize(7); doc.setFont("helvetica", "italic"); setColor(C.muted);
+      const cn = doc.splitTextToSize(mt.confidenceNote, cw);
+      writeLines(cn, m + 2, 3.5); y += 2;
+    }
+  }
+
+  // ── Source URLs ──
+  if (report.dataSources?.length) {
+    drawSectionTitle("Sources");
+    doc.setFontSize(6); doc.setFont("helvetica", "normal"); setColor(C.muted);
+    report.dataSources.slice(0, 20).forEach((url, i) => {
+      checkPage(4);
+      doc.text(`[${i + 1}] ${safePdfText(url)}`, m + 2, y);
+      y += 3.5;
     });
     y += 2;
   }
