@@ -143,7 +143,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
                 </Badge>
               </div>
               <h3 className="font-semibold text-sm text-foreground mb-0.5">{tier.title}</h3>
-              <p className="text-[11px] text-muted-foreground mb-3">{tier.description}</p>
+              <p className="text-xs text-muted-foreground mb-3">{tier.description}</p>
 
               {tier.items.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No signals collected</p>
