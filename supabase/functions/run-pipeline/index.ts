@@ -568,7 +568,7 @@ async function validateCompetitors(
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
   // Pre-filter: reject names that look like article titles, not product names
-  const articlePatterns = /^(best |top \d|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is|why you|should you|complete guide)/i;
+  const articlePatterns = /^(the best |the top |best |top \d|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is |what are |what's |why you|should you|complete guide|which |where to find)/i;
   const maxNameWords = 8; // Real product names are rarely >8 words
   const preFiltered = competitors.filter(c => {
     const words = c.name.trim().split(/\s+/);
