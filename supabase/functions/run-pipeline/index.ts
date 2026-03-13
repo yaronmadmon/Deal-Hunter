@@ -3195,10 +3195,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         let complexityPenalty = 0;
         if (reportData.buildComplexity) {
           const cs = Number(reportData.buildComplexity.complexityScore) || 0;
-          // Map: 1-3 = 0, 4-6 = -5, 7-8 = -10, 9-10 = -15
-          if (cs >= 9) complexityPenalty = -15;
-          else if (cs >= 7) complexityPenalty = -10;
-          else if (cs >= 4) complexityPenalty = -5;
+          // Granular linear scale: 1-3 = 0, 4+ = -(cs - 3) * 2, capped at -15
+          // Examples: 4=-2, 5=-4, 6=-6, 7=-8, 8=-10, 9=-12, 10=-14 (capped at -15)
+          if (cs > 3) {
+            complexityPenalty = Math.max(-15, -((cs - 3) * 2));
+          }
           
           // Enforce vibeCoderFeasibility label
           if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";
