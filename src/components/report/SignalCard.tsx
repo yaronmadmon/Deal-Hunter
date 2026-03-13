@@ -485,14 +485,8 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
           </div>
         )}
 
-        {/* Evidence quote box */}
-        <div className="bg-secondary/50 border border-border/50 rounded-lg p-3 space-y-2">
-          {card.evidence.map((e, i) => (
-            <p key={i} className="text-[13px] text-muted-foreground italic leading-relaxed">
-              {e}
-            </p>
-          ))}
-        </div>
+        {/* Evidence quote box — show first 2, expand for more */}
+        <EvidenceQuoteBox evidence={card.evidence} />
 
         {/* Insight footer */}
         <p className="text-sm font-medium text-foreground mt-auto pt-3 border-t border-border/50">
