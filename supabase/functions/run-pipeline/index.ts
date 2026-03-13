@@ -2490,6 +2490,59 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           validations: evidenceValidations,
         };
 
+        // ══════════════════════════════════════════════════════════════
+        // POST-AI DATATIER INTEGRITY VALIDATION
+        // Scan all metrics/sections: if dataTier === "verified" but
+        // sourceUrl is null/empty, auto-downgrade to "estimated".
+        // ══════════════════════════════════════════════════════════════
+        let dataTierDowngrades = 0;
+
+        const downgradeIfMissingUrl = (obj: any, path: string) => {
+          if (!obj || typeof obj !== "object") return;
+
+          // Check this object itself
+          if (obj.dataTier === "verified" && !obj.sourceUrl) {
+            obj.dataTier = "estimated";
+            obj.signalNote = (obj.signalNote || "") + " [Auto-downgraded: no source URL for verified claim]";
+            dataTierDowngrades++;
+            console.warn(`[DATATIER FIX] ${path}: downgraded "verified" → "estimated" (no sourceUrl)`);
+          }
+
+          // Recurse into arrays
+          if (Array.isArray(obj)) {
+            obj.forEach((item: any, i: number) => downgradeIfMissingUrl(item, `${path}[${i}]`));
+            return;
+          }
+
+          // Recurse into known nested structures
+          for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            if (Array.isArray(val)) {
+              val.forEach((item: any, i: number) => downgradeIfMissingUrl(item, `${path}.${key}[${i}]`));
+            } else if (val && typeof val === "object" && val.dataTier) {
+              downgradeIfMissingUrl(val, `${path}.${key}`);
+            }
+          }
+        };
+
+        // Scan signal cards (metrics, competitors)
+        (reportData.signalCards || []).forEach((card: any, ci: number) => {
+          (card.metrics || []).forEach((m: any, mi: number) => downgradeIfMissingUrl(m, `signalCards[${ci}].metrics[${mi}]`));
+          (card.competitors || []).forEach((c: any, ci2: number) => downgradeIfMissingUrl(c, `signalCards[${ci}].competitors[${ci2}]`));
+        });
+
+        // Scan top-level report sections
+        for (const sectionKey of ["unitEconomics", "revenueBenchmark", "nicheAnalysis", "buildComplexity", "appStoreIntelligence", "keywordDemand", "proofDashboard"]) {
+          if (reportData[sectionKey]) {
+            downgradeIfMissingUrl(reportData[sectionKey], sectionKey);
+          }
+        }
+
+        if (dataTierDowngrades > 0) {
+          evidenceValidations.push(`DataTier integrity: ${dataTierDowngrades} "verified" claims downgraded to "estimated" (missing sourceUrl)`);
+          console.warn(`[DATATIER FIX] Total downgrades: ${dataTierDowngrades}`);
+        }
+
         if (evidenceValidations.length > 0) {
           console.warn(`[EVIDENCE LOCK] Post-AI validations applied: ${evidenceValidations.join(" | ")}`);
         }
