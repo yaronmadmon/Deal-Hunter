@@ -53,100 +53,14 @@ export function generateReportPdf(report: MockReportData) {
     y += 4;
   };
 
-  // ── Score Ring ──
+  // ── Score Ring (delegates to shared helper) ──
   const drawScoreRing = (cx: number, cy: number, radius: number, score: number, strength: string) => {
-    const startAngle = -90;
-    const endAngle = startAngle + (score / 100) * 360;
-
-    // Background circle
-    setDraw(C.border);
-    doc.setLineWidth(2.5);
-    doc.circle(cx, cy, radius, "S");
-
-    // Score arc
-    const color = score >= 70 ? C.success : score >= 40 ? C.gold : C.danger;
-    setDraw(color);
-    doc.setLineWidth(3);
-    const steps = Math.max(2, Math.round((score / 100) * 60));
-    for (let i = 0; i < steps; i++) {
-      const a1 = (startAngle + (i / steps) * (endAngle - startAngle)) * (Math.PI / 180);
-      const a2 = (startAngle + ((i + 1) / steps) * (endAngle - startAngle)) * (Math.PI / 180);
-      const x1 = cx + radius * Math.cos(a1);
-      const y1 = cy + radius * Math.sin(a1);
-      const x2 = cx + radius * Math.cos(a2);
-      const y2 = cy + radius * Math.sin(a2);
-      doc.line(x1, y1, x2, y2);
-    }
-
-    // Score text
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    setColor(C.text);
-    doc.text(`${score}`, cx, cy + 1, { align: "center" });
-
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    setColor(C.muted);
-    doc.text("/100", cx + 8, cy + 1, { align: "center" });
-
-    doc.setFontSize(8);
-    setColor(color);
-    doc.setFont("helvetica", "bold");
-    doc.text(strength, cx, cy + 6, { align: "center" });
+    drawScoreRingHelper(doc, cx, cy, radius, score, strength, C);
   };
 
-  // ── Sparkline Chart ──
+  // ── Sparkline Chart (delegates to shared helper) ──
   const drawSparkline = (x: number, yPos: number, w: number, h: number, points: ChartPoint[], color: [number, number, number], label?: string) => {
-    if (!points || points.length < 2) return;
-
-    const vals = points.map(p => p.value);
-    const minV = Math.min(...vals) * 0.8;
-    const maxV = Math.max(...vals) * 1.1;
-    const range = maxV - minV || 1;
-
-    // Subtle background
-    setFill([248, 250, 252]);
-    doc.roundedRect(x, yPos, w, h, 1.5, 1.5, "F");
-
-    // Grid lines
-    setDraw([235, 238, 245]);
-    doc.setLineWidth(0.15);
-    for (let i = 0; i <= 3; i++) {
-      const gy = yPos + (h / 3) * i;
-      doc.line(x + 1, gy, x + w - 1, gy);
-    }
-
-    // Line
-    setDraw(color);
-    doc.setLineWidth(0.6);
-    const coords: [number, number][] = points.map((p, i) => [
-      x + 2 + ((w - 4) * i) / (points.length - 1),
-      yPos + h - 2 - ((p.value - minV) / range) * (h - 4),
-    ]);
-    for (let i = 0; i < coords.length - 1; i++) {
-      doc.line(coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1]);
-    }
-
-    // Dots at start and end
-    setFill(color);
-    doc.circle(coords[0][0], coords[0][1], 0.6, "F");
-    doc.circle(coords[coords.length - 1][0], coords[coords.length - 1][1], 0.6, "F");
-
-    // X-axis labels
-    doc.setFontSize(5);
-    setColor(C.muted);
-    doc.setFont("helvetica", "normal");
-    const step = Math.max(1, Math.floor(points.length / 5));
-    for (let i = 0; i < points.length; i += step) {
-      doc.text(points[i].name, coords[i][0], yPos + h + 3, { align: "center" });
-    }
-
-    // Label
-    if (label) {
-      doc.setFontSize(6);
-      setColor(C.muted);
-      doc.text(label, x, yPos - 1.5);
-    }
+    drawSparklineHelper(doc, x, yPos, w, h, points, color, label, C);
   };
 
   // ── Donut Chart ──
