@@ -84,6 +84,13 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
           </span>
           <DataSourceBadge dataSource={card.dataSource} sourceUrls={card.sourceUrls} compact />
         </div>
+        {/* Fallback gap warning */}
+        {(card as any).fallbackWarning && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-1.5">
+            <span className="text-amber-400 text-[11px] font-medium shrink-0">⚠️</span>
+            <span className="text-[11px] text-muted-foreground">{(card as any).fallbackWarning}</span>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col gap-4 pt-0">
