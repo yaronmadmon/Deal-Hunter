@@ -38,6 +38,7 @@ import { ReportNavigator } from "@/components/report/ReportNavigator";
 import { ReportLayerHeader } from "@/components/report/ReportLayerHeader";
 import { DataQualityGroup } from "@/components/report/DataQualityGroup";
 import { ScoreDeepDive } from "@/components/report/ScoreDeepDive";
+import { CollapsibleSection } from "@/components/report/CollapsibleSection";
 
 /** Section subtitles for card titles */
 const sectionSubtitles: Record<string, string> = {
