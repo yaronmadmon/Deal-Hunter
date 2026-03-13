@@ -191,15 +191,20 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
           </div>
         )}
 
-        {/* Line chart for Growth */}
+        {/* Line chart for Growth — AI-simulated */}
         {card.lineChart && (
-          <div className="h-16 -mx-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={card.lineChart}>
-                <Line type="monotone" dataKey="value" stroke="hsl(174 58% 40%)" strokeWidth={2} dot={false} />
-                <XAxis dataKey="name" hide />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
+            </div>
+            <div className="h-16 -mx-1 opacity-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={card.lineChart}>
+                  <Line type="monotone" dataKey="value" stroke="hsl(174 58% 40%)" strokeWidth={2} dot={false} />
+                  <XAxis dataKey="name" hide />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 
