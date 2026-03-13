@@ -2827,6 +2827,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (growthEntry && Number(growthEntry.value) > 5) {
               console.warn(`[DECLINING TREND CAP] Growth capped from ${growthEntry.value} to 5 (declining trend: ${matchedDecliningTrend})`);
               growthEntry.value = 5;
+              viabilityCappedCategories.add("Growth");
             }
 
             // Inject kill shot risk if not already present
