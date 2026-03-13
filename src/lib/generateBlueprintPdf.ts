@@ -169,9 +169,9 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   if (blueprint.reportSummary) {
     checkPage(16);
     doc.setFontSize(10); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Report-Linked Summary", m, y); y += 6;
+    doc.text(sanitizeForPdf("Report-Linked Summary"), m, y); y += 6;
     doc.setFontSize(9); doc.setFont("helvetica", "italic"); setColor(C.muted);
-    const sumLines = doc.splitTextToSize(blueprint.reportSummary, cw);
+    const sumLines = doc.splitTextToSize(sanitizeForPdf(blueprint.reportSummary), cw);
     writeLines(sumLines, m, 4.5); y += 4;
     drawHRule();
   }
