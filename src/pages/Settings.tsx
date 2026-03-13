@@ -88,6 +88,18 @@ const Settings = () => {
     supabase.from("subscriptions").select("plan, status, current_period_end").eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => { if (data) setSubscription(data); });
+
+    // Load notification preferences from DB
+    supabase.from("user_preferences").select("email_notifications, watchlist_alerts, weekly_digest")
+      .eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setEmailNotifs(data.email_notifications);
+          setWatchlistAlerts(data.watchlist_alerts);
+          setWeeklyDigest(data.weekly_digest);
+        }
+        setPrefsLoaded(true);
+      });
   }, [user]);
 
   const handleSaveProfile = async () => {
