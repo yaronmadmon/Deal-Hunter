@@ -586,7 +586,7 @@ async function validateCompetitors(
 
   const validated: ValidatedCompetitor[] = [];
 
-  for (const comp of competitors) {
+  for (const comp of preFiltered) {
     let evidenceType: ValidatedCompetitor["evidenceType"] = "unknown";
     let validationScore = 0;
 
