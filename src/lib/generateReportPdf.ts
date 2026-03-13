@@ -415,7 +415,7 @@ export function generateReportPdf(report: MockReportData) {
       s.complaints.forEach((c) => {
         checkPage(5);
         setColor(C.danger);
-        doc.text("•", m + 4, y);
+        doc.text("-", m + 4, y);
         setColor(C.text);
         const cl = doc.splitTextToSize(c, cw - 10);
         writeLines(cl, m + 8, 4);
