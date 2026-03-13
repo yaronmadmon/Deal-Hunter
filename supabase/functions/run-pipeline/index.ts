@@ -1523,6 +1523,24 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       }
     }
 
+    // ── EVIDENCE SUMMARY LOG (before/after filtering) ──
+    const evidenceSummary = {
+      github: { before: pipelineMetrics.github?.signalCount || 0, after: rawData.github?.repos?.length || 0 },
+      hackerNews: { before: pipelineMetrics.hackernews?.signalCount || 0, after: rawData.hackerNews?.hits?.length || 0 },
+      productHunt: { before: pipelineMetrics.producthunt?.signalCount || 0, after: rawData.productHunt?.products?.length || 0 },
+      twitter: { before: rawData.twitterSentiment?.total_fetched || 0, after: rawData.twitterSentiment?.tweets?.length || 0 },
+      serperCompetitors: { before: Object.keys(pipelineMetrics).filter(k => k.startsWith('serper_competitor_')).reduce((s, k) => s + (pipelineMetrics[k]?.signalCount || 0), 0), after: rawData.serperCompetitors?.allResults?.length || 0 },
+      firecrawlAppStore: { before: pipelineMetrics.firecrawl_appstore?.signalCount || 0, after: rawData.firecrawlAppStore?.results?.length || 0 },
+      firecrawlReddit: { before: pipelineMetrics.firecrawl_reddit?.signalCount || 0, after: rawData.firecrawlReddit?.results?.length || 0 },
+      serperReddit: { before: pipelineMetrics.serper_reddit?.signalCount || 0, after: rawData.serperReddit?.organic?.length || 0 },
+      serperNews: { before: pipelineMetrics.serper_news?.signalCount || 0, after: rawData.serperNews?.organic?.length || 0 },
+    };
+    const totalBefore = Object.values(evidenceSummary).reduce((s, v) => s + v.before, 0);
+    const totalAfter = Object.values(evidenceSummary).reduce((s, v) => s + v.after, 0);
+    console.log(`[EVIDENCE SUMMARY] Total fetched: ${totalBefore} | After filtering: ${totalAfter} | Dropped: ${totalBefore - totalAfter}`);
+    console.log(`[EVIDENCE SUMMARY] Breakdown: ${JSON.stringify(evidenceSummary)}`);
+    rawData.evidenceSummary = evidenceSummary;
+
     // Deduplicate competitor search results
     if (rawData.serperCompetitors?.allResults?.length > 0) {
       const seen = new Set<string>();
