@@ -1775,15 +1775,6 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
               rawData.competitorPricing.push(pricingData);
 
-              // Inject as verified pricing signal
-              evidenceBlock.pricingSignals.push({
-                signal: `${comp.name} Pricing (scraped)`,
-                value: `Plans: ${pricingData.planNames.join(", ") || "See page"}. Prices: ${pricingData.rawPrices.join(", ") || "Not extracted"}`,
-                source: "Firecrawl Pricing Scrape",
-                sourceUrl: pricingUrl,
-                tier: "verified",
-              });
-
               console.log(`[PRICING SCRAPE] "${comp.name}": Found ${priceMatches.length} prices, ${planMatches.length} plan names`);
               return pricingData;
             }
@@ -1908,7 +1899,19 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       evidenceBlock.pricingSignals.push({ signal: "Churn Benchmarks", value: rawData.perplexityChurn.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityChurn.citations?.[0] || null, tier: "reported" });
     }
 
-    // ── Populate technical signals ──
+    // ── Populate scraped pricing signals ──
+    (rawData.competitorPricing || []).forEach((pd: any) => {
+      if (pd) {
+        evidenceBlock.pricingSignals.push({
+          signal: `${pd.competitorName || "Competitor"} Pricing (scraped)`,
+          value: `Plans: ${pd.planNames?.join(", ") || "See page"}. Prices: ${pd.rawPrices?.join(", ") || "Not extracted"}`,
+          source: "Firecrawl Pricing Scrape",
+          sourceUrl: pd.url || null,
+          tier: "verified",
+        });
+      }
+    });
+
     if (rawData.perplexityBuildCosts?.content) {
       evidenceBlock.technicalSignals.push({ signal: "Build Cost Analysis", value: rawData.perplexityBuildCosts.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityBuildCosts.citations?.[0] || null, tier: "reported" });
     }
