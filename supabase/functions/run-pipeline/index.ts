@@ -2482,7 +2482,7 @@ Produce the JSON report with this EXACT structure:
   "nicheAnalysis": {"samEstimate": "dollar amount", "samPercentage": "X-Y%", "samReasoning": "why this percentage", "competitorClarity": "what exists vs not", "directCompetitors": 0, "competitorDetail": "specifics", "xSignalInterpretation": "interpret volume", "xVolumeContext": "context vs similar niches", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
   "unitEconomics": {"churnBenchmarks": [{"name": "name", "churnRate": "X%/mo", "source": "source"}], "churnImplication": "what it means", "realisticArpu": "$X/mo", "arpuReasoning": "rationale", "privacyPremium": "can you charge more", "ltvEstimate": "$X", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
   "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing", "onDeviceNote": "feasibility", "dataSource": "ai_estimated", "sourceUrls": []},
-  "scoreBreakdown": [{"label": "Trend Momentum", "value": 0-20, "weight": "20%"}, {"label": "Market Saturation", "value": 0-20, "weight": "20%"}, {"label": "Sentiment", "value": 0-20, "weight": "20%"}, {"label": "Growth", "value": 0-20, "weight": "20%"}, {"label": "Opportunity", "value": 0-20, "weight": "20%"}],
+  "scoreBreakdown": [{"label": "Trend Momentum", "value": 0-25, "weight": "25%"}, {"label": "Market Saturation", "value": 0-20, "weight": "20%"}, {"label": "Sentiment", "value": 0-20, "weight": "20%"}, {"label": "Growth", "value": 0-15, "weight": "15%"}, {"label": "Opportunity", "value": 0-20, "weight": "20%"}],
   "keyStats": [{"value": "number", "label": "description", "change": "+X% or null", "sentiment": "positive/negative/neutral"}] — MUST return EXACTLY 4 items. Use these categories: (1) Signal Score, (2) Data Points collected, (3) Revenue estimate or market size, (4) Competition count or growth metric. Never return fewer than 4.,
   "userQuotes": [{"text": "REAL quote", "source": "subreddit or review", "sourceUrl": "URL or null", "upvotes": "count or null", "platform": "reddit/app_store/twitter/other"}],
   "githubRepos": [{"name": "owner/repo", "description": "desc", "stars": number, "forks": number, "openIssues": number, "language": "lang", "url": "url", "updatedAt": "ISO date", "pushedAt": "ISO date", "topics": ["topics"]}],
@@ -2715,8 +2715,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           const growthSignals =
             (rawData.productHunt?.products?.length ?? 0) +
             (rawData.github?.repos?.length ?? 0) +
-            (rawData.perplexityVC?.citations?.length ?? 0) +
-            (rawData.hackerNews?.hits?.length ?? 0);
+            (rawData.perplexityVC?.citations?.length ?? 0);
 
           const opportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
@@ -2724,35 +2723,44 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             demandSignalCount + painSignalCount;
 
-          // Ceiling rules: 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
-          const computeCeiling = (signalCount: number): number => {
-            if (signalCount === 0) return 5;
-            if (signalCount <= 2) return 10;
-            if (signalCount <= 4) return 15;
-            return 20;
+          // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
+          const computeCeiling = (signalCount: number, maxScore: number): number => {
+            if (signalCount === 0) return Math.min(5, maxScore);
+            if (signalCount <= 2) return Math.min(10, maxScore);
+            if (signalCount <= 4) return Math.min(15, maxScore);
+            return maxScore;
           };
 
-          // Floor rules: 5-9 signals → min 8/20, 10+ signals → min 12/20
-          const computeFloor = (signalCount: number): number => {
-            if (signalCount >= 10) return 12;
-            if (signalCount >= 5) return 8;
+          // Floor rules: 5-9 signals → min 8, 10+ signals → min 12 (capped to category max)
+          const computeFloor = (signalCount: number, maxScore: number): number => {
+            if (signalCount >= 10) return Math.min(12, maxScore);
+            if (signalCount >= 5) return Math.min(8, maxScore);
             return 0;
           };
 
+          // Category max scores (non-uniform weights)
+          const categoryMaxMap: Record<string, number> = {
+            "Trend Momentum": 25,
+            "Market Saturation": 20,
+            "Sentiment": 20,
+            "Growth": 15,
+            "Opportunity": 20,
+          };
+
           const ceilingMap: Record<string, number> = {
-            "Trend Momentum": computeCeiling(trendSignals),
-            "Market Saturation": computeCeiling(marketSignals),
-            "Sentiment": computeCeiling(sentimentSignals),
-            "Growth": computeCeiling(growthSignals),
-            "Opportunity": computeCeiling(opportunitySignals),
+            "Trend Momentum": computeCeiling(trendSignals, categoryMaxMap["Trend Momentum"]),
+            "Market Saturation": computeCeiling(marketSignals, categoryMaxMap["Market Saturation"]),
+            "Sentiment": computeCeiling(sentimentSignals, categoryMaxMap["Sentiment"]),
+            "Growth": computeCeiling(growthSignals, categoryMaxMap["Growth"]),
+            "Opportunity": computeCeiling(opportunitySignals, categoryMaxMap["Opportunity"]),
           };
 
           const floorMap: Record<string, number> = {
-            "Trend Momentum": computeFloor(trendSignals),
-            "Market Saturation": computeFloor(marketSignals),
-            "Sentiment": computeFloor(sentimentSignals),
-            "Growth": computeFloor(growthSignals),
-            "Opportunity": computeFloor(opportunitySignals),
+            "Trend Momentum": computeFloor(trendSignals, categoryMaxMap["Trend Momentum"]),
+            "Market Saturation": computeFloor(marketSignals, categoryMaxMap["Market Saturation"]),
+            "Sentiment": computeFloor(sentimentSignals, categoryMaxMap["Sentiment"]),
+            "Growth": computeFloor(growthSignals, categoryMaxMap["Growth"]),
+            "Opportunity": computeFloor(opportunitySignals, categoryMaxMap["Opportunity"]),
           };
 
           let ceilingApplied = false;
@@ -2872,7 +2880,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (totalMetrics === 0) continue;
 
             const estimatedCount = metrics.filter((m: any) => 
-              m.dataTier === "estimated" || m.dataSource === "ai_estimated"
+              m.dataTier === "estimated" || m.dataSource === "ai_estimated" ||
+              m.value === "N/A" || m.value === "Insufficient data" || m.value === null
             ).length;
 
             if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
