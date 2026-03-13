@@ -2923,37 +2923,75 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Each scoring category has a max score (ceiling) based on how
         // many real signals were collected. No data = low ceiling.
         // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #1: EVIDENCE-WEIGHTED SIGNAL COUNTS
+        // Tier-weighted effective counts prevent large volumes of weak
+        // signals from inflating ceilings/floors.
+        // Tier 1 (Firecrawl, Serper verified) = 0.9 weight per signal
+        // Tier 2 (ProductHunt, GitHub, Twitter) = 0.7 weight per signal
+        // Tier 3 (Perplexity, HN) = 0.4 weight per signal
+        // ══════════════════════════════════════════════════════════════
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
-          // Count signals per category from rawData
-          const trendSignals =
+          const w = (count: number, tier: number): number => {
+            const weight = tier === 1 ? 0.9 : tier === 2 ? 0.7 : 0.4;
+            return count * weight;
+          };
+
+          // Raw counts (kept for logging)
+          const rawTrendSignals =
             (rawData.serperTrends?.organic?.length ?? 0) +
             (rawData.serperTrendsMonthly?.organic?.length ?? 0) +
             (rawData.serperNews?.organic?.length ?? 0) +
             (rawData.perplexityTrends?.citations?.length ?? 0);
-
-          const marketSignals =
+          const rawMarketSignals =
             (rawData.firecrawlAppStore?.results?.length ?? 0) +
             (rawData.serperCompetitors?.allResults?.length ?? 0) +
             (rawData.validatedCompetitors?.length ?? 0) +
             (rawData.perplexityMarket?.citations?.length ?? 0);
-
-          const sentimentSignals =
+          const rawSentimentSignals =
             (rawData.firecrawlReddit?.results?.length ?? 0) +
             (rawData.serperReddit?.organic?.length ?? 0) +
             (rawData.twitterSentiment?.tweets?.length ?? 0) +
             (rawData.hackerNews?.hits?.length ?? 0);
-
-          const growthSignals =
+          const rawGrowthSignals =
             (rawData.productHunt?.products?.length ?? 0) +
             (rawData.github?.repos?.length ?? 0) +
             (rawData.perplexityVC?.citations?.length ?? 0);
-
-          // INTEGRITY FIX: Opportunity uses its OWN unique signals, not demand+pain already counted elsewhere
-          const opportunitySignals =
+          const rawOpportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
             (rawData.perplexityRevenue?.citations?.length ?? 0) +
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             (rawData.perplexityBuildCosts?.citations?.length ?? 0);
+
+          // Effective weighted counts
+          const trendSignals = Math.round(
+            w(rawData.serperTrends?.organic?.length ?? 0, 1) +
+            w(rawData.serperTrendsMonthly?.organic?.length ?? 0, 1) +
+            w(rawData.serperNews?.organic?.length ?? 0, 1) +
+            w(rawData.perplexityTrends?.citations?.length ?? 0, 3)
+          );
+          const marketSignals = Math.round(
+            w(rawData.firecrawlAppStore?.results?.length ?? 0, 1) +
+            w(rawData.serperCompetitors?.allResults?.length ?? 0, 1) +
+            w(rawData.validatedCompetitors?.length ?? 0, 1) +
+            w(rawData.perplexityMarket?.citations?.length ?? 0, 3)
+          );
+          const sentimentSignals = Math.round(
+            w(rawData.firecrawlReddit?.results?.length ?? 0, 1) +
+            w(rawData.serperReddit?.organic?.length ?? 0, 1) +
+            w(rawData.twitterSentiment?.tweets?.length ?? 0, 2) +
+            w(rawData.hackerNews?.hits?.length ?? 0, 3)
+          );
+          const growthSignals = Math.round(
+            w(rawData.productHunt?.products?.length ?? 0, 2) +
+            w(rawData.github?.repos?.length ?? 0, 2) +
+            w(rawData.perplexityVC?.citations?.length ?? 0, 3)
+          );
+          const opportunitySignals = Math.round(
+            w(rawData.serperAutoComplete?.suggestions?.length ?? 0, 1) +
+            w(rawData.perplexityRevenue?.citations?.length ?? 0, 3) +
+            w(rawData.perplexityChurn?.citations?.length ?? 0, 3) +
+            w(rawData.perplexityBuildCosts?.citations?.length ?? 0, 3)
+          );
 
           // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
           const computeCeiling = (signalCount: number, maxScore: number): number => {
@@ -2993,6 +3031,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             "Sentiment": computeFloor(sentimentSignals, categoryMaxMap["Sentiment"]),
             "Growth": computeFloor(growthSignals, categoryMaxMap["Growth"]),
             "Opportunity": computeFloor(opportunitySignals, categoryMaxMap["Opportunity"]),
+          };
+
+          // Store raw vs effective for transparency
+          reportData._signalWeighting = {
+            raw: { trend: rawTrendSignals, market: rawMarketSignals, sentiment: rawSentimentSignals, growth: rawGrowthSignals, opportunity: rawOpportunitySignals },
+            effective: { trend: trendSignals, market: marketSignals, sentiment: sentimentSignals, growth: growthSignals, opportunity: opportunitySignals },
           };
 
           let ceilingApplied = false;
