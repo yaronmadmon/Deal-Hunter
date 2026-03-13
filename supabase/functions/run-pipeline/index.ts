@@ -3412,16 +3412,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // ── Ensure scoreBreakdown exists with defaults ──
         if (!reportData.scoreBreakdown || !Array.isArray(reportData.scoreBreakdown) || reportData.scoreBreakdown.length !== 5) {
-          const defaultScore = Math.round((reportData.overallScore || 50) / 5);
+          const total = reportData.overallScore || 50;
+          // Distribute proportionally: 25/20/20/15/20
+          const trendDefault = Math.round(total * 0.25);
+          const satDefault = Math.round(total * 0.20);
+          const sentDefault = Math.round(total * 0.20);
+          const growthDefault = Math.round(total * 0.15);
+          const oppDefault = total - trendDefault - satDefault - sentDefault - growthDefault;
           reportData.scoreBreakdown = [
-            { label: "Trend Momentum", value: defaultScore, weight: "20%" },
-            { label: "Market Saturation", value: defaultScore, weight: "20%" },
-            { label: "Sentiment", value: defaultScore, weight: "20%" },
-            { label: "Growth", value: defaultScore, weight: "20%" },
-            { label: "Opportunity", value: defaultScore, weight: "20%" },
+            { label: "Trend Momentum", value: Math.min(trendDefault, 25), weight: "25%" },
+            { label: "Market Saturation", value: Math.min(satDefault, 20), weight: "20%" },
+            { label: "Sentiment", value: Math.min(sentDefault, 20), weight: "20%" },
+            { label: "Growth", value: Math.min(growthDefault, 15), weight: "15%" },
+            { label: "Opportunity", value: Math.min(oppDefault, 20), weight: "20%" },
           ];
-          reportData.overallScore = defaultScore * 5;
-          console.log(`[FIELD POPULATION] scoreBreakdown: generated defaults (${defaultScore}/20 each)`);
+          reportData.overallScore = reportData.scoreBreakdown.reduce((s: number, c: any) => s + c.value, 0);
+          console.log(`[FIELD POPULATION] scoreBreakdown: generated weighted defaults (25/20/20/15/20)`);
         }
 
         // ── Fill missing sections with safe defaults so UI always renders ──
