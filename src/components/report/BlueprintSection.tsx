@@ -25,21 +25,21 @@ interface Props {
 }
 
 const sections = [
-  { key: "reportSummary", title: "Report-Linked Summary", icon: FileText },
-  { key: "productConcept", title: "Product Concept", icon: Package },
-  { key: "strategicPositioning", title: "Strategic Positioning", icon: Target },
-  { key: "competitiveEdge", title: "Competitive Edge", icon: Shield },
-  { key: "coreFeatures", title: "Sentiment-Driven Features", icon: Lightbulb },
-  { key: "targetUsers", title: "Target Users", icon: Users },
-  { key: "primaryLaunchSegment", title: "Primary Launch Segment", icon: UserCheck },
-  { key: "monetization", title: "Monetization Strategy", icon: DollarSign },
-  { key: "monetizationValidation", title: "Monetization Validation Plan", icon: BadgeDollarSign },
-  { key: "mvpPlan", title: "MVP Timeline (Realistic)", icon: ListChecks },
-  { key: "techStack", title: "Technical Architecture", icon: Cpu },
-  { key: "techTradeoffs", title: "Technical Tradeoffs & Honest Calls", icon: ShieldAlert },
-  { key: "goToMarket", title: "Go-to-Market Plan", icon: Rocket },
-  { key: "competitiveResponse", title: "Competitive Response Scenario", icon: Shield },
-  { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle },
+  { key: "reportSummary", title: "Report-Linked Summary", icon: FileText, iconColor: "text-blue-500 dark:text-blue-400", bgColor: "bg-blue-500/10" },
+  { key: "productConcept", title: "Product Concept", icon: Package, iconColor: "text-purple-500 dark:text-purple-400", bgColor: "bg-purple-500/10" },
+  { key: "strategicPositioning", title: "Strategic Positioning", icon: Target, iconColor: "text-teal", bgColor: "bg-teal/10" },
+  { key: "competitiveEdge", title: "Competitive Edge", icon: Shield, iconColor: "text-green-500 dark:text-green-400", bgColor: "bg-green-500/10" },
+  { key: "coreFeatures", title: "Sentiment-Driven Features", icon: Lightbulb, iconColor: "text-primary", bgColor: "bg-primary/10" },
+  { key: "targetUsers", title: "Target Users", icon: Users, iconColor: "text-blue-500 dark:text-blue-400", bgColor: "bg-blue-500/10" },
+  { key: "primaryLaunchSegment", title: "Primary Launch Segment", icon: UserCheck, iconColor: "text-teal", bgColor: "bg-teal/10" },
+  { key: "monetization", title: "Monetization Strategy", icon: DollarSign, iconColor: "text-green-500 dark:text-green-400", bgColor: "bg-green-500/10" },
+  { key: "monetizationValidation", title: "Monetization Validation Plan", icon: BadgeDollarSign, iconColor: "text-purple-500 dark:text-purple-400", bgColor: "bg-purple-500/10" },
+  { key: "mvpPlan", title: "MVP Timeline (Realistic)", icon: ListChecks, iconColor: "text-primary", bgColor: "bg-primary/10" },
+  { key: "techStack", title: "Technical Architecture", icon: Cpu, iconColor: "text-blue-500 dark:text-blue-400", bgColor: "bg-blue-500/10" },
+  { key: "techTradeoffs", title: "Technical Tradeoffs & Honest Calls", icon: ShieldAlert, iconColor: "text-destructive", bgColor: "bg-destructive/10" },
+  { key: "goToMarket", title: "Go-to-Market Plan", icon: Rocket, iconColor: "text-green-500 dark:text-green-400", bgColor: "bg-green-500/10" },
+  { key: "competitiveResponse", title: "Competitive Response Scenario", icon: Shield, iconColor: "text-purple-500 dark:text-purple-400", bgColor: "bg-purple-500/10" },
+  { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle, iconColor: "text-teal", bgColor: "bg-teal/10" },
 ] as const;
 
 export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity }: Props) => {
