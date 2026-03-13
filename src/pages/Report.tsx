@@ -377,35 +377,65 @@ const Report = () => {
         />
 
         {/* Kill Shot Analysis */}
-        {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
+        {r.killShotAnalysis && (
+          <CollapsibleSection title="Kill Shot Analysis" icon={<Crosshair className="w-4 h-4 text-destructive" />} summary="Critical risks and deal-breakers">
+            <KillShotAnalysis data={r.killShotAnalysis} />
+          </CollapsibleSection>
+        )}
 
         {/* Market Exploit Map */}
-        {r.marketExploitMap && <MarketExploitMap data={r.marketExploitMap} />}
+        {r.marketExploitMap && (
+          <CollapsibleSection title="Market Exploit Map" icon={<Map className="w-4 h-4 text-teal" />} summary="Gaps you can exploit">
+            <MarketExploitMap data={r.marketExploitMap} />
+          </CollapsibleSection>
+        )}
 
         {/* Competitor Comparison Matrix */}
-        {r.competitorMatrix && <CompetitorMatrix data={r.competitorMatrix} />}
+        {r.competitorMatrix && (
+          <CollapsibleSection title="Competitor Matrix" icon={<GitCompare className="w-4 h-4 text-blue-400" />} summary="How you stack up">
+            <CompetitorMatrix data={r.competitorMatrix} />
+          </CollapsibleSection>
+        )}
 
         {/* Review Intelligence */}
         {r.reviewIntelligence && r.reviewIntelligence.complaintClusters?.length > 0 && (
-          <div className="mt-6">
+          <CollapsibleSection title="Review Intelligence" icon={<MessageSquare className="w-4 h-4 text-purple-400" />} summary="Competitor pain points">
             <ReviewIntelligence data={r.reviewIntelligence} />
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* Niche Deep Dive */}
-        {r.nicheAnalysis && <NicheAnalysis data={r.nicheAnalysis} />}
+        {r.nicheAnalysis && (
+          <CollapsibleSection title="Niche Analysis" icon={<Target className="w-4 h-4 text-green-400" />} summary="Market positioning">
+            <NicheAnalysis data={r.nicheAnalysis} />
+          </CollapsibleSection>
+        )}
 
         {/* Unit Economics */}
-        {r.unitEconomics && <UnitEconomics data={r.unitEconomics} />}
+        {r.unitEconomics && (
+          <CollapsibleSection title="Unit Economics" icon={<DollarSign className="w-4 h-4 text-primary" />} summary="Cost & revenue model">
+            <UnitEconomics data={r.unitEconomics} />
+          </CollapsibleSection>
+        )}
 
         {/* Revenue Benchmark */}
-        <RevenueBenchmark benchmark={r.revenueBenchmark} />
+        <CollapsibleSection title="Revenue Benchmark" icon={<BarChart3 className="w-4 h-4 text-green-500" />} summary={r.revenueBenchmark?.range || "Revenue estimates"}>
+          <RevenueBenchmark benchmark={r.revenueBenchmark} />
+        </CollapsibleSection>
 
         {/* Build Complexity */}
-        {r.buildComplexity && <BuildComplexity data={r.buildComplexity} />}
+        {r.buildComplexity && (
+          <CollapsibleSection title="Build Complexity" icon={<Wrench className="w-4 h-4 text-muted-foreground" />} summary={`${r.buildComplexity.score || "?"}/10 difficulty`}>
+            <BuildComplexity data={r.buildComplexity} />
+          </CollapsibleSection>
+        )}
 
         {/* Recommended Strategy */}
-        {r.recommendedStrategy && <RecommendedStrategy data={r.recommendedStrategy} />}
+        {r.recommendedStrategy && (
+          <CollapsibleSection title="Recommended Strategy" icon={<Compass className="w-4 h-4 text-primary" />} summary="Suggested go-to-market approach" defaultOpen>
+            <RecommendedStrategy data={r.recommendedStrategy} />
+          </CollapsibleSection>
+        )}
 
         {/* Glossary — collapsed by default */}
         <details className="mb-6">
