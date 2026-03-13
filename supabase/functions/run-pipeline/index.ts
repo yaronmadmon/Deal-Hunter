@@ -3785,8 +3785,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Log validation summary
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}, Conflicts: ${conflictingSignals.length}, Perplexity%: ${perplexityPct}, FallbackGaps: ${fallbackGaps.length}`);
 
-        overallScore = reportData.overallScore || 0;
-        signalStrength = reportData.signalStrength || "Moderate";
+        // Final score and signal strength are read from reportData at save time (lines 4026-4027)
 
         // ── Populate githubRepos from rawData if AI didn't return them ──
         if (!reportData.githubRepos || !Array.isArray(reportData.githubRepos) || reportData.githubRepos.length === 0) {
