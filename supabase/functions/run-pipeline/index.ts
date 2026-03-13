@@ -208,9 +208,9 @@ async function twitterSearch(
     }));
     // Filter 10+ likes and sort by engagement
     const filtered = tweets
-      .filter((t: any) => t.like_count >= 10)
+      .filter((t: any) => t.like_count >= 1)
       .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
-      .slice(0, 10);
+      .slice(0, 30);
     return { tweets: filtered, total_fetched: tweets.length };
   } catch (e) {
     console.error("Twitter search error:", e);
@@ -704,7 +704,7 @@ async function productHuntSearch(
       const topicQuery = `
         query {
           topic(slug: "${topicSlug}") {
-            posts(first: 20) {
+            posts(first: 50) {
               edges {
                 node {
                   id
@@ -757,7 +757,7 @@ async function productHuntSearch(
     try {
       const query = `
         query {
-          posts(order: RANKING, first: 20) {
+          posts(order: RANKING, first: 50) {
             edges {
               node {
                 id
@@ -1137,7 +1137,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       const firecrawlQuery = semanticQueries.length > 1 ? semanticQueries[0] : sanitizedIdea;
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 5));
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 20));
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -1146,7 +1146,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       firecrawlPromises.push(
         trackSource("firecrawl_reddit", async () => {
           const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : sanitizedIdea;
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${redditQuery} reviews complaints pain points site:reddit.com`, 5));
+          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${redditQuery} reviews complaints pain points site:reddit.com`, 15));
           rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
@@ -1162,7 +1162,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 30);
           rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1171,7 +1171,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
           const trendQuery = semanticQueries.length > 2 ? semanticQueries[2] : serperKeywords;
-          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 10);
+          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 30);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1179,7 +1179,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_news", async () => {
-          const r = await serperSearch(serperKey, serperKeywords, "news", 10);
+          const r = await serperSearch(serperKey, serperKeywords, "news", 30);
           rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1187,7 +1187,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_reddit", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 30);
           rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1218,7 +1218,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         const cq = competitorQueryTemplates[i];
         serperPromises.push(
           trackSource(`serper_competitor_${i}`, async () => {
-            const r = await serperSearch(serperKey, cq, "search", 10);
+            const r = await serperSearch(serperKey, cq, "search", 30);
             rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
               ...o,
               _query: cq,
@@ -1255,7 +1255,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
             if (seen.has(p.name)) return false;
             seen.add(p.name);
             return true;
-          }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
+          }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 15);
           rawData.productHunt = { products: unique };
           rawData.sources.push(...unique.map((p: any) => ({ url: p.url, type: "producthunt" })));
           return unique.length;
@@ -1272,7 +1272,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
       githubPromises.push(
-        githubSearch(kw, 5)
+        githubSearch(kw, 30)
           .then(r => { ghResults.push(...r.repos); })
           .catch(e => console.error("GitHub error:", e))
       );
@@ -1285,7 +1285,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
           if (seen.has(r.name)) return false;
           seen.add(r.name);
           return true;
-        }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 10);
+        }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 30);
         rawData.github = { repos: unique };
         rawData.sources.push(...unique.map((repo: any) => ({ url: repo.url, type: "github" })));
         return unique.length;
@@ -1321,7 +1321,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const hnPromises: Promise<void>[] = [];
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(primaryKeywords, 10);
+        const r = await hackerNewsSearch(primaryKeywords, 30);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
@@ -1522,6 +1522,24 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
         }
       }
     }
+
+    // ── EVIDENCE SUMMARY LOG (before/after filtering) ──
+    const evidenceSummary = {
+      github: { before: pipelineMetrics.github?.signalCount || 0, after: rawData.github?.repos?.length || 0 },
+      hackerNews: { before: pipelineMetrics.hackernews?.signalCount || 0, after: rawData.hackerNews?.hits?.length || 0 },
+      productHunt: { before: pipelineMetrics.producthunt?.signalCount || 0, after: rawData.productHunt?.products?.length || 0 },
+      twitter: { before: rawData.twitterSentiment?.total_fetched || 0, after: rawData.twitterSentiment?.tweets?.length || 0 },
+      serperCompetitors: { before: Object.keys(pipelineMetrics).filter(k => k.startsWith('serper_competitor_')).reduce((s, k) => s + (pipelineMetrics[k]?.signalCount || 0), 0), after: rawData.serperCompetitors?.allResults?.length || 0 },
+      firecrawlAppStore: { before: pipelineMetrics.firecrawl_appstore?.signalCount || 0, after: rawData.firecrawlAppStore?.results?.length || 0 },
+      firecrawlReddit: { before: pipelineMetrics.firecrawl_reddit?.signalCount || 0, after: rawData.firecrawlReddit?.results?.length || 0 },
+      serperReddit: { before: pipelineMetrics.serper_reddit?.signalCount || 0, after: rawData.serperReddit?.organic?.length || 0 },
+      serperNews: { before: pipelineMetrics.serper_news?.signalCount || 0, after: rawData.serperNews?.organic?.length || 0 },
+    };
+    const totalBefore = Object.values(evidenceSummary).reduce((s, v) => s + v.before, 0);
+    const totalAfter = Object.values(evidenceSummary).reduce((s, v) => s + v.after, 0);
+    console.log(`[EVIDENCE SUMMARY] Total fetched: ${totalBefore} | After filtering: ${totalAfter} | Dropped: ${totalBefore - totalAfter}`);
+    console.log(`[EVIDENCE SUMMARY] Breakdown: ${JSON.stringify(evidenceSummary)}`);
+    rawData.evidenceSummary = evidenceSummary;
 
     // Deduplicate competitor search results
     if (rawData.serperCompetitors?.allResults?.length > 0) {
