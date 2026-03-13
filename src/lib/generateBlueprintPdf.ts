@@ -208,7 +208,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(C.text);
 
     if (typeof content === "string") {
-      const lines = doc.splitTextToSize(content, cw);
+      const lines = doc.splitTextToSize(sanitizeForPdf(content), cw);
       writeLines(lines, m, 4.5);
       y += 5;
     } else {
@@ -219,7 +219,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
         doc.text(`${i + 1}.`, m + 2, y);
         doc.setFont("helvetica", "normal");
         setColor(C.text);
-        const lines = doc.splitTextToSize(item, cw - 10);
+        const lines = doc.splitTextToSize(sanitizeForPdf(item), cw - 10);
         writeLines(lines, m + 9, 4.5);
         y += 2;
       });
