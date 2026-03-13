@@ -328,7 +328,11 @@ const Dashboard = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={(e) => handleDelete(e, item.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDelete(e, item.id);
+                              }}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete
