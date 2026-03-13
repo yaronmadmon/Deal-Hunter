@@ -29,7 +29,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const m = 16;
-  const maxY = ph - 18;
+  const maxY = ph - 22;
   const cw = pw - m * 2;
   let y = 18;
 

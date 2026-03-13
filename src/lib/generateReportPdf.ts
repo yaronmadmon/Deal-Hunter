@@ -53,7 +53,8 @@ export function generateReportPdf(report: MockReportData) {
   };
 
   const checkPage = (needed: number) => {
-    if (y + needed > maxY) { doc.addPage(); y = 18; }
+    if (y + needed > maxY) { doc.addPage(); y = 18; return true; }
+    return false;
   };
 
   const writeLines = (lines: string[], x: number, lh: number) => {
