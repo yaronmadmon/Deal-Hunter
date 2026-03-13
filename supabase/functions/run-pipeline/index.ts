@@ -2359,13 +2359,19 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             demandSignalCount + painSignalCount;
 
-          // Ceiling rules: [signalThreshold, maxScore]
-          // 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
+          // Ceiling rules: 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
           const computeCeiling = (signalCount: number): number => {
             if (signalCount === 0) return 5;
             if (signalCount <= 2) return 10;
             if (signalCount <= 4) return 15;
             return 20;
+          };
+
+          // Floor rules: 5-9 signals → min 8/20, 10+ signals → min 12/20
+          const computeFloor = (signalCount: number): number => {
+            if (signalCount >= 10) return 12;
+            if (signalCount >= 5) return 8;
+            return 0;
           };
 
           const ceilingMap: Record<string, number> = {
@@ -2376,39 +2382,58 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             "Opportunity": computeCeiling(opportunitySignals),
           };
 
+          const floorMap: Record<string, number> = {
+            "Trend Momentum": computeFloor(trendSignals),
+            "Market Saturation": computeFloor(marketSignals),
+            "Sentiment": computeFloor(sentimentSignals),
+            "Growth": computeFloor(growthSignals),
+            "Opportunity": computeFloor(opportunitySignals),
+          };
+
           let ceilingApplied = false;
+          let floorApplied = false;
           for (const category of reportData.scoreBreakdown) {
             const ceiling = ceilingMap[category.label];
+            const floor = floorMap[category.label];
+            const signalCount = category.label === "Trend Momentum" ? trendSignals :
+              category.label === "Market Saturation" ? marketSignals :
+              category.label === "Sentiment" ? sentimentSignals :
+              category.label === "Growth" ? growthSignals : opportunitySignals;
+
+            // Apply ceiling (cap overscoring)
             if (ceiling !== undefined && Number(category.value) > ceiling) {
-              console.warn(`[SIGNAL CEILING] ${category.label}: only ${
-                category.label === "Trend Momentum" ? trendSignals :
-                category.label === "Market Saturation" ? marketSignals :
-                category.label === "Sentiment" ? sentimentSignals :
-                category.label === "Growth" ? growthSignals : opportunitySignals
-              } signals → ceiling ${ceiling}/20. Capping from ${category.value}.`);
+              console.warn(`[SIGNAL CEILING] ${category.label}: only ${signalCount} signals → ceiling ${ceiling}/20. Capping from ${category.value}.`);
               category.value = ceiling;
               ceilingApplied = true;
             }
+
+            // Apply floor (prevent underscoring strong evidence)
+            if (floor !== undefined && floor > 0 && Number(category.value) < floor) {
+              console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
+              category.value = floor;
+              floorApplied = true;
+            }
           }
 
-          if (ceilingApplied) {
+          if (ceilingApplied || floorApplied) {
             const newSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
-            console.warn(`[SIGNAL CEILING] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
+            console.warn(`[SIGNAL BOUNDS] Overall score adjusted: ${reportData.overallScore} -> ${newSum} (ceilings: ${ceilingApplied}, floors: ${floorApplied})`);
             reportData.overallScore = newSum;
 
-            const ceilScore = reportData.overallScore;
-            const ceilVerdict = ceilScore >= 75 ? "Build Now"
-              : ceilScore >= 55 ? "Build, But Niche Down"
-              : ceilScore >= 40 ? "Validate Further"
+            const boundScore = reportData.overallScore;
+            const boundVerdict = boundScore >= 75 ? "Build Now"
+              : boundScore >= 55 ? "Build, But Niche Down"
+              : boundScore >= 40 ? "Validate Further"
               : "Do Not Build Yet";
             if (reportData.founderDecision) {
-              reportData.founderDecision.decision = ceilVerdict;
+              reportData.founderDecision.decision = boundVerdict;
             }
-            reportData.signalStrength = ceilScore >= 70 ? "Strong" : ceilScore >= 45 ? "Moderate" : "Weak";
+            reportData.signalStrength = boundScore >= 70 ? "Strong" : boundScore >= 45 ? "Moderate" : "Weak";
           }
 
           console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
           console.log(`[SIGNAL CEILINGS] Trend: ${ceilingMap["Trend Momentum"]}, Market: ${ceilingMap["Market Saturation"]}, Sentiment: ${ceilingMap["Sentiment"]}, Growth: ${ceilingMap["Growth"]}, Opportunity: ${ceilingMap["Opportunity"]}`);
+          console.log(`[SIGNAL FLOORS] Trend: ${floorMap["Trend Momentum"]}, Market: ${floorMap["Market Saturation"]}, Sentiment: ${floorMap["Sentiment"]}, Growth: ${floorMap["Growth"]}, Opportunity: ${floorMap["Opportunity"]}`);
         }
 
         // ══════════════════════════════════════════════════════════════
