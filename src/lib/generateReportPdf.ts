@@ -269,7 +269,7 @@ export function generateReportPdf(report: MockReportData) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     setColor(C.muted);
-    doc.text(`${source}  •  ${confidence} confidence`, m + titleW + 3, y);
+    doc.text(`${source}  |  ${confidence} confidence`, m + titleW + 3, y);
 
     y += 3;
     setDraw(C.indigo);
