@@ -3809,10 +3809,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     }
 
     // ── Step 3: Complete ──
+    // CRITICAL FIX: Use computed values from reportData, not uninitialized locals
+    const finalOverallScore = reportData?.overallScore ?? 0;
+    const finalSignalStrength = reportData?.signalStrength ?? "Weak";
     await supabase.from("analyses").update({
       status: "complete",
-      overall_score: overallScore,
-      signal_strength: signalStrength,
+      overall_score: finalOverallScore,
+      signal_strength: finalSignalStrength,
       report_data: reportData,
       updated_at: new Date().toISOString(),
     }).eq("id", analysisId);
