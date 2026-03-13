@@ -27,6 +27,8 @@ import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
+import { ConflictingSignals } from "@/components/report/ConflictingSignals";
+import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBanner";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -264,12 +266,25 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
+        {/* Perplexity Dominance Warning Banner */}
+        {r.pipelineMetrics?.perplexityDominanceBanner && (
+          <PerplexityWarningBanner 
+            percentage={r.pipelineMetrics.perplexityDominanceBanner.percentage} 
+            message={r.pipelineMetrics.perplexityDominanceBanner.message} 
+          />
+        )}
+
         {/* Data Quality Summary */}
         {r.dataQualitySummary && (
           <DataQualitySummary 
             data={r.dataQualitySummary} 
             relevanceFilter={r.pipelineMetrics?.relevanceFilter}
           />
+        )}
+
+        {/* Conflicting Evidence */}
+        {r.conflictingSignals && r.conflictingSignals.length > 0 && (
+          <ConflictingSignals signals={r.conflictingSignals} />
         )}
 
         {/* Founder Insight — plain-English interpretation */}

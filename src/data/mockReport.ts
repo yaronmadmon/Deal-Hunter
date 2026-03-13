@@ -379,8 +379,11 @@ export interface MockReportData {
   founderInsight?: FounderInsightData;
   pipelineMetrics?: {
     relevanceFilter?: { scored?: number; filtered?: number; discardedItems?: { source: string; title: string; score: number }[] } | null;
+    perplexityDominanceBanner?: { percentage: number; message: string } | null;
     [key: string]: any;
   };
+  conflictingSignals?: { signalA: string; sourceA: string; signalB: string; sourceB: string; category: string }[];
+  fallbackGaps?: { section: string; failedSource: string; status: string }[];
 }
 
 export const mockReport: MockReportData = {
