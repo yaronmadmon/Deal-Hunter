@@ -139,18 +139,18 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {sections.map(({ key, title, icon: Icon }) => {
+        {sections.map(({ key, title, icon: Icon, iconColor, bgColor }) => {
           const value = (blueprint as any)[key];
           if (!value || (Array.isArray(value) && value.length === 0)) return null;
 
           const isFullWidth = ["reportSummary", "productConcept", "strategicPositioning", "primaryLaunchSegment", "goToMarket", "competitiveResponse"].includes(key);
 
           return (
-            <Card key={key} className={isFullWidth ? "md:col-span-2" : ""}>
+            <Card key={key} className={`${isFullWidth ? "md:col-span-2" : ""} hover:shadow-md transition-shadow duration-200`}>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-primary" />
+                  <div className={`w-9 h-9 rounded-lg ${bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-4 h-4 ${iconColor}`} />
                   </div>
                   <h3 className="font-heading font-semibold text-foreground">{title}</h3>
                 </div>
@@ -160,7 +160,7 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
                   <ul className="space-y-2">
                     {(value as string[]).map((item, i) => (
                       <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-primary mt-0.5 font-bold">{i + 1}.</span> {item}
+                        <span className={`${iconColor} mt-0.5 font-bold`}>{i + 1}.</span> {item}
                       </li>
                     ))}
                   </ul>
