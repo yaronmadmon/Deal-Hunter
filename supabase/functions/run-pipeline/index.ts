@@ -1608,7 +1608,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
               const discardedItems: { source: string; title: string; score: number }[] = [];
 
               itemsToScore.forEach((item, idx) => {
-                const score = scores[idx] ?? 5; // default to 5 if missing
+                const score = scores[idx] ?? 3; // INTEGRITY FIX: default to BELOW threshold (reject) if AI didn't score this item
                 if (score < 5) {
                   toRemove[item.source]?.add(item.index);
                   filteredCount++;
@@ -2056,7 +2056,6 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     if (crossValidatedSignals.length > 0) {
       console.log(`[CROSS-VALIDATION] ${crossValidatedSignals.length} signals confirmed by 2+ sources: ${crossValidatedSignals.map(s => s.category).join(", ")}`);
     }
-
 
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
@@ -2626,8 +2625,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     });
 
     let reportData = null;
-    let overallScore = 0;
-    let signalStrength = "Weak";
 
     if (aiResponse.ok) {
       const aiResult = await aiResponse.json();
@@ -2754,10 +2751,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             const reduction = Number(opportunityEntry.value) - 10;
             opportunityEntry.value = 10;
             reportData.overallScore = (reportData.overallScore || 0) - reduction;
-
+            viabilityCappedCategories.add("Opportunity");
             applyVerdictToReport(reportData);
           }
         }
+
+        // Track which categories were capped by viability checks — floors must NOT override these
+        const viabilityCappedCategories = new Set<string>();
 
         // ══════════════════════════════════════════════════════════════
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
@@ -2817,12 +2817,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (trendEntry && Number(trendEntry.value) > 8) {
               console.warn(`[DECLINING TREND CAP] Trend capped from ${trendEntry.value} to 8 (declining trend: ${matchedDecliningTrend})`);
               trendEntry.value = 8;
+              viabilityCappedCategories.add("Trend Momentum");
             }
             
             const growthEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Growth");
             if (growthEntry && Number(growthEntry.value) > 5) {
               console.warn(`[DECLINING TREND CAP] Growth capped from ${growthEntry.value} to 5 (declining trend: ${matchedDecliningTrend})`);
               growthEntry.value = 5;
+              viabilityCappedCategories.add("Growth");
             }
 
             // Inject kill shot risk if not already present
@@ -2888,18 +2890,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               if (trendEntry && Number(trendEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Trend capped from ${trendEntry.value} to 10`);
                 trendEntry.value = 10;
+                viabilityCappedCategories.add("Trend Momentum");
               }
               
               const oppEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Opportunity");
               if (oppEntry && Number(oppEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Opportunity capped from ${oppEntry.value} to 10`);
                 oppEntry.value = 10;
+                viabilityCappedCategories.add("Opportunity");
               }
               
               const sentEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Sentiment");
               if (sentEntry && Number(sentEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Sentiment capped from ${sentEntry.value} to 10 (no user pain for this specific combination)`);
                 sentEntry.value = 10;
+                viabilityCappedCategories.add("Sentiment");
+              }
               }
             }
           }
@@ -2942,11 +2948,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.github?.repos?.length ?? 0) +
             (rawData.perplexityVC?.citations?.length ?? 0);
 
+          // INTEGRITY FIX: Opportunity uses its OWN unique signals, not demand+pain already counted elsewhere
           const opportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
             (rawData.perplexityRevenue?.citations?.length ?? 0) +
             (rawData.perplexityChurn?.citations?.length ?? 0) +
-            demandSignalCount + painSignalCount;
+            (rawData.perplexityBuildCosts?.citations?.length ?? 0);
 
           // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
           const computeCeiling = (signalCount: number, maxScore: number): number => {
@@ -3006,10 +3013,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             }
 
             // Apply floor (prevent underscoring strong evidence)
+            // INTEGRITY FIX: Never let floors override viability caps (declining trend, mashup penalties)
             if (floor !== undefined && floor > 0 && Number(category.value) < floor) {
-              console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
-              category.value = floor;
-              floorApplied = true;
+              if (viabilityCappedCategories.has(category.label)) {
+                console.warn(`[SIGNAL FLOOR SKIPPED] ${category.label}: viability cap takes priority over floor ${floor}. Keeping at ${category.value}.`);
+              } else {
+                console.warn(`[SIGNAL FLOOR] ${category.label}: ${signalCount} signals → floor ${floor}/20. Raising from ${category.value}.`);
+                category.value = floor;
+                floorApplied = true;
+              }
+            }
             }
           }
 
@@ -3025,6 +3038,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           console.log(`[SIGNAL CEILINGS] Trend: ${ceilingMap["Trend Momentum"]}, Market: ${ceilingMap["Market Saturation"]}, Sentiment: ${ceilingMap["Sentiment"]}, Growth: ${ceilingMap["Growth"]}, Opportunity: ${ceilingMap["Opportunity"]}`);
           console.log(`[SIGNAL FLOORS] Trend: ${floorMap["Trend Momentum"]}, Market: ${floorMap["Market Saturation"]}, Sentiment: ${floorMap["Sentiment"]}, Growth: ${floorMap["Growth"]}, Opportunity: ${floorMap["Opportunity"]}`);
         }
+
+        // Capture score after signal bounds for journey log
+        const scoreAfterSignalBounds = reportData.overallScore || 0;
 
         // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
@@ -3227,6 +3243,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
+        // Capture score after data quality penalty for journey log
+        const scoreAfterDataQuality = reportData.overallScore || 0;
+
         // ══════════════════════════════════════════════════════════════
         // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
         // Subtracts 0-15 points based on build complexity score.
@@ -3268,15 +3287,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         reportData.scoringJourney = {
           steps: [
             { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
-            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? "Declining trend / mashup caps applied" : "No viability adjustments needed" },
-            { label: "Signal Floors & Ceilings", value: scoreBeforeComplexity, description: "Evidence-based bounds enforced per category" },
+            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
+            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-based floors & ceilings enforced per category" },
+            { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
             { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
           ],
           finalScore: reportData.overallScore,
           complexityPenalty,
+          viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
-        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${viabilityScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${reportData.overallScore}`);
 
 
 
@@ -3809,10 +3830,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     }
 
     // ── Step 3: Complete ──
+    // CRITICAL FIX: Use computed values from reportData, not uninitialized locals
+    const finalOverallScore = reportData?.overallScore ?? 0;
+    const finalSignalStrength = reportData?.signalStrength ?? "Weak";
     await supabase.from("analyses").update({
       status: "complete",
-      overall_score: overallScore,
-      signal_strength: signalStrength,
+      overall_score: finalOverallScore,
+      signal_strength: finalSignalStrength,
       report_data: reportData,
       updated_at: new Date().toISOString(),
     }).eq("id", analysisId);
@@ -3822,7 +3846,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       supabase.from("analytics_events").insert({
         event_name: "analysis_completed",
         user_id: pipelineUserId,
-        metadata: { analysis_id: analysisId, score: overallScore, signal_strength: signalStrength },
+        metadata: { analysis_id: analysisId, score: finalOverallScore, signal_strength: finalSignalStrength },
       }).then(() => {});
     }
 
