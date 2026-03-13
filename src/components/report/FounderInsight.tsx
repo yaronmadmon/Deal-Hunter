@@ -48,17 +48,17 @@ export function FounderInsight({ data }: FounderInsightProps) {
           Opportunity Interpretation
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {blocks.map(({ key, title, icon: Icon, description }) => {
+          {blocks.map(({ key, title, icon: Icon, description, color }) => {
             const content = data[key];
             if (!content) return null;
             return (
-              <Card key={key} className="shadow-sm">
-                <CardContent className="p-4">
+              <Card key={key} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-primary" />
+                    <Icon className={`w-4 h-4 ${color}`} />
                     <h4 className="font-heading text-sm font-bold text-foreground">{title}</h4>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mb-2">{description}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{description}</p>
                   <p className="text-sm text-foreground/85 leading-relaxed">{content}</p>
                 </CardContent>
               </Card>
