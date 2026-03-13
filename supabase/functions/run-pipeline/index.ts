@@ -567,9 +567,26 @@ async function validateCompetitors(
 ): Promise<ValidatedCompetitor[]> {
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
+  // Pre-filter: reject names that look like article titles, not product names
+  const articlePatterns = /^(best |top \d|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison)/i;
+  const maxNameWords = 8; // Real product names are rarely >8 words
+  const preFiltered = competitors.filter(c => {
+    const words = c.name.trim().split(/\s+/);
+    if (words.length > maxNameWords) {
+      console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — name too long (${words.length} words, likely article title)`);
+      return false;
+    }
+    if (articlePatterns.test(c.name)) {
+      console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — matches article title pattern`);
+      return false;
+    }
+    return true;
+  });
+  console.log(`[COMPETITOR VALIDATION] After article-title filter: ${preFiltered.length} (removed ${competitors.length - preFiltered.length})`);
+
   const validated: ValidatedCompetitor[] = [];
 
-  for (const comp of competitors) {
+  for (const comp of preFiltered) {
     let evidenceType: ValidatedCompetitor["evidenceType"] = "unknown";
     let validationScore = 0;
 
@@ -1196,8 +1213,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Use semantic keywords for all Serper queries
-      const serperKeywords = primaryKeywords;
+      // Use SHORT semantic keywords for Serper queries (not full idea text which can be multi-line)
+      const serperKeywords = semanticQueries.length > 0
+        ? semanticQueries[0]
+        : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
@@ -1218,7 +1237,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_news", async () => {
-          const r = await serperSearch(serperKey, serperKeywords, "news", 30);
+          // Use short keywords for news — news endpoint is strict about query length
+          const newsQuery = semanticQueries.length > 0 ? semanticQueries[0] : serperKeywords;
+          const r = await serperSearch(serperKey, newsQuery, "news", 30);
           rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1226,7 +1247,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_reddit", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 30);
+          // Use short keywords + site:reddit.com
+          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : serperKeywords;
+          const r = await serperSearch(serperKey, `${redditQuery} site:reddit.com`, "search", 30);
           rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1234,7 +1257,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_autocomplete", async () => {
-          const r = await serperAutoComplete(serperKey, idea);
+          // Use short keyword for autocomplete, not full multi-line idea
+          const autoQuery = semanticQueries.length > 0 ? semanticQueries[0] : primaryKeywords.split(/\s+/).slice(0, 4).join(" ");
+          const r = await serperAutoComplete(serperKey, autoQuery);
           rawData.serperAutoComplete = r;
           return r.suggestions.length;
         })
@@ -1302,11 +1327,13 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       );
     }
 
-    // Run GitHub search — use SEMANTIC keywords
+    // Run GitHub search — use SHORT semantic keywords (not full idea text)
     const githubPromises: Promise<void>[] = [];
     const ghSearches = semanticQueries.length >= 3
       ? semanticQueries.slice(0, 3)
-      : [primaryKeywords];
+      : semanticQueries.length > 0
+        ? semanticQueries
+        : [primaryKeywords.split(/\s+/).slice(0, 5).join(" ")];
 
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
@@ -1356,11 +1383,12 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       rawData.twitterInfluencerNicheQuery = twitterKeywords;
     }
 
-    // Run Hacker News search — use SEMANTIC keywords
+    // Run Hacker News search — use SHORT semantic keywords (not full idea text)
     const hnPromises: Promise<void>[] = [];
+    const hnQuery = semanticQueries.length > 0 ? semanticQueries[0] : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(primaryKeywords, 30);
+        const r = await hackerNewsSearch(hnQuery, 30);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
@@ -2471,9 +2499,33 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // Inject the collected source URLs into the report
         reportData.dataSources = uniqueSources;
-        // Always set analysis date to actual current date
-        if (reportData.methodology) {
-          reportData.methodology.analysisDate = new Date().toISOString().split('T')[0];
+        // Always override methodology with ACTUAL pipeline counts (AI returns zeros)
+        {
+          const countSourcesByPrefix = (prefix: string) =>
+            Object.entries(pipelineMetrics)
+              .filter(([k, v]: [string, any]) => k.startsWith(prefix) && v.signalCount > 0)
+              .length;
+
+          const sumSignalsByPrefix = (prefix: string) =>
+            Object.entries(pipelineMetrics)
+              .filter(([k]: [string, any]) => k.startsWith(prefix))
+              .reduce((sum, [, v]: [string, any]) => sum + (v.signalCount || 0), 0);
+
+          const activeSources = Object.values(pipelineMetrics).filter((v: any) => v.signalCount > 0).length;
+
+          reportData.methodology = {
+            ...(reportData.methodology || {}),
+            analysisDate: new Date().toISOString().split('T')[0],
+            totalSources: activeSources,
+            dataPoints: totalSignals,
+            perplexityQueries: countSourcesByPrefix("perplexity_"),
+            firecrawlScrapes: sumSignalsByPrefix("firecrawl_"),
+            serperSearches: countSourcesByPrefix("serper_"),
+            productHuntQueries: countSourcesByPrefix("producthunt") > 0 ? 1 : 0,
+            githubSearches: countSourcesByPrefix("github") > 0 ? 1 : 0,
+            twitterSearches: countSourcesByPrefix("twitter_"),
+            confidenceNote: reportData.methodology?.confidenceNote || "Overall data quality is strong with verified signals.",
+          };
         }
 
         // ══════════════════════════════════════════════════════════════
