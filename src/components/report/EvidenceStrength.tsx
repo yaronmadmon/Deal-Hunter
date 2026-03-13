@@ -125,7 +125,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Evidence Strength</h2>
-          <p className="text-[13px] text-muted-foreground italic">Signals ranked by reliability tier</p>
+          <p className="text-sm text-muted-foreground italic">Signals ranked by reliability tier</p>
         </div>
       </div>
 
