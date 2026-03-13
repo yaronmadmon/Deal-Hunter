@@ -36,7 +36,7 @@ export function generateReportPdf(report: MockReportData) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const m = 16; // margin
-  const bm = 18; // bottom margin
+  const bm = 22; // bottom margin (enough clearance for footer)
   const maxY = ph - bm;
   const cw = pw - m * 2; // content width
   let y = 18;
