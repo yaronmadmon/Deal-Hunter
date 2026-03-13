@@ -1903,7 +1903,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     (rawData.competitorPricing || []).forEach((pd: any) => {
       if (pd) {
         evidenceBlock.pricingSignals.push({
-          signal: `${pd.competitor || "Competitor"} Pricing (scraped)`,
+          signal: `${pd.competitorName || "Competitor"} Pricing (scraped)`,
           value: `Plans: ${pd.planNames?.join(", ") || "See page"}. Prices: ${pd.rawPrices?.join(", ") || "Not extracted"}`,
           source: "Firecrawl Pricing Scrape",
           sourceUrl: pd.url || null,
