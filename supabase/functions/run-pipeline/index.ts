@@ -2055,10 +2055,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     rawData.crossValidatedSignals = crossValidatedSignals;
     if (crossValidatedSignals.length > 0) {
       console.log(`[CROSS-VALIDATION] ${crossValidatedSignals.length} signals confirmed by 2+ sources: ${crossValidatedSignals.map(s => s.category).join(", ")}`);
-        }
-
-        // Capture score after signal bounds for journey log
-        const scoreAfterSignalBounds = reportData.overallScore || 0;
+    }
 
     // Log pipeline metrics summary
     const totalSignals = Object.values(pipelineMetrics).reduce((s, m) => s + m.signalCount, 0);
