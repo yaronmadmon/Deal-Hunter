@@ -43,7 +43,7 @@ export const ScoringJourney = ({ journey }: Props) => {
                 <span className={`font-heading text-2xl font-bold ${color}`}>
                   {step.value}
                 </span>
-                <span className="text-[10px] text-muted-foreground text-center max-w-[80px] leading-tight">
+                <span className="text-xs text-muted-foreground text-center max-w-[80px] leading-tight">
                   {step.label}
                 </span>
                 {delta !== 0 && (
