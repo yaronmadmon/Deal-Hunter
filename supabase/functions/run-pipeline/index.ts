@@ -1285,7 +1285,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
           if (seen.has(r.name)) return false;
           seen.add(r.name);
           return true;
-        }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 10);
+        }).sort((a: any, b: any) => (b.stars || 0) - (a.stars || 0)).slice(0, 30);
         rawData.github = { repos: unique };
         rawData.sources.push(...unique.map((repo: any) => ({ url: repo.url, type: "github" })));
         return unique.length;
