@@ -42,9 +42,10 @@ const sections = [
   { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
 
   const handleGenerate = async () => {
