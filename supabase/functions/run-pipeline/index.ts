@@ -3018,6 +3018,61 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
 
         // ══════════════════════════════════════════════════════════════
+        // GRAVEYARD SIGNAL DETECTION
+        // When a declining trend is detected AND competition is very low,
+        // this is NOT a blue ocean — it's an abandoned market.
+        // ══════════════════════════════════════════════════════════════
+        if (matchedDecliningTrend) {
+          const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
+          
+          if (totalCompetitorEvidence <= 3) {
+            console.warn(`[GRAVEYARD SIGNAL] Declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
+
+            // Cap Market Saturation at 8/20
+            if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+              const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+              if (satEntry && Number(satEntry.value) > 8) {
+                console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
+                satEntry.value = 8;
+              }
+              // Also update the explanation to make it visible to founders
+              if (satEntry) {
+                satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned. Previous players likely exited as user interest declined.`.trim();
+              }
+            }
+
+            // Inject graveyard kill shot risk
+            if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
+              const hasGraveyardRisk = reportData.killShotAnalysis.risks.some((r: any) =>
+                r.risk?.toLowerCase().includes("graveyard") || r.risk?.toLowerCase().includes("abandoned market")
+              );
+              if (!hasGraveyardRisk) {
+                reportData.killShotAnalysis.risks.unshift({
+                  risk: `Graveyard Signal: Only ${totalCompetitorEvidence} competitor(s) found in the ${matchedDecliningTrend.toUpperCase()} space. Low competitor count here does not mean opportunity — it means the market was tried and abandoned. Previous entrants likely shut down as user demand evaporated.`,
+                  severity: "High",
+                  mitigation: "Search for defunct products in this space to understand why they failed. Only proceed if you can prove sustained user demand exists today."
+                });
+              }
+            }
+
+            // Flag the Market Saturation signal card
+            const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+            if (saturationCard) {
+              saturationCard.confidence = "Low";
+              saturationCard.insight = `${saturationCard.insight || ""} ⚠️ Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
+            }
+          }
+
+          // Add declining-trend note to Competitive Pressure section regardless of competitor count
+          const competitivePressureCard = (reportData.signalCards || []).find((c: any) =>
+            c.title === "Competitor Snapshot" || c.title === "Competitive Pressure"
+          );
+          if (competitivePressureCard) {
+            competitivePressureCard.insight = `${competitivePressureCard.insight || ""} Note: Several competitors may have existed during the peak of the "${matchedDecliningTrend}" trend but are no longer active. Current low competition may reflect an abandoned market rather than an open one.`.trim();
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // DATA QUALITY PENALTY
         // If >50% of metrics in a scoring category are "estimated",
         // reduce that category's score by 30%.
