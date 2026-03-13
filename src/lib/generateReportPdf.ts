@@ -932,7 +932,7 @@ export function generateReportPdf(report: MockReportData) {
     if (fd.whyFactors?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("Why:", m, y); y += 5;
-      drawBulletList(fd.whyFactors, C.indigo, "→");
+      drawBulletList(fd.whyFactors, C.indigo, "->");
     }
     if (fd.nextStep) {
       checkPage(10);
