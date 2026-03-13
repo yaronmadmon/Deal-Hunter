@@ -426,6 +426,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          email_notifications: boolean
+          id: string
+          updated_at: string
+          user_id: string
+          watchlist_alerts: boolean
+          weekly_digest: boolean
+        }
+        Insert: {
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+          watchlist_alerts?: boolean
+          weekly_digest?: boolean
+        }
+        Update: {
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+          watchlist_alerts?: boolean
+          weekly_digest?: boolean
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           analysis_id: string
