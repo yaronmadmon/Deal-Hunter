@@ -152,8 +152,37 @@ export interface BuildComplexityData {
   estimatedCost: string;
   voiceApiCosts: string;
   onDeviceNote: string;
+  complexityScore?: number;
+  vibeCoderFeasibility?: "Easy" | "Moderate" | "Hard" | "Do Not Attempt";
+  complexityFactors?: string[];
+  scorePenalty?: number;
   dataSource?: DataSourceType;
   sourceUrls?: string[];
+}
+
+export interface ReviewIntelligenceData {
+  complaintClusters: {
+    theme: string;
+    complaints: string[];
+    frequency: number;
+    severity: "High" | "Medium" | "Low";
+    opportunityLevel: "High Opportunity" | "Moderate Opportunity" | "Already Solved";
+    exploitableGap: string;
+  }[];
+  topAttackAngles: {
+    angle: string;
+    complaint: string;
+    competitorWeakness: string;
+  }[];
+  matrixData: {
+    theme: string;
+    frequency: number;
+    intensity: number;
+    quadrant: "Critical Pain" | "Minor Annoyance" | "Loved Feature" | "Hidden Gem";
+  }[];
+  differentiationStatements: string[];
+  totalReviewsAnalyzed: number;
+  confidence?: "High" | "Medium" | "Low";
 }
 
 export type DataSourceType = "perplexity" | "firecrawl" | "serper" | "producthunt" | "github" | "twitter" | "ai_estimated";
@@ -358,6 +387,7 @@ export interface MockReportData {
   nicheAnalysis?: NicheAnalysisData;
   unitEconomics?: UnitEconomicsData;
   buildComplexity?: BuildComplexityData;
+  reviewIntelligence?: ReviewIntelligenceData;
   scoreBreakdown: ScoreBreakdownItem[];
   scoreExplanation: string;
   blueprint: BlueprintData;

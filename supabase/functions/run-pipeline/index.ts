@@ -2513,7 +2513,8 @@ Produce the JSON report with this EXACT structure:
   "recommendedStrategy": {"positioning": "specific", "suggestedPricing": "with reasoning", "differentiators": ["4-6 items"], "primaryTarget": "ONE segment and why", "channels": ["3-5 real channels"], "confidence": "Medium"},
   "nicheAnalysis": {"samEstimate": "dollar amount", "samPercentage": "X-Y%", "samReasoning": "why this percentage", "competitorClarity": "what exists vs not", "directCompetitors": 0, "competitorDetail": "specifics", "xSignalInterpretation": "interpret volume", "xVolumeContext": "context vs similar niches", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
   "unitEconomics": {"churnBenchmarks": [{"name": "name", "churnRate": "X%/mo", "source": "source"}], "churnImplication": "what it means", "realisticArpu": "$X/mo", "arpuReasoning": "rationale", "privacyPremium": "can you charge more", "ltvEstimate": "$X", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
-  "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing", "onDeviceNote": "feasibility", "dataSource": "ai_estimated", "sourceUrls": []},
+  "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing", "onDeviceNote": "feasibility", "complexityScore": 1-10, "vibeCoderFeasibility": "Easy" or "Moderate" or "Hard" or "Do Not Attempt", "complexityFactors": ["list of factors that increase complexity such as: third-party API dependencies, real-time features, hardware requirements, AI model training, two-sided marketplace dynamics, regulatory requirements, native mobile features"], "dataSource": "ai_estimated", "sourceUrls": []},
+  "reviewIntelligence": {"complaintClusters": [{"theme": "recurring complaint theme", "complaints": ["specific complaints in this cluster"], "frequency": number, "severity": "High" or "Medium" or "Low", "opportunityLevel": "High Opportunity" or "Moderate Opportunity" or "Already Solved", "exploitableGap": "why this is or isn't exploitable"}], "topAttackAngles": [{"angle": "specific attack angle", "complaint": "the complaint it exploits", "competitorWeakness": "which competitor is weakest here"}], "matrixData": [{"theme": "complaint/praise theme", "frequency": number, "intensity": number, "quadrant": "Critical Pain" or "Minor Annoyance" or "Loved Feature" or "Hidden Gem"}], "differentiationStatements": ["3 specific positioning statements the founder can use"], "totalReviewsAnalyzed": number, "confidence": "High" or "Medium" or "Low"},
   "scoreBreakdown": [{"label": "Trend Momentum", "value": 0-25, "weight": "25%"}, {"label": "Market Saturation", "value": 0-20, "weight": "20%"}, {"label": "Sentiment", "value": 0-20, "weight": "20%"}, {"label": "Growth", "value": 0-15, "weight": "15%"}, {"label": "Opportunity", "value": 0-20, "weight": "20%"}],
   "keyStats": [{"value": "number", "label": "description", "change": "+X% or null", "sentiment": "positive/negative/neutral"}] — MUST return EXACTLY 4 items. Use these categories: (1) Signal Score, (2) Data Points collected, (3) Revenue estimate or market size, (4) Competition count or growth metric. Never return fewer than 4.,
   "userQuotes": [{"text": "REAL quote", "source": "subreddit or review", "sourceUrl": "URL or null", "upvotes": "count or null", "platform": "reddit/app_store/twitter/other"}],
@@ -2534,6 +2535,19 @@ Produce the JSON report with this EXACT structure:
     "confidence": "High/Medium/Low"
   }
 }
+
+BUILD COMPLEXITY SCORING INSTRUCTIONS:
+- complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
+- vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
+- complexityFactors: List the specific factors that increase complexity for THIS idea.
+
+REVIEW INTELLIGENCE INSTRUCTIONS:
+- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. If fewer, set reviewIntelligence to null.
+- Cluster complaints into recurring themes with frequency counts and severity ratings.
+- Evaluate each cluster as "High Opportunity" (exploitable gap), "Moderate Opportunity" (partial gap), or "Already Solved" (competitors have fixed this).
+- Surface top 3 attack angles from the highest-opportunity clusters.
+- matrixData: Assign each theme a frequency (0-100 scale) and intensity (0-100 emotional intensity scale). Quadrants: frequency>=50 & intensity>=50 = "Critical Pain", frequency>=50 & intensity<50 = "Minor Annoyance", frequency<50 & intensity>=50 = "Hidden Gem", frequency<50 & intensity<50 = "Loved Feature".
+- differentiationStatements: Generate 3 specific positioning statements the founder can use, e.g. "Position as the only X that solves Y" or "Own the Z dimension where [competitor] scores lowest".
 
 CRITICAL REMINDERS:
 - If evidence does not exist for a section, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "Insufficient data — no evidence collected for this metric."
@@ -2634,6 +2648,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             confidenceNote: reportData.methodology?.confidenceNote || "Overall data quality is strong with verified signals.",
           };
         }
+
+        // Store AI raw score for scoring journey log
+        reportData._aiRawScore = reportData.overallScore || 0;
 
         // ══════════════════════════════════════════════════════════════
         // DETERMINISTIC POST-AI VALIDATION
@@ -2819,6 +2836,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (viabilitySum !== reportData.overallScore) {
             console.warn(`[CONCEPT VIABILITY] Score adjusted: ${reportData.overallScore} -> ${viabilitySum}`);
             reportData.overallScore = viabilitySum;
+            reportData._viabilityScore = viabilitySum;
             
             const vScore = reportData.overallScore;
             const vVerdict = vScore >= 75 ? "Build Now"
@@ -3056,7 +3074,54 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Perplexity dominance: flag low confidence if triggered
+        // ══════════════════════════════════════════════════════════════
+        // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
+        // Subtracts 0-15 points based on build complexity score.
+        // ══════════════════════════════════════════════════════════════
+        const scoreBeforeComplexity = reportData.overallScore || 0;
+        let complexityPenalty = 0;
+        if (reportData.buildComplexity) {
+          const cs = Number(reportData.buildComplexity.complexityScore) || 0;
+          // Map: 1-3 = 0, 4-6 = -5, 7-8 = -10, 9-10 = -15
+          if (cs >= 9) complexityPenalty = -15;
+          else if (cs >= 7) complexityPenalty = -10;
+          else if (cs >= 4) complexityPenalty = -5;
+          
+          // Enforce vibeCoderFeasibility label
+          if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";
+          else if (cs >= 7) reportData.buildComplexity.vibeCoderFeasibility = "Hard";
+          else if (cs >= 4) reportData.buildComplexity.vibeCoderFeasibility = "Moderate";
+          else reportData.buildComplexity.vibeCoderFeasibility = "Easy";
+
+          if (complexityPenalty !== 0) {
+            reportData.overallScore = Math.max(0, (reportData.overallScore || 0) + complexityPenalty);
+            console.warn(`[COMPLEXITY PENALTY] Score adjusted: ${scoreBeforeComplexity} -> ${reportData.overallScore} (complexity: ${cs}/10, penalty: ${complexityPenalty})`);
+          }
+
+          // Store penalty in report for UI
+          reportData.buildComplexity.scorePenalty = complexityPenalty;
+        }
+
+        // Apply verdict AFTER complexity penalty (final verdict determination)
+        {
+          const fs = reportData.overallScore || 0;
+          const fv = fs >= 75 ? "Build Now"
+            : fs >= 55 ? "Build, But Niche Down"
+            : fs >= 40 ? "Validate Further"
+            : "Do Not Build Yet";
+          if (reportData.founderDecision) {
+            reportData.founderDecision.decision = fv;
+          }
+          reportData.signalStrength = fs >= 70 ? "Strong" : fs >= 45 ? "Moderate" : "Weak";
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // SCORING JOURNEY LOG
+        // ══════════════════════════════════════════════════════════════
+        const aiRawScore = reportData._aiRawScore ?? reportData.overallScore;
+        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${reportData._viabilityScore ?? aiRawScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+
+
         if (perplexityDominanceWarning && reportData.methodology) {
           reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
         }
@@ -3398,16 +3463,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // ── Ensure scoreBreakdown exists with defaults ──
         if (!reportData.scoreBreakdown || !Array.isArray(reportData.scoreBreakdown) || reportData.scoreBreakdown.length !== 5) {
-          const defaultScore = Math.round((reportData.overallScore || 50) / 5);
+          const total = reportData.overallScore || 50;
+          // Distribute proportionally: 25/20/20/15/20
+          const trendDefault = Math.round(total * 0.25);
+          const satDefault = Math.round(total * 0.20);
+          const sentDefault = Math.round(total * 0.20);
+          const growthDefault = Math.round(total * 0.15);
+          const oppDefault = total - trendDefault - satDefault - sentDefault - growthDefault;
           reportData.scoreBreakdown = [
-            { label: "Trend Momentum", value: defaultScore, weight: "20%" },
-            { label: "Market Saturation", value: defaultScore, weight: "20%" },
-            { label: "Sentiment", value: defaultScore, weight: "20%" },
-            { label: "Growth", value: defaultScore, weight: "20%" },
-            { label: "Opportunity", value: defaultScore, weight: "20%" },
+            { label: "Trend Momentum", value: Math.min(trendDefault, 25), weight: "25%" },
+            { label: "Market Saturation", value: Math.min(satDefault, 20), weight: "20%" },
+            { label: "Sentiment", value: Math.min(sentDefault, 20), weight: "20%" },
+            { label: "Growth", value: Math.min(growthDefault, 15), weight: "15%" },
+            { label: "Opportunity", value: Math.min(oppDefault, 20), weight: "20%" },
           ];
-          reportData.overallScore = defaultScore * 5;
-          console.log(`[FIELD POPULATION] scoreBreakdown: generated defaults (${defaultScore}/20 each)`);
+          reportData.overallScore = reportData.scoreBreakdown.reduce((s: number, c: any) => s + c.value, 0);
+          console.log(`[FIELD POPULATION] scoreBreakdown: generated weighted defaults (25/20/20/15/20)`);
         }
 
         // ── Fill missing sections with safe defaults so UI always renders ──

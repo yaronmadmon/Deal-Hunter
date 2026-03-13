@@ -32,6 +32,7 @@ import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBa
 import { CrossValidationCard } from "@/components/report/CrossValidationCard";
 import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
 import { ReportComparison } from "@/components/report/ReportComparison";
+import { ReviewIntelligence } from "@/components/report/ReviewIntelligence";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -374,7 +375,15 @@ const Report = () => {
           total={r.overallScore}
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
+          complexityPenalty={r.buildComplexity?.scorePenalty}
         />
+
+        {/* Review Intelligence */}
+        {r.reviewIntelligence && r.reviewIntelligence.complaintClusters?.length > 0 && (
+          <div className="mt-12">
+            <ReviewIntelligence data={r.reviewIntelligence} />
+          </div>
+        )}
 
         {/* Kill Shot Analysis */}
         {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
