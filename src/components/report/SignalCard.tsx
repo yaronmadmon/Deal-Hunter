@@ -87,20 +87,25 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col gap-4 pt-0">
-        {/* Sparkline for Trend */}
+        {/* Sparkline for Trend — AI-simulated */}
         {card.sparkline && (
-          <div className="h-16 -mx-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={card.sparkline}>
-                <defs>
-                  <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(239 84% 67%)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="hsl(239 84% 67%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="value" stroke="hsl(239 84% 67%)" fill="url(#sparkGrad)" strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
+            </div>
+            <div className="h-16 -mx-1 opacity-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={card.sparkline}>
+                  <defs>
+                    <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(239 84% 67%)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(239 84% 67%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="value" stroke="hsl(239 84% 67%)" fill="url(#sparkGrad)" strokeWidth={2} dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 
