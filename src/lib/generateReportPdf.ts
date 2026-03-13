@@ -767,7 +767,7 @@ export function generateReportPdf(report: MockReportData) {
     if (mem.topPraise?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("What Users Value", m, y); y += 5;
-      drawBulletList(mem.topPraise.map(p => `${p.praise} (${p.frequency})`), C.indigo, "●");
+      drawBulletList(mem.topPraise.map(p => `${p.praise} (${p.frequency})`), C.indigo, "-");
     }
     if (mem.whereToWin?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
