@@ -377,7 +377,7 @@ Return ONLY a JSON array, no other text.`
         if (redditItems.length === 0) {
           console.log("Reddit API failed completely, falling back to Perplexity");
           redditReliability = "ai_estimated";
-          const prompt = `Find 6 real startup pain points trending on Reddit (r/startups, r/SaaS, r/entrepreneur) this week. Return a JSON array where each object has: "title" (max 100 chars), "problemSummary" (8-12 word summary), "subreddit", "upvotes" (number). Return ONLY the JSON array.`;
+          const prompt = `Find 6 real startup pain points trending on Reddit (r/startups, r/SaaS, r/entrepreneur) this week. Return a JSON array where each object has: "title" (max 100 chars), "problemSummary" (8-12 word summary), "subreddit" (e.g. "r/startups"), "upvotes" (number), "url" (full Reddit post URL if available, otherwise null). Return ONLY the JSON array.`;
           redditItems = parseJsonArray(await askPerplexity(prompt)).slice(0, 6);
         }
 
