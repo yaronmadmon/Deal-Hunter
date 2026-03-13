@@ -2755,16 +2755,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             opportunityEntry.value = 10;
             reportData.overallScore = (reportData.overallScore || 0) - reduction;
 
-            // Re-apply verdict after score adjustment
-            const adjustedScore = reportData.overallScore;
-            const adjustedVerdict = adjustedScore >= 75 ? "Build Now"
-              : adjustedScore >= 55 ? "Build, But Niche Down"
-              : adjustedScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = adjustedVerdict;
-            }
-            reportData.signalStrength = adjustedScore >= 70 ? "Strong" : adjustedScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
