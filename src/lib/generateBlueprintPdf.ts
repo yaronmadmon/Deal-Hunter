@@ -120,13 +120,13 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   doc.rect(0, 0, pw, 50, "F");
 
   doc.setFontSize(20); doc.setFont("helvetica", "bold"); setColor(C.indigo);
-  doc.text("Gold Rush", m, y);
+  doc.text(sanitizeForPdf("Gold Rush"), m, y);
   doc.setFontSize(10); setColor(C.muted);
-  doc.text("Startup Blueprint", m + 38, y);
+  doc.text(sanitizeForPdf("Startup Blueprint"), m + 38, y);
   y += 10;
 
   doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(C.text);
-  const ideaLines = doc.splitTextToSize(idea, cw - 45);
+  const ideaLines = doc.splitTextToSize(sanitizeForPdf(idea), cw - 45);
   writeLines(ideaLines, m, 6);
 
   // Score ring in header
