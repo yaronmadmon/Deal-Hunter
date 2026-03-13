@@ -2740,16 +2740,55 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
         // Detect declining trends, market mashups, and signal contamination.
         // ══════════════════════════════════════════════════════════════
-        // Hoist declining trend detection so downstream checks (graveyard signal) can reference it
+        // Hoist declining trend detection with positional weighting
+        // Primary = keyword is central to the idea (first 5 words or >30% of words)
+        // Secondary = keyword appears as a modifier ("with web3", "using NFT")
+        // Tertiary = incidental mention or negation → skip all penalties
         const ideaLowerForViability = (idea || "").toLowerCase();
         const decliningTrends = ["nft", "metaverse", "web3", "crypto kitties", "play to earn", "p2e", "ico", "defi yield"];
-        const matchedDecliningTrend = decliningTrends.find(t => ideaLowerForViability.includes(t)) || null;
+        
+        type TrendPosition = "primary" | "secondary" | "tertiary";
+        let matchedDecliningTrend: string | null = null;
+        let trendPosition: TrendPosition = "tertiary";
+        
+        const negationPatterns = ["no ", "not ", "without ", "non-", "non ", "beyond ", "instead of ", "replace "];
+        
+        for (const trend of decliningTrends) {
+          if (!ideaLowerForViability.includes(trend)) continue;
+          
+          // Check for negation — if the keyword is negated, skip entirely
+          const trendIndex = ideaLowerForViability.indexOf(trend);
+          const precedingText = ideaLowerForViability.slice(Math.max(0, trendIndex - 12), trendIndex);
+          const isNegated = negationPatterns.some(neg => precedingText.endsWith(neg));
+          if (isNegated) {
+            console.log(`[TREND POSITION] "${trend}" is negated in idea — skipping all penalties`);
+            continue;
+          }
+          
+          matchedDecliningTrend = trend;
+          
+          // Determine position: check if keyword appears in first 5 words or makes up >30% of words
+          const words = ideaLowerForViability.split(/\s+/).filter(Boolean);
+          const first5 = words.slice(0, 5).join(" ");
+          const trendWordCount = trend.split(/\s+/).length;
+          const trendWordRatio = trendWordCount / words.length;
+          
+          if (first5.includes(trend) || trendWordRatio > 0.3) {
+            trendPosition = "primary";
+            console.warn(`[TREND POSITION] "${trend}" is PRIMARY — central to the idea`);
+          } else {
+            // Secondary: appears as modifier (after "with", "using", "via", "through", "plus", etc.)
+            trendPosition = "secondary";
+            console.warn(`[TREND POSITION] "${trend}" is SECONDARY — appears as a modifier, not core concept`);
+          }
+          break; // use first match
+        }
 
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const ideaLower = ideaLowerForViability;
           
-          if (matchedDecliningTrend) {
-            console.warn(`[CONCEPT VIABILITY] Declining trend detected: "${matchedDecliningTrend}"`);
+          if (matchedDecliningTrend && trendPosition === "primary") {
+            console.warn(`[CONCEPT VIABILITY] PRIMARY declining trend detected: "${matchedDecliningTrend}" — applying full penalty cascade`);
             
             const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
             if (trendEntry && Number(trendEntry.value) > 8) {
@@ -2775,6 +2814,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                   mitigation: "Validate that your specific niche still has active users before investing resources."
                 });
               }
+            }
+          } else if (matchedDecliningTrend && trendPosition === "secondary") {
+            // Secondary position: keyword is a modifier, not the core idea
+            // Apply only a softer trend cap, no growth cap, no kill shot
+            console.warn(`[CONCEPT VIABILITY] SECONDARY declining trend "${matchedDecliningTrend}" — applying soft trend cap only`);
+            
+            const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
+            if (trendEntry && Number(trendEntry.value) > 15) {
+              console.warn(`[DECLINING TREND SOFT CAP] Trend capped from ${trendEntry.value} to 15 (secondary mention: ${matchedDecliningTrend})`);
+              trendEntry.value = 15;
             }
           }
 
@@ -3022,11 +3071,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // When a declining trend is detected AND competition is very low,
         // this is NOT a blue ocean — it's an abandoned market.
         // ══════════════════════════════════════════════════════════════
-        if (matchedDecliningTrend) {
+        if (matchedDecliningTrend && trendPosition === "primary") {
           const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
           
           if (totalCompetitorEvidence <= 3) {
-            console.warn(`[GRAVEYARD SIGNAL] Declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
+            console.warn(`[GRAVEYARD SIGNAL] PRIMARY declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
 
             // Cap Market Saturation at 8/20
             if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
@@ -3035,7 +3084,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
                 satEntry.value = 8;
               }
-              // Also update the explanation to make it visible to founders
               if (satEntry) {
                 satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned. Previous players likely exited as user interest declined.`.trim();
               }
