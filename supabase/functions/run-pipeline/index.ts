@@ -2893,18 +2893,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               if (trendEntry && Number(trendEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Trend capped from ${trendEntry.value} to 10`);
                 trendEntry.value = 10;
+                viabilityCappedCategories.add("Trend Momentum");
               }
               
               const oppEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Opportunity");
               if (oppEntry && Number(oppEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Opportunity capped from ${oppEntry.value} to 10`);
                 oppEntry.value = 10;
+                viabilityCappedCategories.add("Opportunity");
               }
               
               const sentEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Sentiment");
               if (sentEntry && Number(sentEntry.value) > 10) {
                 console.warn(`[MASHUP CAP] Sentiment capped from ${sentEntry.value} to 10 (no user pain for this specific combination)`);
                 sentEntry.value = 10;
+                viabilityCappedCategories.add("Sentiment");
+              }
               }
             }
           }
