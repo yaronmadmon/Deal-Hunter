@@ -375,7 +375,15 @@ const Report = () => {
           total={r.overallScore}
           signalStrength={r.signalStrength}
           explanation={r.scoreExplanation}
+          complexityPenalty={r.buildComplexity?.scorePenalty}
         />
+
+        {/* Review Intelligence */}
+        {r.reviewIntelligence && r.reviewIntelligence.complaintClusters?.length > 0 && (
+          <div className="mt-12">
+            <ReviewIntelligence data={r.reviewIntelligence} />
+          </div>
+        )}
 
         {/* Kill Shot Analysis */}
         {r.killShotAnalysis && <KillShotAnalysis data={r.killShotAnalysis} />}
