@@ -2740,10 +2740,49 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
         // Detect declining trends, market mashups, and signal contamination.
         // ══════════════════════════════════════════════════════════════
-        // Hoist declining trend detection so downstream checks (graveyard signal) can reference it
+        // Hoist declining trend detection with positional weighting
+        // Primary = keyword is central to the idea (first 5 words or >30% of words)
+        // Secondary = keyword appears as a modifier ("with web3", "using NFT")
+        // Tertiary = incidental mention or negation → skip all penalties
         const ideaLowerForViability = (idea || "").toLowerCase();
         const decliningTrends = ["nft", "metaverse", "web3", "crypto kitties", "play to earn", "p2e", "ico", "defi yield"];
-        const matchedDecliningTrend = decliningTrends.find(t => ideaLowerForViability.includes(t)) || null;
+        
+        type TrendPosition = "primary" | "secondary" | "tertiary";
+        let matchedDecliningTrend: string | null = null;
+        let trendPosition: TrendPosition = "tertiary";
+        
+        const negationPatterns = ["no ", "not ", "without ", "non-", "non ", "beyond ", "instead of ", "replace "];
+        
+        for (const trend of decliningTrends) {
+          if (!ideaLowerForViability.includes(trend)) continue;
+          
+          // Check for negation — if the keyword is negated, skip entirely
+          const trendIndex = ideaLowerForViability.indexOf(trend);
+          const precedingText = ideaLowerForViability.slice(Math.max(0, trendIndex - 12), trendIndex);
+          const isNegated = negationPatterns.some(neg => precedingText.endsWith(neg));
+          if (isNegated) {
+            console.log(`[TREND POSITION] "${trend}" is negated in idea — skipping all penalties`);
+            continue;
+          }
+          
+          matchedDecliningTrend = trend;
+          
+          // Determine position: check if keyword appears in first 5 words or makes up >30% of words
+          const words = ideaLowerForViability.split(/\s+/).filter(Boolean);
+          const first5 = words.slice(0, 5).join(" ");
+          const trendWordCount = trend.split(/\s+/).length;
+          const trendWordRatio = trendWordCount / words.length;
+          
+          if (first5.includes(trend) || trendWordRatio > 0.3) {
+            trendPosition = "primary";
+            console.warn(`[TREND POSITION] "${trend}" is PRIMARY — central to the idea`);
+          } else {
+            // Secondary: appears as modifier (after "with", "using", "via", "through", "plus", etc.)
+            trendPosition = "secondary";
+            console.warn(`[TREND POSITION] "${trend}" is SECONDARY — appears as a modifier, not core concept`);
+          }
+          break; // use first match
+        }
 
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const ideaLower = ideaLowerForViability;
