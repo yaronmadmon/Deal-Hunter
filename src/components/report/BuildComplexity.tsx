@@ -1,12 +1,23 @@
-import { Hammer, Clock, AlertTriangle } from "lucide-react";
+import { Hammer, Clock, AlertTriangle, Gauge } from "lucide-react";
 import type { BuildComplexityData } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   data: BuildComplexityData;
 }
 
+const feasibilityConfig: Record<string, { variant: string; description: string }> = {
+  "Easy": { variant: "go", description: "Buildable with Lovable or Cursor in weeks" },
+  "Moderate": { variant: "pivot", description: "Requires some custom backend work" },
+  "Hard": { variant: "nogo", description: "Significant engineering required" },
+  "Do Not Attempt": { variant: "nogo", description: "Enterprise-level complexity" },
+};
+
 export const BuildComplexity = ({ data }: Props) => {
+  const feasibility = data.vibeCoderFeasibility || "Moderate";
+  const config = feasibilityConfig[feasibility] || feasibilityConfig["Moderate"];
+
   return (
     <div className="bg-card border rounded-2xl p-8 mb-12">
       <div className="flex items-center gap-3 mb-2">
@@ -19,7 +30,32 @@ export const BuildComplexity = ({ data }: Props) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+      {/* Vibe Coder Feasibility Rating */}
+      {data.complexityScore != null && (
+        <div className="bg-secondary/30 rounded-xl p-5 mt-4 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Gauge className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-sm text-foreground">Vibe Coder Feasibility</h3>
+          </div>
+          <div className="flex items-center gap-4 mb-2">
+            <Badge variant={config.variant as any} className="text-sm px-4 py-1">{feasibility}</Badge>
+            <span className="text-sm text-muted-foreground">Complexity: {data.complexityScore}/10</span>
+            {data.scorePenalty != null && data.scorePenalty !== 0 && (
+              <span className="text-sm font-semibold text-destructive">{data.scorePenalty} pts from score</span>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">{config.description}</p>
+          {data.complexityFactors && data.complexityFactors.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.complexityFactors.map((f, i) => (
+                <span key={i} className="text-xs bg-background border rounded-full px-2.5 py-1 text-muted-foreground">{f}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Timeline */}
         <div className="bg-secondary/30 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">

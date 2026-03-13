@@ -7,6 +7,7 @@ interface Props {
   total: number;
   signalStrength: "Strong" | "Moderate" | "Weak";
   explanation: string;
+  complexityPenalty?: number;
 }
 
 const colorForIndex = (i: number) => {
@@ -23,8 +24,10 @@ const colorForIndex = (i: number) => {
 const defaultWeights = ["25%", "20%", "20%", "15%", "20%"];
 const defaultMaxScores = [25, 20, 20, 15, 20];
 
-export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }: Props) => {
+export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation, complexityPenalty }: Props) => {
   const strengthVariant = signalStrength === "Strong" ? "go" as const : signalStrength === "Moderate" ? "pivot" as const : "nogo" as const;
+  const categorySum = breakdown.reduce((s, b) => s + b.value, 0);
+  const penalty = complexityPenalty ?? 0;
 
   return (
     <div className="bg-card border rounded-2xl p-8">
@@ -43,10 +46,16 @@ export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }
               {item.label}: <span className="font-semibold text-foreground">{item.weight || defaultWeights[i]}</span>
             </div>
           ))}
+          {penalty !== 0 && (
+            <div className="flex items-center gap-1.5 text-[13px] text-destructive">
+              <span className="w-2 h-2 rounded-full bg-destructive" />
+              Build Complexity: <span className="font-semibold">{penalty} pts</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="space-y-4 mb-8">
+      <div className="space-y-4 mb-4">
         {breakdown.map((item, i) => {
           const maxScore = defaultMaxScores[i] || 20;
           return (
@@ -65,6 +74,27 @@ export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }
           );
         })}
       </div>
+
+      {/* Complexity Penalty Line */}
+      {penalty !== 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm font-semibold text-destructive">Build Complexity Penalty</span>
+            <span className="text-sm font-semibold text-destructive">{penalty}</span>
+          </div>
+          <div className="w-full h-2 bg-destructive/10 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-destructive transition-all duration-500"
+              style={{ width: `${(Math.abs(penalty) / 15) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Category total: {categorySum} {penalty < 0 ? `− ${Math.abs(penalty)}` : `+ ${penalty}`} = {total}
+          </p>
+        </div>
+      )}
+
+      {penalty === 0 && <div className="mb-4" />}
 
       <div className="border-t pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
