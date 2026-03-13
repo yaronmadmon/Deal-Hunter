@@ -2513,7 +2513,7 @@ Produce the JSON report with this EXACT structure:
   "recommendedStrategy": {"positioning": "specific", "suggestedPricing": "with reasoning", "differentiators": ["4-6 items"], "primaryTarget": "ONE segment and why", "channels": ["3-5 real channels"], "confidence": "Medium"},
   "nicheAnalysis": {"samEstimate": "dollar amount", "samPercentage": "X-Y%", "samReasoning": "why this percentage", "competitorClarity": "what exists vs not", "directCompetitors": 0, "competitorDetail": "specifics", "xSignalInterpretation": "interpret volume", "xVolumeContext": "context vs similar niches", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
   "unitEconomics": {"churnBenchmarks": [{"name": "name", "churnRate": "X%/mo", "source": "source"}], "churnImplication": "what it means", "realisticArpu": "$X/mo", "arpuReasoning": "rationale", "privacyPremium": "can you charge more", "ltvEstimate": "$X", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
-  "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing", "onDeviceNote": "feasibility", "complexityScore": 1-10, "vibeCoderFeasibility": "Easy" or "Moderate" or "Hard" or "Do Not Attempt", "complexityFactors": ["list of factors that increase complexity such as: third-party API dependencies, real-time features, hardware requirements, AI model training, two-sided marketplace dynamics, regulatory requirements, native mobile features"], "buildEstimateComparison": {"traditional": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Full-stack developer, DevOps engineer, UI/UX designer"]}, "aiAssisted": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Prompt engineering, API integration, Basic frontend"]}}, "dataSource": "ai_estimated", "sourceUrls": []},
+  "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing or N/A if not relevant", "onDeviceNote": "feasibility or N/A if not relevant", "complexityScore": 1-10, "vibeCoderFeasibility": "Easy" or "Moderate" or "Hard" or "Do Not Attempt", "complexityFactors": ["list of factors that increase complexity such as: third-party API dependencies, real-time features, hardware requirements, AI model training, two-sided marketplace dynamics, regulatory requirements, native mobile features"], "buildEstimateComparison": {"traditional": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Full-stack developer, DevOps engineer, UI/UX designer"]}, "aiAssisted": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Prompt engineering, API integration, Basic frontend"]}}, "dataSource": "ai_estimated", "sourceUrls": []},
   "reviewIntelligence": {"complaintClusters": [{"theme": "recurring complaint theme", "complaints": ["specific complaints in this cluster"], "frequency": number, "severity": "High" or "Medium" or "Low", "opportunityLevel": "High Opportunity" or "Moderate Opportunity" or "Already Solved", "exploitableGap": "why this is or isn't exploitable"}], "topAttackAngles": [{"angle": "specific attack angle", "complaint": "the complaint it exploits", "competitorWeakness": "which competitor is weakest here"}], "matrixData": [{"theme": "complaint/praise theme", "frequency": number, "intensity": number, "quadrant": "Critical Pain" or "Minor Annoyance" or "Loved Feature" or "Hidden Gem"}], "differentiationStatements": ["3 specific positioning statements the founder can use"], "totalReviewsAnalyzed": number, "confidence": "High" or "Medium" or "Low"},
   "scoreBreakdown": [{"label": "Trend Momentum", "value": 0-25, "weight": "25%"}, {"label": "Market Saturation", "value": 0-20, "weight": "20%"}, {"label": "Sentiment", "value": 0-20, "weight": "20%"}, {"label": "Growth", "value": 0-15, "weight": "15%"}, {"label": "Opportunity", "value": 0-20, "weight": "20%"}],
   "keyStats": [{"value": "number", "label": "description", "change": "+X% or null", "sentiment": "positive/negative/neutral"}] — MUST return EXACTLY 4 items. Use these categories: (1) Signal Score, (2) Data Points collected, (3) Revenue estimate or market size, (4) Competition count or growth metric. Never return fewer than 4.,
@@ -2540,9 +2540,18 @@ BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
 - vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
 - complexityFactors: List the specific factors that increase complexity for THIS idea.
+- voiceApiCosts and onDeviceNote: Only provide real values if the idea actually involves voice APIs or on-device processing. Otherwise set to "N/A".
+
+BUILD ESTIMATE COMPARISON — AI-ASSISTED COST TIERS (CRITICAL):
+The AI-assisted build estimates MUST reflect realistic costs using modern AI coding tools (Lovable, Cursor, Bolt, Replit Agent). Use these tiers:
+- complexityScore 1-3 (Easy): AI-assisted cost $500-$2,000, time 1-3 weeks
+- complexityScore 4-6 (Moderate): AI-assisted cost $2,000-$10,000, time 3-8 weeks
+- complexityScore 7-8 (Hard): AI-assisted cost $10,000-$50,000, time 6-16 weeks
+- complexityScore 9-10 (Do Not Attempt): AI-assisted cost $50,000-$200,000, time 12-24+ weeks
+Traditional dev costs should be 5-20x higher than AI-assisted costs. Skills for AI-assisted should include "AI code generation", "Prompt engineering", "API integration" rather than traditional dev roles.
 
 REVIEW INTELLIGENCE INSTRUCTIONS:
-- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. If fewer, set reviewIntelligence to null.
+- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. However, for niche markets with fewer than 5 validated competitors, lower this threshold to 6 complaints/reviews. If fewer than the applicable threshold, set reviewIntelligence to null.
 - Cluster complaints into recurring themes with frequency counts and severity ratings.
 - Evaluate each cluster as "High Opportunity" (exploitable gap), "Moderate Opportunity" (partial gap), or "Already Solved" (competitors have fixed this).
 - Surface top 3 attack angles from the highest-opportunity clusters.
@@ -3021,6 +3030,40 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // LOW COMPETITION BOOST (for non-dead-trend markets)
+        // If validated competitors < 5 and no declining trend detected,
+        // this is a genuine low-competition opportunity — boost Market Saturation.
+        // ══════════════════════════════════════════════════════════════
+        if (!matchedDecliningTrend && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          const competitorCount = Math.max(
+            rawData.validatedCompetitors?.length ?? 0,
+            (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors?.length ?? 0
+          );
+          
+          if (competitorCount > 0 && competitorCount < 5) {
+            const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+            if (satEntry && Number(satEntry.value) < 16) {
+              const boost = competitorCount <= 2 ? 4 : 2;
+              const newVal = Math.min(20, Number(satEntry.value) + boost);
+              console.warn(`[LOW COMPETITION BOOST] Only ${competitorCount} competitors (no dead trend). Market Saturation boosted from ${satEntry.value} to ${newVal}`);
+              const delta = newVal - Number(satEntry.value);
+              satEntry.value = newVal;
+              reportData.overallScore = (reportData.overallScore || 0) + delta;
+              
+              const boostScore = reportData.overallScore;
+              const boostVerdict = boostScore >= 75 ? "Build Now"
+                : boostScore >= 55 ? "Build, But Niche Down"
+                : boostScore >= 40 ? "Validate Further"
+                : "Do Not Build Yet";
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = boostVerdict;
+              }
+              reportData.signalStrength = boostScore >= 70 ? "Strong" : boostScore >= 45 ? "Moderate" : "Weak";
+            }
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
         // found real products, flag inconsistency and lower confidence.
@@ -3186,10 +3229,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         let complexityPenalty = 0;
         if (reportData.buildComplexity) {
           const cs = Number(reportData.buildComplexity.complexityScore) || 0;
-          // Map: 1-3 = 0, 4-6 = -5, 7-8 = -10, 9-10 = -15
-          if (cs >= 9) complexityPenalty = -15;
-          else if (cs >= 7) complexityPenalty = -10;
-          else if (cs >= 4) complexityPenalty = -5;
+          // Granular linear scale: 1-3 = 0, 4+ = -(cs - 3) * 2, capped at -15
+          // Examples: 4=-2, 5=-4, 6=-6, 7=-8, 8=-10, 9=-12, 10=-14 (capped at -15)
+          if (cs > 3) {
+            complexityPenalty = Math.max(-15, -((cs - 3) * 2));
+          }
           
           // Enforce vibeCoderFeasibility label
           if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";

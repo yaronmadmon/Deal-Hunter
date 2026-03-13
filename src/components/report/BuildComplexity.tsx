@@ -146,14 +146,18 @@ export const BuildComplexity = ({ data }: Props) => {
               <p className="text-[13px] text-muted-foreground">Estimated MVP Cost</p>
               <p className="text-lg font-bold text-foreground">{data.estimatedCost}</p>
             </div>
-            <div>
-              <p className="text-[13px] text-muted-foreground">Voice API Costs</p>
-              <p className="text-sm text-foreground">{data.voiceApiCosts}</p>
-            </div>
-            <div>
-              <p className="text-[13px] text-muted-foreground">On-Device Processing</p>
-              <p className="text-sm text-muted-foreground">{data.onDeviceNote}</p>
-            </div>
+            {data.voiceApiCosts && data.voiceApiCosts !== "N/A" && (
+              <div>
+                <p className="text-[13px] text-muted-foreground">Voice API Costs</p>
+                <p className="text-sm text-foreground">{data.voiceApiCosts}</p>
+              </div>
+            )}
+            {data.onDeviceNote && data.onDeviceNote !== "N/A" && (
+              <div>
+                <p className="text-[13px] text-muted-foreground">On-Device Processing</p>
+                <p className="text-sm text-muted-foreground">{data.onDeviceNote}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
