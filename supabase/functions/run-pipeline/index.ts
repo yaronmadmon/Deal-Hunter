@@ -3013,6 +3013,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           console.warn(`[PERPLEXITY DOMINANCE] ${perplexityPct}% of ${sourceAttribution.total} metrics are Perplexity/estimated. Injecting warning banner.`);
           evidenceValidations.push(`Perplexity dominance: ${perplexityPct}% of metrics are AI-synthesized.`);
         }
+        reportData.perplexityDominanceBanner = perplexityDominanceBanner;
 
         // ══════════════════════════════════════════════════════════════
         // IMPROVEMENT #10: FALLBACK GAP FLAGGING
@@ -3232,7 +3233,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           totalEvidence,
         },
         conflictingSignals: reportData.conflictingSignals || [],
-        perplexityDominanceBanner: perplexityDominanceBanner || null,
+        perplexityDominanceBanner: reportData.perplexityDominanceBanner || null,
         fallbackGaps: reportData.fallbackGaps || [],
         queryStrategy: rawData.queryStrategy || null,
         crossValidatedSignals: rawData.crossValidatedSignals || [],
