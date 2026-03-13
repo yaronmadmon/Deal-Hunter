@@ -1,5 +1,28 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Shared verdict + signal strength helpers ───────────────────────
+function computeVerdict(score: number): string {
+  if (score >= 75) return "Build Now";
+  if (score >= 55) return "Build, But Niche Down";
+  if (score >= 40) return "Validate Further";
+  return "Do Not Build Yet";
+}
+
+function computeSignalStrength(score: number): string {
+  // Aligned with verdict thresholds for consistency
+  if (score >= 75) return "Strong";
+  if (score >= 55) return "Moderate";
+  return "Weak";
+}
+
+function applyVerdictToReport(reportData: any) {
+  const score = reportData.overallScore || 0;
+  if (reportData.founderDecision) {
+    reportData.founderDecision.decision = computeVerdict(score);
+  }
+  reportData.signalStrength = computeSignalStrength(score);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
