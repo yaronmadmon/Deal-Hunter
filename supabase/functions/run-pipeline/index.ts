@@ -940,8 +940,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing analysisId or idea" }), { status: 400, headers: corsHeaders });
     }
 
-    // ── Input validation ──
-    const trimmedIdea = idea.trim();
+    // ── Input validation & sanitization ──
+    // Strip common UI button text that gets accidentally appended
+    const uiTextPatterns = [
+      /\s*Track This Idea\s*/gi,
+      /\s*Validate Idea\s*/gi,
+      /\s*Starting…?\s*/gi,
+      /\s*Re-?analyze\s*/gi,
+      /\s*Download PDF\s*/gi,
+      /\s*Share Report\s*/gi,
+      /\s*Add to Watchlist\s*/gi,
+      /\s*View Report\s*/gi,
+      /\s*Delete\s*$/gi,
+    ];
+    let trimmedIdea = idea.trim();
+    for (const pattern of uiTextPatterns) {
+      trimmedIdea = trimmedIdea.replace(pattern, ' ');
+    }
+    trimmedIdea = trimmedIdea.replace(/\s+/g, ' ').trim();
+
     if (trimmedIdea.length < 10) {
       return new Response(JSON.stringify({ error: "Idea must be at least 10 characters" }), { status: 400, headers: corsHeaders });
     }
@@ -950,6 +967,7 @@ Deno.serve(async (req) => {
     }
     // Strip HTML/script tags
     const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
+    console.log(`[INPUT SANITIZATION] Original: "${idea.slice(0, 100)}" → Sanitized: "${sanitizedIdea.slice(0, 100)}"`);
 
     // ── Get user_id from analysis record ──
     const { data: analysisRecord } = await supabase.from("analyses").select("user_id").eq("id", analysisId).single();
