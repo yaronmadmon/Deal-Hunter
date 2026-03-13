@@ -1,5 +1,28 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Shared verdict + signal strength helpers ───────────────────────
+function computeVerdict(score: number): string {
+  if (score >= 75) return "Build Now";
+  if (score >= 55) return "Build, But Niche Down";
+  if (score >= 40) return "Validate Further";
+  return "Do Not Build Yet";
+}
+
+function computeSignalStrength(score: number): string {
+  // Aligned with verdict thresholds for consistency
+  if (score >= 75) return "Strong";
+  if (score >= 55) return "Moderate";
+  return "Weak";
+}
+
+function applyVerdictToReport(reportData: any) {
+  const score = reportData.overallScore || 0;
+  if (reportData.founderDecision) {
+    reportData.founderDecision.decision = computeVerdict(score);
+  }
+  reportData.signalStrength = computeSignalStrength(score);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2683,24 +2706,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // 2. Enforce verdict thresholds deterministically
-        const finalScore = reportData.overallScore || 0;
-        const correctVerdict = finalScore >= 75 ? "Build Now"
-          : finalScore >= 55 ? "Build, But Niche Down"
-          : finalScore >= 40 ? "Validate Further"
-          : "Do Not Build Yet";
-
-        if (reportData.founderDecision) {
-          if (reportData.founderDecision.decision !== correctVerdict) {
-            console.warn(`[VERDICT VALIDATION] AI verdict "${reportData.founderDecision.decision}" doesn't match score ${finalScore}. Correcting to "${correctVerdict}".`);
-            reportData.founderDecision.decision = correctVerdict;
+        {
+          const finalScore = reportData.overallScore || 0;
+          const correctVerdict = computeVerdict(finalScore);
+          const correctStrength = computeSignalStrength(finalScore);
+          if (reportData.founderDecision?.decision !== correctVerdict) {
+            console.warn(`[VERDICT VALIDATION] AI verdict "${reportData.founderDecision?.decision}" doesn't match score ${finalScore}. Correcting to "${correctVerdict}".`);
           }
-        }
-
-        // Also enforce signalStrength consistency
-        const correctSignalStrength = finalScore >= 70 ? "Strong" : finalScore >= 45 ? "Moderate" : "Weak";
-        if (reportData.signalStrength !== correctSignalStrength) {
-          console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctSignalStrength}".`);
-          reportData.signalStrength = correctSignalStrength;
+          if (reportData.signalStrength !== correctStrength) {
+            console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctStrength}".`);
+          }
+          applyVerdictToReport(reportData);
         }
 
         // 3. Demand Override Rule — code-level enforcement
@@ -2739,16 +2755,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             opportunityEntry.value = 10;
             reportData.overallScore = (reportData.overallScore || 0) - reduction;
 
-            // Re-apply verdict after score adjustment
-            const adjustedScore = reportData.overallScore;
-            const adjustedVerdict = adjustedScore >= 75 ? "Build Now"
-              : adjustedScore >= 55 ? "Build, But Niche Down"
-              : adjustedScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = adjustedVerdict;
-            }
-            reportData.signalStrength = adjustedScore >= 70 ? "Strong" : adjustedScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
@@ -2903,16 +2910,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[CONCEPT VIABILITY] Score adjusted: ${reportData.overallScore} -> ${viabilitySum}`);
             reportData.overallScore = viabilitySum;
             reportData._viabilityScore = viabilitySum;
-            
-            const vScore = reportData.overallScore;
-            const vVerdict = vScore >= 75 ? "Build Now"
-              : vScore >= 55 ? "Build, But Niche Down"
-              : vScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = vVerdict;
-            }
-            reportData.signalStrength = vScore >= 70 ? "Strong" : vScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
@@ -3020,15 +3018,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[SIGNAL BOUNDS] Overall score adjusted: ${reportData.overallScore} -> ${newSum} (ceilings: ${ceilingApplied}, floors: ${floorApplied})`);
             reportData.overallScore = newSum;
 
-            const boundScore = reportData.overallScore;
-            const boundVerdict = boundScore >= 75 ? "Build Now"
-              : boundScore >= 55 ? "Build, But Niche Down"
-              : boundScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = boundVerdict;
-            }
-            reportData.signalStrength = boundScore >= 70 ? "Strong" : boundScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
 
           console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
@@ -3037,13 +3027,96 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // LOW COMPETITION BOOST (for non-dead-trend markets)
-        // If validated competitors < 5 and no declining trend detected,
-        // this is a genuine low-competition opportunity — boost Market Saturation.
+        // COMPETITOR COUNT VALIDATION (uses validated competitors)
+        // Cross-check: if AI says 0 competitors but validated pipeline
+        // found real products, flag inconsistency and lower confidence.
+        // Moved BEFORE Low Competition Boost to establish competitor facts first.
         // ══════════════════════════════════════════════════════════════
-        if (!matchedDecliningTrend && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+        const validatedCount = rawData.validatedCompetitors?.length ?? 0;
+        const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
+        const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
+        const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
+
+        if (aiCompetitorCount === 0 && (validatedCount >= 1 || competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
+          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but validated pipeline found ${validatedCount} real products (discovery: ${competitorDiscoveryCount}, snapshot: ${aiCompetitorListCount}). Correcting.`);
+          if (reportData.nicheAnalysis) {
+            reportData.nicheAnalysis.directCompetitors = Math.max(validatedCount, aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
+            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${validatedCount} validated real products were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
+          }
+          if (competitorSnapshotCard) {
+            if (competitorSnapshotCard.confidence === "High") competitorSnapshotCard.confidence = "Medium";
+          }
+          const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+          if (saturationCard && saturationCard.confidence === "High") {
+            saturationCard.confidence = "Medium";
+            console.warn(`[COMPETITOR VALIDATION] Lowered Market Saturation confidence to Medium due to competitor count inconsistency`);
+          }
+        }
+        if (validatedCount >= 5 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
+          console.warn(`[COMPETITOR VALIDATION] Validated pipeline found ${validatedCount} real products but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
+          if (competitorSnapshotCard.confidence !== "Low") competitorSnapshotCard.confidence = "Medium";
+          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
+        }
+        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
+
+        // ══════════════════════════════════════════════════════════════
+        // GRAVEYARD SIGNAL DETECTION (runs BEFORE Low Competition Boost)
+        // When a declining trend is detected AND competition is very low,
+        // this is NOT a blue ocean — it's an abandoned market.
+        // ══════════════════════════════════════════════════════════════
+        let graveyardDetected = false;
+        if (matchedDecliningTrend && trendPosition === "primary") {
+          const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
+          
+          if (totalCompetitorEvidence <= 3) {
+            graveyardDetected = true;
+            console.warn(`[GRAVEYARD SIGNAL] PRIMARY declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
+            if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+              const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+              if (satEntry && Number(satEntry.value) > 8) {
+                console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
+                satEntry.value = 8;
+              }
+              if (satEntry) {
+                satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned.`.trim();
+              }
+            }
+            if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
+              const hasGraveyardRisk = reportData.killShotAnalysis.risks.some((r: any) =>
+                r.risk?.toLowerCase().includes("graveyard") || r.risk?.toLowerCase().includes("abandoned market")
+              );
+              if (!hasGraveyardRisk) {
+                reportData.killShotAnalysis.risks.unshift({
+                  risk: `Graveyard Signal: Only ${totalCompetitorEvidence} competitor(s) found in the ${matchedDecliningTrend.toUpperCase()} space. Low competitor count here does not mean opportunity — it means the market was tried and abandoned.`,
+                  severity: "High",
+                  mitigation: "Search for defunct products in this space to understand why they failed. Only proceed if you can prove sustained user demand exists today."
+                });
+              }
+            }
+            const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
+            if (saturationCard) {
+              saturationCard.confidence = "Low";
+              saturationCard.insight = `${saturationCard.insight || ""} ⚠️ Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
+            }
+          }
+
+          const competitivePressureCard = (reportData.signalCards || []).find((c: any) =>
+            c.title === "Competitor Snapshot" || c.title === "Competitive Pressure"
+          );
+          if (competitivePressureCard) {
+            competitivePressureCard.insight = `${competitivePressureCard.insight || ""} Note: Several competitors may have existed during the peak of the "${matchedDecliningTrend}" trend but are no longer active.`.trim();
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // LOW COMPETITION BOOST (for non-dead-trend markets)
+        // Skipped if graveyard signal was detected — low competition
+        // on a dead trend is NOT an opportunity.
+        // ══════════════════════════════════════════════════════════════
+        if (!matchedDecliningTrend && !graveyardDetected && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const competitorCount = Math.max(
-            rawData.validatedCompetitors?.length ?? 0,
+            validatedCount,
             (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors?.length ?? 0
           );
           
@@ -3056,16 +3129,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               const delta = newVal - Number(satEntry.value);
               satEntry.value = newVal;
               reportData.overallScore = (reportData.overallScore || 0) + delta;
-              
-              const boostScore = reportData.overallScore;
-              const boostVerdict = boostScore >= 75 ? "Build Now"
-                : boostScore >= 55 ? "Build, But Niche Down"
-                : boostScore >= 40 ? "Validate Further"
-                : "Do Not Build Yet";
-              if (reportData.founderDecision) {
-                reportData.founderDecision.decision = boostVerdict;
-              }
-              reportData.signalStrength = boostScore >= 70 ? "Strong" : boostScore >= 45 ? "Moderate" : "Weak";
+              applyVerdictToReport(reportData);
             }
           }
         }
@@ -3100,157 +3164,57 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               reportData.overallScore = (reportData.overallScore || 0) + delta;
               console.warn(`[B2B NICHE BOOST] Growth raised from ${oldVal} to ${b2bFloor} using ${b2bGrowthEvidence} Serper/Perplexity signals`);
               
-              const bScore = reportData.overallScore;
-              const bVerdict = bScore >= 75 ? "Build Now"
-                : bScore >= 55 ? "Build, But Niche Down"
-                : bScore >= 40 ? "Validate Further"
-                : "Do Not Build Yet";
-              if (reportData.founderDecision) {
-                reportData.founderDecision.decision = bVerdict;
-              }
-              reportData.signalStrength = bScore >= 70 ? "Strong" : bScore >= 45 ? "Moderate" : "Weak";
+              applyVerdictToReport(reportData);
             }
           }
         }
 
-        // ══════════════════════════════════════════════════════════════
-        // COMPETITOR COUNT VALIDATION (uses validated competitors)
-        // Cross-check: if AI says 0 competitors but validated pipeline
-        // found real products, flag inconsistency and lower confidence.
-        // ══════════════════════════════════════════════════════════════
-        const validatedCount = rawData.validatedCompetitors?.length ?? 0;
-        const competitorDiscoveryCount = rawData.serperCompetitors?.allResults?.length ?? 0;
-        const aiCompetitorCount = reportData.nicheAnalysis?.directCompetitors ?? -1;
-        const competitorSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
-        const aiCompetitorListCount = competitorSnapshotCard?.competitors?.length ?? 0;
-
-        if (aiCompetitorCount === 0 && (validatedCount >= 1 || competitorDiscoveryCount >= 3 || aiCompetitorListCount > 0)) {
-          console.warn(`[COMPETITOR VALIDATION] AI reported 0 direct competitors but validated pipeline found ${validatedCount} real products (discovery: ${competitorDiscoveryCount}, snapshot: ${aiCompetitorListCount}). Correcting.`);
-
-          // Fix the niche analysis competitor count — use validated count as ground truth
-          if (reportData.nicheAnalysis) {
-            reportData.nicheAnalysis.directCompetitors = Math.max(validatedCount, aiCompetitorListCount, Math.min(competitorDiscoveryCount, 5));
-            reportData.nicheAnalysis.competitorClarity = `[AUTO-CORRECTED] Originally reported 0 competitors, but ${validatedCount} validated real products were found. ${reportData.nicheAnalysis.competitorClarity || ""}`;
-          }
-
-          // Lower confidence on the competitor snapshot card
-          if (competitorSnapshotCard) {
-            if (competitorSnapshotCard.confidence === "High") {
-              competitorSnapshotCard.confidence = "Medium";
-            }
-          }
-
-          // Lower Market Saturation confidence if it was inflated
-          const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
-          if (saturationCard && saturationCard.confidence === "High") {
-            saturationCard.confidence = "Medium";
-            console.warn(`[COMPETITOR VALIDATION] Lowered Market Saturation confidence to Medium due to competitor count inconsistency`);
-          }
-        }
-
-        // Also validate: if validated competitors found many but AI only lists 1-2
-        if (validatedCount >= 5 && aiCompetitorListCount <= 1 && competitorSnapshotCard) {
-          console.warn(`[COMPETITOR VALIDATION] Validated pipeline found ${validatedCount} real products but AI only listed ${aiCompetitorListCount} competitors. Flagging.`);
-          if (competitorSnapshotCard.confidence !== "Low") {
-            competitorSnapshotCard.confidence = "Medium";
-          }
-          competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
-        }
-
-        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
-
-        // ══════════════════════════════════════════════════════════════
-        // GRAVEYARD SIGNAL DETECTION
-        // When a declining trend is detected AND competition is very low,
-        // this is NOT a blue ocean — it's an abandoned market.
-        // ══════════════════════════════════════════════════════════════
-        if (matchedDecliningTrend && trendPosition === "primary") {
-          const totalCompetitorEvidence = Math.max(validatedCount, aiCompetitorCount, aiCompetitorListCount);
-          
-          if (totalCompetitorEvidence <= 3) {
-            console.warn(`[GRAVEYARD SIGNAL] PRIMARY declining trend "${matchedDecliningTrend}" + only ${totalCompetitorEvidence} competitors detected. This is an abandoned market, not a blue ocean.`);
-
-            // Cap Market Saturation at 8/20
-            if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
-              const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
-              if (satEntry && Number(satEntry.value) > 8) {
-                console.warn(`[GRAVEYARD CAP] Market Saturation capped from ${satEntry.value} to 8 (abandoned market signal)`);
-                satEntry.value = 8;
-              }
-              if (satEntry) {
-                satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned. Previous players likely exited as user interest declined.`.trim();
-              }
-            }
-
-            // Inject graveyard kill shot risk
-            if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
-              const hasGraveyardRisk = reportData.killShotAnalysis.risks.some((r: any) =>
-                r.risk?.toLowerCase().includes("graveyard") || r.risk?.toLowerCase().includes("abandoned market")
-              );
-              if (!hasGraveyardRisk) {
-                reportData.killShotAnalysis.risks.unshift({
-                  risk: `Graveyard Signal: Only ${totalCompetitorEvidence} competitor(s) found in the ${matchedDecliningTrend.toUpperCase()} space. Low competitor count here does not mean opportunity — it means the market was tried and abandoned. Previous entrants likely shut down as user demand evaporated.`,
-                  severity: "High",
-                  mitigation: "Search for defunct products in this space to understand why they failed. Only proceed if you can prove sustained user demand exists today."
-                });
-              }
-            }
-
-            // Flag the Market Saturation signal card
-            const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
-            if (saturationCard) {
-              saturationCard.confidence = "Low";
-              saturationCard.insight = `${saturationCard.insight || ""} ⚠️ Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
-            }
-          }
-
-          // Add declining-trend note to Competitive Pressure section regardless of competitor count
-          const competitivePressureCard = (reportData.signalCards || []).find((c: any) =>
-            c.title === "Competitor Snapshot" || c.title === "Competitive Pressure"
-          );
-          if (competitivePressureCard) {
-            competitivePressureCard.insight = `${competitivePressureCard.insight || ""} Note: Several competitors may have existed during the peak of the "${matchedDecliningTrend}" trend but are no longer active. Current low competition may reflect an abandoned market rather than an open one.`.trim();
-          }
-        }
+        // (Competitor Validation and Graveyard Signal already handled above, before Low Competition Boost)
 
         // ══════════════════════════════════════════════════════════════
         // DATA QUALITY PENALTY
         // If >50% of metrics in a scoring category are "estimated",
         // reduce that category's score by 30%.
         // ══════════════════════════════════════════════════════════════
-        const categoryToCardTitle: Record<string, string> = {
-          "Trend Momentum": "Trend Momentum",
-          "Market Saturation": "Market Saturation",
-          "Sentiment": "Sentiment & Pain Points",
-          "Growth": "Growth Signals",
-          "Opportunity": "Competitor Snapshot",
+        const categoryToCardTitle: Record<string, string[]> = {
+          "Trend Momentum": ["Trend Momentum"],
+          "Market Saturation": ["Market Saturation"],
+          "Sentiment": ["Sentiment & Pain Points"],
+          "Growth": ["Growth Signals"],
+          "Opportunity": ["Market Saturation", "Sentiment & Pain Points", "Growth Signals"],
         };
 
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           let penaltyApplied = false;
           for (const category of reportData.scoreBreakdown) {
-            const cardTitle = categoryToCardTitle[category.label];
-            const card = (reportData.signalCards || []).find((c: any) => c.title === cardTitle);
-            if (!card) continue;
+            // Skip data quality penalty for categories already ceilinged to ≤5 (double-penalty prevention)
+            const categoryValue = Number(category.value) || 0;
+            if (categoryValue <= 5) {
+              console.log(`[DATA QUALITY] Skipping penalty for ${category.label} — already at ${categoryValue} (ceiling-bound)`);
+              continue;
+            }
 
-            const metrics = card.metrics || card.competitors || [];
-            const totalMetrics = metrics.length;
+            const cardTitles = categoryToCardTitle[category.label] || [];
+            const cards = (reportData.signalCards || []).filter((c: any) => cardTitles.includes(c.title));
+            if (cards.length === 0) continue;
+
+            // Aggregate metrics across all mapped cards
+            const allMetrics = cards.flatMap((card: any) => [...(card.metrics || []), ...(card.competitors || [])]);
+            const totalMetrics = allMetrics.length;
             if (totalMetrics === 0) continue;
 
-            const estimatedCount = metrics.filter((m: any) => 
+            const estimatedCount = allMetrics.filter((m: any) => 
               m.dataTier === "estimated" || m.dataSource === "ai_estimated" ||
               m.value === "N/A" || m.value === "Insufficient data" || m.value === null
             ).length;
 
             if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
-              const originalValue = Number(category.value) || 0;
+              const originalValue = categoryValue;
               const penalty = Math.round(originalValue * 0.3);
               category.value = originalValue - penalty;
               penaltyApplied = true;
               console.warn(`[DATA QUALITY PENALTY] ${category.label}: ${estimatedCount}/${totalMetrics} metrics estimated. Score reduced by ${penalty} (${originalValue} -> ${category.value})`);
-              if (card.confidence !== "Low") {
-                card.confidence = "Low";
-              }
+              cards.forEach((card: any) => { if (card.confidence !== "Low") card.confidence = "Low"; });
             }
           }
 
@@ -3259,15 +3223,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[DATA QUALITY PENALTY] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
             reportData.overallScore = newSum;
 
-            const penaltyScore = reportData.overallScore;
-            const penaltyVerdict = penaltyScore >= 75 ? "Build Now"
-              : penaltyScore >= 55 ? "Build, But Niche Down"
-              : penaltyScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = penaltyVerdict;
-            }
-            reportData.signalStrength = penaltyScore >= 70 ? "Strong" : penaltyScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
@@ -3301,17 +3257,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // Apply verdict AFTER complexity penalty (final verdict determination)
-        {
-          const fs = reportData.overallScore || 0;
-          const fv = fs >= 75 ? "Build Now"
-            : fs >= 55 ? "Build, But Niche Down"
-            : fs >= 40 ? "Validate Further"
-            : "Do Not Build Yet";
-          if (reportData.founderDecision) {
-            reportData.founderDecision.decision = fv;
-          }
-          reportData.signalStrength = fs >= 70 ? "Strong" : fs >= 45 ? "Moderate" : "Weak";
-        }
+        applyVerdictToReport(reportData);
 
         // ══════════════════════════════════════════════════════════════
         // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
