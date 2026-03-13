@@ -9,20 +9,30 @@ interface Props {
   data: ProofDashboardData;
 }
 
-const SignalBlock = ({ icon: Icon, title, children, confidence }: { icon: React.ElementType; title: string; children: React.ReactNode; confidence?: "High" | "Medium" | "Low" }) => (
-  <Card className="overflow-hidden">
-    <CardContent className="p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Icon className="w-3.5 h-3.5 text-primary" />
+const blockColors: Record<string, { bg: string; text: string }> = {
+  "Search Demand": { bg: "bg-blue-500/10", text: "text-blue-500 dark:text-blue-400" },
+  "Developer Activity": { bg: "bg-green-500/10", text: "text-green-500 dark:text-green-400" },
+  "Social Activity": { bg: "bg-purple-500/10", text: "text-purple-500 dark:text-purple-400" },
+  "App Store Signals": { bg: "bg-teal/10", text: "text-teal" },
+};
+
+const SignalBlock = ({ icon: Icon, title, children, confidence }: { icon: React.ElementType; title: string; children: React.ReactNode; confidence?: "High" | "Medium" | "Low" }) => {
+  const colors = blockColors[title] || { bg: "bg-primary/10", text: "text-primary" };
+  return (
+    <Card className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`w-7 h-7 rounded-lg ${colors.bg} flex items-center justify-center`}>
+            <Icon className={`w-3.5 h-3.5 ${colors.text}`} />
+          </div>
+          <h4 className="text-sm font-heading font-semibold text-foreground uppercase tracking-wide">{title}</h4>
+          {confidence && <ConfidenceLabel level={confidence} />}
         </div>
-        <h4 className="text-[13px] font-heading font-semibold text-foreground uppercase tracking-wide">{title}</h4>
-        {confidence && <ConfidenceLabel level={confidence} />}
-      </div>
-      {children}
-    </CardContent>
-  </Card>
-);
+        {children}
+      </CardContent>
+    </Card>
+  );
+};
 
 const safeFallback = (val?: string) => {
   if (!val || val.toLowerCase() === "unknown" || val.toLowerCase() === "data unavailable") return "Insufficient data";

@@ -70,7 +70,7 @@ export function FounderInsight({ data }: FounderInsightProps) {
       {/* Disclaimer */}
       <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
         <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           This interpretation summarizes patterns observed in publicly available data and competitor signals. It is intended to help readers understand the market landscape and does not predict the success of any specific product.
         </p>
       </div>
