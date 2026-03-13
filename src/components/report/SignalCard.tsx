@@ -20,6 +20,14 @@ const iconMap: Record<string, React.ElementType> = {
   TrendingUp, PieChart, Users, MessageCircle, Zap,
 };
 
+const iconColorMap: Record<string, { bg: string; text: string }> = {
+  TrendingUp: { bg: "bg-green-500/10", text: "text-green-500 dark:text-green-400" },
+  PieChart: { bg: "bg-blue-500/10", text: "text-blue-500 dark:text-blue-400" },
+  Users: { bg: "bg-purple-500/10", text: "text-purple-500 dark:text-purple-400" },
+  MessageCircle: { bg: "bg-teal/10", text: "text-teal" },
+  Zap: { bg: "bg-primary/10", text: "text-primary" },
+};
+
 const confidenceBadge = (c: string) => {
   if (c === "High") return "go" as const;
   if (c === "Medium") return "pivot" as const;
