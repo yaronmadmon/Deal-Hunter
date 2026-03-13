@@ -2760,8 +2760,171 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           console.warn(`[EVIDENCE LOCK] Post-AI validations applied: ${evidenceValidations.join(" | ")}`);
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #8: CONFLICTING SIGNAL DETECTION
+        // Detect contradictions between sources and surface them.
+        // ══════════════════════════════════════════════════════════════
+        const conflictingSignals: { signalA: string; sourceA: string; signalB: string; sourceB: string; category: string }[] = [];
+
+        // Check: Search trends vs Twitter volume
+        const searchTrendUp = (rawData.serperTrends?.organic?.length ?? 0) >= 3;
+        const twitterVolumeDown = rawData.twitterCounts?.volume_change_pct < -20;
+        const twitterVolumeUp = rawData.twitterCounts?.volume_change_pct > 20;
+        const searchTrendWeak = (rawData.serperTrends?.organic?.length ?? 0) <= 1;
+        if (searchTrendUp && twitterVolumeDown) {
+          conflictingSignals.push({
+            signalA: `${rawData.serperTrends.organic.length} Google search results found (active search interest)`,
+            sourceA: "Serper Google Search",
+            signalB: `Twitter volume declined ${rawData.twitterCounts.volume_change_pct}% over 7 days`,
+            sourceB: "X API v2",
+            category: "Demand",
+          });
+        }
+        if (searchTrendWeak && twitterVolumeUp) {
+          conflictingSignals.push({
+            signalA: `Only ${rawData.serperTrends?.organic?.length ?? 0} Google search results (weak search interest)`,
+            sourceA: "Serper Google Search",
+            signalB: `Twitter volume grew +${rawData.twitterCounts.volume_change_pct}% over 7 days`,
+            sourceB: "X API v2",
+            category: "Demand",
+          });
+        }
+
+        // Check: High app ratings vs many complaints in Reddit/HN
+        const avgRating = (() => {
+          const ratings = (rawData.validatedCompetitors || [])
+            .map((c: any) => parseFloat(String(c.rating || "0")))
+            .filter((r: number) => r > 0);
+          return ratings.length > 0 ? ratings.reduce((s: number, r: number) => s + r, 0) / ratings.length : 0;
+        })();
+        const complaintCount = (rawData.firecrawlReddit?.results?.length ?? 0) + (rawData.serperReddit?.organic?.length ?? 0);
+        if (avgRating >= 4.0 && complaintCount >= 5) {
+          conflictingSignals.push({
+            signalA: `Competitors average ${avgRating.toFixed(1)} star rating (high satisfaction)`,
+            sourceA: "App Store / Firecrawl",
+            signalB: `${complaintCount} Reddit/forum threads with complaints found`,
+            sourceB: "Reddit via Firecrawl + Serper",
+            category: "Sentiment",
+          });
+        }
+
+        // Check: Many competitors found vs low market saturation score
+        const satEntry = reportData.scoreBreakdown?.find((b: any) => b.label === "Market Saturation");
+        if ((rawData.validatedCompetitors?.length ?? 0) >= 5 && satEntry && Number(satEntry.value) >= 15) {
+          conflictingSignals.push({
+            signalA: `${rawData.validatedCompetitors.length} validated competitors in market`,
+            sourceA: "Competitor Pipeline",
+            signalB: `Market Saturation scored ${satEntry.value}/20 (suggests opportunity)`,
+            sourceB: "AI Analysis",
+            category: "Competition",
+          });
+        }
+
+        // Check: GitHub buzz vs no Product Hunt presence
+        const ghStars = (rawData.github?.repos || []).reduce((s: number, r: any) => s + (r.stars || 0), 0);
+        const phProducts = rawData.productHunt?.products?.length ?? 0;
+        if (ghStars > 1000 && phProducts === 0) {
+          conflictingSignals.push({
+            signalA: `${ghStars} total GitHub stars (strong developer interest)`,
+            sourceA: "GitHub API",
+            signalB: "No Product Hunt launches found (weak consumer visibility)",
+            sourceB: "Product Hunt",
+            category: "Growth",
+          });
+        }
+
+        if (conflictingSignals.length > 0) {
+          reportData.conflictingSignals = conflictingSignals;
+          console.log(`[CONFLICTING SIGNALS] Detected ${conflictingSignals.length} conflicts: ${conflictingSignals.map(c => c.category).join(", ")}`);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #9: PERPLEXITY DOMINANCE — CODE ENFORCEMENT
+        // Calculate actual source attribution percentages post-generation
+        // and inject a warning if Perplexity dominates >60%.
+        // ══════════════════════════════════════════════════════════════
+        const sourceAttribution = { perplexity: 0, tier1: 0, total: 0 };
+        (reportData.signalCards || []).forEach((card: any) => {
+          const allMetrics = [...(card.metrics || []), ...(card.competitors || [])];
+          allMetrics.forEach((m: any) => {
+            sourceAttribution.total++;
+            const ds = (m.dataSource || "").toLowerCase();
+            if (ds.includes("perplexity") || ds === "ai_estimated") {
+              sourceAttribution.perplexity++;
+            } else {
+              sourceAttribution.tier1++;
+            }
+          });
+        });
+
+        const perplexityPct = sourceAttribution.total > 0
+          ? Math.round((sourceAttribution.perplexity / sourceAttribution.total) * 100)
+          : 0;
+
+        let perplexityDominanceBanner: { percentage: number; message: string } | null = null;
+        if (perplexityPct > 60) {
+          perplexityDominanceBanner = {
+            percentage: perplexityPct,
+            message: `${perplexityPct}% of report metrics trace back to AI-synthesized data (Perplexity or estimates). This report would benefit from more primary evidence. Consider validating key claims independently.`,
+          };
+          console.warn(`[PERPLEXITY DOMINANCE] ${perplexityPct}% of ${sourceAttribution.total} metrics are Perplexity/estimated. Injecting warning banner.`);
+          evidenceValidations.push(`Perplexity dominance: ${perplexityPct}% of metrics are AI-synthesized.`);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #10: FALLBACK GAP FLAGGING
+        // Track which primary data sources returned empty/error and
+        // inject warnings into the relevant signal card sections.
+        // ══════════════════════════════════════════════════════════════
+        const sourceToCardMapping: Record<string, string> = {
+          "firecrawl_appstore": "Market Saturation",
+          "firecrawl_reddit": "Sentiment & Pain Points",
+          "serper_trends": "Trend Momentum",
+          "serper_news": "Trend Momentum",
+          "twitter_sentiment": "Sentiment & Pain Points",
+          "twitter_counts": "Trend Momentum",
+          "producthunt": "Growth Signals",
+          "github": "Growth Signals",
+          "hackernews": "Sentiment & Pain Points",
+          "perplexity_market": "Market Saturation",
+          "perplexity_trends": "Trend Momentum",
+          "perplexity_competitors": "Competitor Snapshot",
+        };
+
+        const fallbackGaps: { section: string; failedSource: string; status: string }[] = [];
+        for (const [sourceName, metrics] of Object.entries(pipelineMetrics)) {
+          const m = metrics as { status: string; signalCount: number };
+          if (m.status === "error" || m.signalCount === 0) {
+            const section = sourceToCardMapping[sourceName];
+            if (section) {
+              fallbackGaps.push({ section, failedSource: sourceName, status: m.status });
+            }
+          }
+        }
+
+        // Inject fallback warnings into relevant signal cards
+        if (fallbackGaps.length > 0) {
+          const gapsBySection = new Map<string, string[]>();
+          for (const gap of fallbackGaps) {
+            const existing = gapsBySection.get(gap.section) || [];
+            existing.push(gap.failedSource.replace(/_/g, " "));
+            gapsBySection.set(gap.section, existing);
+          }
+
+          for (const card of (reportData.signalCards || [])) {
+            const gaps = gapsBySection.get(card.title);
+            if (gaps && gaps.length > 0) {
+              card.fallbackWarning = `Primary source(s) unavailable: ${gaps.join(", ")}. Data in this section may be estimated from secondary sources.`;
+              console.log(`[FALLBACK GAP] ${card.title}: ${gaps.join(", ")} returned empty/error`);
+            }
+          }
+
+          reportData.fallbackGaps = fallbackGaps;
+          console.log(`[FALLBACK GAPS] ${fallbackGaps.length} gaps flagged across ${gapsBySection.size} sections`);
+        }
+
         // Log validation summary
-        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}`);
+        console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}, Conflicts: ${conflictingSignals.length}, Perplexity%: ${perplexityPct}, FallbackGaps: ${fallbackGaps.length}`);
 
         overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
