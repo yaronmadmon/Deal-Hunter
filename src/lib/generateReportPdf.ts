@@ -431,7 +431,7 @@ export function generateReportPdf(report: MockReportData) {
       s.loves.forEach((l) => {
         checkPage(5);
         setColor(C.success);
-        doc.text("•", m + 4, y);
+        doc.text("-", m + 4, y);
         setColor(C.text);
         const ll = doc.splitTextToSize(l, cw - 10);
         writeLines(ll, m + 8, 4);
