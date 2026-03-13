@@ -3150,6 +3150,64 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
 
+        // ── Populate githubRepos from rawData if AI didn't return them ──
+        if (!reportData.githubRepos || !Array.isArray(reportData.githubRepos) || reportData.githubRepos.length === 0) {
+          const ghRepos = rawData.github?.repos || [];
+          if (ghRepos.length > 0) {
+            reportData.githubRepos = ghRepos.slice(0, 10).map((r: any) => ({
+              name: r.name || "",
+              description: r.description || "",
+              stars: r.stars || 0,
+              forks: r.forks || 0,
+              openIssues: r.openIssues || 0,
+              language: r.language || "Unknown",
+              url: r.url || "",
+              updatedAt: r.updatedAt || null,
+              pushedAt: r.pushedAt || null,
+              topics: r.topics || [],
+            }));
+            console.log(`[FIELD POPULATION] githubRepos: populated ${reportData.githubRepos.length} repos from rawData`);
+          }
+        }
+
+        // ── Populate Competitor Snapshot card from validated competitors if AI returned empty ──
+        const compSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        if (compSnapshotCard && (!compSnapshotCard.competitors || compSnapshotCard.competitors.length === 0)) {
+          const validated = rawData.validatedCompetitors || [];
+          if (validated.length > 0) {
+            compSnapshotCard.competitors = validated.slice(0, 8).map((c: any) => ({
+              name: c.name,
+              classification: "direct",
+              rating: c.rating ? String(c.rating) : "N/A",
+              reviews: "N/A",
+              downloads: c.downloads || "N/A",
+              weakness: "See user sentiment section",
+              whatTheyDoWell: c.description || "Established in market",
+              dataSource: c.sources?.[0]?.toLowerCase() || "serper",
+              sourceUrl: c.url || null,
+              dataTier: c.validationScore >= 4 ? "verified" : "reported",
+              signalNote: `Validated via ${c.sources?.join(", ") || "pipeline"} (score ${c.validationScore}/5)`,
+            }));
+            compSnapshotCard.evidenceCount = compSnapshotCard.competitors.length;
+            compSnapshotCard.confidence = validated.length >= 3 ? "High" : validated.length >= 1 ? "Medium" : "Low";
+            console.log(`[FIELD POPULATION] Competitor Snapshot: populated ${compSnapshotCard.competitors.length} competitors from validated pipeline`);
+          }
+        }
+
+        // ── Ensure scoreBreakdown exists with defaults ──
+        if (!reportData.scoreBreakdown || !Array.isArray(reportData.scoreBreakdown) || reportData.scoreBreakdown.length !== 5) {
+          const defaultScore = Math.round((reportData.overallScore || 50) / 5);
+          reportData.scoreBreakdown = [
+            { label: "Trend Momentum", value: defaultScore, weight: "20%" },
+            { label: "Market Saturation", value: defaultScore, weight: "20%" },
+            { label: "Sentiment", value: defaultScore, weight: "20%" },
+            { label: "Growth", value: defaultScore, weight: "20%" },
+            { label: "Opportunity", value: defaultScore, weight: "20%" },
+          ];
+          reportData.overallScore = defaultScore * 5;
+          console.log(`[FIELD POPULATION] scoreBreakdown: generated defaults (${defaultScore}/20 each)`);
+        }
+
         // ── Fill missing sections with safe defaults so UI always renders ──
         if (!reportData.proofDashboard) {
           reportData.proofDashboard = {
