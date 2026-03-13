@@ -3018,15 +3018,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[SIGNAL BOUNDS] Overall score adjusted: ${reportData.overallScore} -> ${newSum} (ceilings: ${ceilingApplied}, floors: ${floorApplied})`);
             reportData.overallScore = newSum;
 
-            const boundScore = reportData.overallScore;
-            const boundVerdict = boundScore >= 75 ? "Build Now"
-              : boundScore >= 55 ? "Build, But Niche Down"
-              : boundScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = boundVerdict;
-            }
-            reportData.signalStrength = boundScore >= 70 ? "Strong" : boundScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
 
           console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
