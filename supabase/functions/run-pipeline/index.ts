@@ -3178,6 +3178,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         perplexityDominanceBanner: perplexityDominanceBanner || null,
         fallbackGaps: reportData.fallbackGaps || [],
         queryStrategy: rawData.queryStrategy || null,
+        crossValidatedSignals: rawData.crossValidatedSignals || [],
+        sourceContamination: rawData.relevanceFilterStats?.sourceContamination || [],
         timestamp: new Date().toISOString(),
       };
     }
