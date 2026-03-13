@@ -1171,7 +1171,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       serperPromises.push(
         trackSource("serper_trends_monthly", async () => {
           const trendQuery = semanticQueries.length > 2 ? semanticQueries[2] : serperKeywords;
-          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 10);
+          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 30);
           rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
