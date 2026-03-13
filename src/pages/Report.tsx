@@ -33,6 +33,7 @@ import { CrossValidationCard } from "@/components/report/CrossValidationCard";
 import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
 import { ReportComparison } from "@/components/report/ReportComparison";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
+import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
