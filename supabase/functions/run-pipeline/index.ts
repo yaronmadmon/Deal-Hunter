@@ -3271,10 +3271,23 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // SCORING JOURNEY LOG
+        // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
         // ══════════════════════════════════════════════════════════════
         const aiRawScore = reportData._aiRawScore ?? reportData.overallScore;
-        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${reportData._viabilityScore ?? aiRawScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+        const viabilityScore = reportData._viabilityScore ?? aiRawScore;
+        
+        reportData.scoringJourney = {
+          steps: [
+            { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
+            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? "Declining trend / mashup caps applied" : "No viability adjustments needed" },
+            { label: "Signal Floors & Ceilings", value: scoreBeforeComplexity, description: "Evidence-based bounds enforced per category" },
+            { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+          ],
+          finalScore: reportData.overallScore,
+          complexityPenalty,
+        };
+        
+        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${viabilityScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
 
 
         if (perplexityDominanceWarning && reportData.methodology) {
