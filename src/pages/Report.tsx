@@ -49,13 +49,7 @@ const sectionSubtitles: Record<string, string> = {
   "Growth Signals": "Signs this market is heating up",
 };
 
-/** Safely display a value — never show null, undefined, NaN, or N/A */
-const safeValue = (val: any): string => {
-  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Insufficient data";
-  }
-  return String(val);
-};
+import { safeValue } from "@/lib/safeValue";
 
 const Report = () => {
   const navigate = useNavigate();

@@ -1,34 +1,14 @@
 import jsPDF from "jspdf";
 import type { MockReportData, SignalCardData, CompetitorEntry, ChartPoint, MarketExploitMapData, CompetitorMatrixData, FounderDecisionData, ProofDashboardData, KeywordDemandData, AppStoreIntelligenceData, RecommendedStrategyData, KillShotAnalysisData, ScoreExplanationData } from "@/data/mockReport";
 import { sanitizeForPdf } from "./pdfSanitize";
+import { safeValue } from "./safeValue";
+import { PDF_COLORS as C, drawScoreRing as drawScoreRingHelper, drawSparkline as drawSparklineHelper } from "./pdfDrawHelpers";
 
 /** Sanitize + replace unknown/unavailable labels for PDF output */
 const safePdfText = (val: any): string => {
-  if (val === null || val === undefined || val === "N/A" || val === "n/a" || val === "NaN" || Number.isNaN(val)) {
-    return "Insufficient data";
-  }
-  let s = String(val);
-  const lower = s.toLowerCase();
-  if (lower === "unknown" || lower === "data unavailable") {
-    return "Insufficient data";
-  }
-  return sanitizeForPdf(s);
-};
-
-// ── Color palette (HSL → RGB approximations for jsPDF) ──
-const C = {
-  indigo: [79, 70, 229] as [number, number, number],     // primary
-  teal: [20, 184, 166] as [number, number, number],
-  bg: [245, 245, 250] as [number, number, number],
-  cardBg: [255, 255, 255] as [number, number, number],
-  text: [30, 41, 59] as [number, number, number],
-  muted: [100, 116, 139] as [number, number, number],
-  success: [34, 197, 94] as [number, number, number],
-  warning: [245, 158, 11] as [number, number, number],
-  danger: [239, 68, 68] as [number, number, number],
-  gold: [234, 179, 8] as [number, number, number],
-  border: [226, 232, 240] as [number, number, number],
-  white: [255, 255, 255] as [number, number, number],
+  const safe = safeValue(val);
+  if (safe === "Insufficient data") return safe;
+  return sanitizeForPdf(safe);
 };
 
 export function generateReportPdf(report: MockReportData) {
