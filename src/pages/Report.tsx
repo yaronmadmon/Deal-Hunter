@@ -32,6 +32,7 @@ import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBa
 import { CrossValidationCard } from "@/components/report/CrossValidationCard";
 import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
 import { ReportComparison } from "@/components/report/ReportComparison";
+import { ScoringJourney } from "@/components/report/ScoringJourney";
 import { ReviewIntelligence } from "@/components/report/ReviewIntelligence";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
@@ -368,6 +369,9 @@ const Report = () => {
 
         {/* Score Explanation */}
         {r.scoreExplanationData && <ScoreExplanation data={r.scoreExplanationData} score={r.overallScore} />}
+
+        {/* Scoring Journey — debug panel showing score transformation */}
+        {r.scoringJourney && <ScoringJourney journey={r.scoringJourney} />}
 
         {/* Score Breakdown */}
         <ScoreBreakdown

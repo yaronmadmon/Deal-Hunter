@@ -428,6 +428,11 @@ export interface MockReportData {
   };
   conflictingSignals?: { signalA: string; sourceA: string; signalB: string; sourceB: string; category: string }[];
   fallbackGaps?: { section: string; failedSource: string; status: string }[];
+  scoringJourney?: {
+    steps: { label: string; value: number; description: string }[];
+    finalScore: number;
+    complexityPenalty: number;
+  };
 }
 
 export const mockReport: MockReportData = {

@@ -206,11 +206,18 @@ async function twitterSearch(
       author_username: usersMap[t.author_id]?.username || "unknown",
       author_followers: usersMap[t.author_id]?.public_metrics?.followers_count || 0,
     }));
-    // Filter 10+ likes and sort by engagement
+    // Filter by engagement — raise threshold for hype-prone keywords
+    const hypeKeywords = ["crypto", "bitcoin", "blockchain", "web3", "nft", "ai agent", "trading bot", "defi", "token"];
+    const queryLower = query.toLowerCase();
+    const isHypeTopic = hypeKeywords.some(kw => queryLower.includes(kw));
+    const likeThreshold = isHypeTopic ? 5 : 1;
     const filtered = tweets
-      .filter((t: any) => t.like_count >= 1)
+      .filter((t: any) => t.like_count >= likeThreshold)
       .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
       .slice(0, 30);
+    if (isHypeTopic) {
+      console.log(`[TWITTER HYPE FILTER] Hype topic detected ("${queryLower}"). Like threshold raised to ${likeThreshold}. Kept ${filtered.length}/${tweets.length} tweets.`);
+    }
     return { tweets: filtered, total_fetched: tweets.length };
   } catch (e) {
     console.error("Twitter search error:", e);
@@ -3064,6 +3071,49 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // B2B NICHE MODE
+        // Non-consumer ideas (healthcare, compliance, enterprise, B2B)
+        // shouldn't be penalized for low GitHub/ProductHunt signals.
+        // Boost Growth floor using Serper/Perplexity demand instead.
+        // ══════════════════════════════════════════════════════════════
+        const b2bKeywords = ["medicaid", "medicare", "compliance", "enterprise", "b2b", "saas", "erp", "hipaa", 
+          "nursing home", "assisted living", "hospital", "insurance", "legal", "regulatory", "procurement",
+          "accounting", "payroll", "fleet", "logistics", "supply chain", "warehouse"];
+        const isB2BIdea = b2bKeywords.some(kw => (idea || "").toLowerCase().includes(kw));
+        
+        if (isB2BIdea && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          console.log(`[B2B NICHE MODE] Detected B2B/enterprise idea — adjusting Growth weighting`);
+          
+          const b2bGrowthEvidence = 
+            (rawData.serperTrends?.organic?.length ?? 0) +
+            (rawData.perplexityMarket?.citations?.length ?? 0) +
+            (rawData.perplexityVC?.citations?.length ?? 0) +
+            (rawData.serperNews?.organic?.length ?? 0);
+          
+          const growthEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Growth");
+          if (growthEntry && b2bGrowthEvidence >= 5) {
+            const b2bFloor = 10;
+            if (Number(growthEntry.value) < b2bFloor) {
+              const oldVal = Number(growthEntry.value);
+              growthEntry.value = b2bFloor;
+              const delta = b2bFloor - oldVal;
+              reportData.overallScore = (reportData.overallScore || 0) + delta;
+              console.warn(`[B2B NICHE BOOST] Growth raised from ${oldVal} to ${b2bFloor} using ${b2bGrowthEvidence} Serper/Perplexity signals`);
+              
+              const bScore = reportData.overallScore;
+              const bVerdict = bScore >= 75 ? "Build Now"
+                : bScore >= 55 ? "Build, But Niche Down"
+                : bScore >= 40 ? "Validate Further"
+                : "Do Not Build Yet";
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = bVerdict;
+              }
+              reportData.signalStrength = bScore >= 70 ? "Strong" : bScore >= 45 ? "Moderate" : "Weak";
+            }
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
         // found real products, flag inconsistency and lower confidence.
@@ -3264,10 +3314,24 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // SCORING JOURNEY LOG
+        // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
         // ══════════════════════════════════════════════════════════════
         const aiRawScore = reportData._aiRawScore ?? reportData.overallScore;
-        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${reportData._viabilityScore ?? aiRawScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+        const viabilityScore = reportData._viabilityScore ?? aiRawScore;
+        
+        reportData.scoringJourney = {
+          steps: [
+            { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
+            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? "Declining trend / mashup caps applied" : "No viability adjustments needed" },
+            { label: "Signal Floors & Ceilings", value: scoreBeforeComplexity, description: "Evidence-based bounds enforced per category" },
+            { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+          ],
+          finalScore: reportData.overallScore,
+          complexityPenalty,
+        };
+        
+        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${viabilityScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+
 
 
         if (perplexityDominanceWarning && reportData.methodology) {
