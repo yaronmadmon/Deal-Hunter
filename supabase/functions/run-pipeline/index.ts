@@ -1327,11 +1327,13 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       );
     }
 
-    // Run GitHub search — use SEMANTIC keywords
+    // Run GitHub search — use SHORT semantic keywords (not full idea text)
     const githubPromises: Promise<void>[] = [];
     const ghSearches = semanticQueries.length >= 3
       ? semanticQueries.slice(0, 3)
-      : [primaryKeywords];
+      : semanticQueries.length > 0
+        ? semanticQueries
+        : [primaryKeywords.split(/\s+/).slice(0, 5).join(" ")];
 
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
