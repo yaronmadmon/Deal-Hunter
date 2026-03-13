@@ -2836,6 +2836,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (viabilitySum !== reportData.overallScore) {
             console.warn(`[CONCEPT VIABILITY] Score adjusted: ${reportData.overallScore} -> ${viabilitySum}`);
             reportData.overallScore = viabilitySum;
+            reportData._viabilityScore = viabilitySum;
             
             const vScore = reportData.overallScore;
             const vVerdict = vScore >= 75 ? "Build Now"
