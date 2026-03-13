@@ -2907,7 +2907,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 sentEntry.value = 10;
                 viabilityCappedCategories.add("Sentiment");
               }
-              }
             }
           }
 
