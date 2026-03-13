@@ -2693,6 +2693,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // These checks enforce scoring rules in CODE, not just the prompt.
         // ══════════════════════════════════════════════════════════════
 
+        // Track which categories were capped by viability checks — floors must NOT override these
+        const viabilityCappedCategories: Set<string> = new Set();
+
         // 1. Enforce overallScore = sum of scoreBreakdown values
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown) && reportData.scoreBreakdown.length === 5) {
           const computedSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
@@ -2756,8 +2759,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Track which categories were capped by viability checks — floors must NOT override these
-        const viabilityCappedCategories = new Set<string>();
 
         // ══════════════════════════════════════════════════════════════
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
