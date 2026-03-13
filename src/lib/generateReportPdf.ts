@@ -445,10 +445,10 @@ export function generateReportPdf(report: MockReportData) {
       y += 5;
     }
 
-    // Growth line chart
+    // Growth line chart (simulated)
     if (card.lineChart && card.lineChart.length > 1) {
       checkPage(28);
-      drawSparkline(m + 2, y, cw * 0.6, 18, card.lineChart, C.success, "Growth — Search & Activity Trend");
+      drawSparkline(m + 2, y, cw * 0.6, 18, card.lineChart, C.success, "Simulated Growth Trend (illustrative only)");
       y += 26;
     }
 
