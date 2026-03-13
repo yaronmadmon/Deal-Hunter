@@ -1775,15 +1775,6 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
               rawData.competitorPricing.push(pricingData);
 
-              // Inject as verified pricing signal
-              evidenceBlock.pricingSignals.push({
-                signal: `${comp.name} Pricing (scraped)`,
-                value: `Plans: ${pricingData.planNames.join(", ") || "See page"}. Prices: ${pricingData.rawPrices.join(", ") || "Not extracted"}`,
-                source: "Firecrawl Pricing Scrape",
-                sourceUrl: pricingUrl,
-                tier: "verified",
-              });
-
               console.log(`[PRICING SCRAPE] "${comp.name}": Found ${priceMatches.length} prices, ${planMatches.length} plan names`);
               return pricingData;
             }
