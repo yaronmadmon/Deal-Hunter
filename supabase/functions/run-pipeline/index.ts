@@ -1162,7 +1162,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 10);
+          const r = await serperSearch(serperKey, `${serperKeywords} search trends growth`, "search", 30);
           rawData.serperTrends = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
