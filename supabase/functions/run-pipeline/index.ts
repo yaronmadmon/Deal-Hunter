@@ -957,6 +957,10 @@ Deno.serve(async (req) => {
     for (const pattern of uiTextPatterns) {
       trimmedIdea = trimmedIdea.replace(pattern, ' ');
     }
+    // Strip everything after common description separators (em-dash, pipe, double-dash)
+    trimmedIdea = trimmedIdea.replace(/\s*[—–|]\s*.{20,}$/, '').replace(/\s*--\s*.{20,}$/, '');
+    // Strip quoted wrapper if the entire idea is wrapped in quotes
+    trimmedIdea = trimmedIdea.replace(/^[""](.+)[""]$/, '$1');
     trimmedIdea = trimmedIdea.replace(/\s+/g, ' ').trim();
 
     if (trimmedIdea.length < 10) {
