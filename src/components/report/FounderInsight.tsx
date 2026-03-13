@@ -8,10 +8,10 @@ interface FounderInsightProps {
 }
 
 const blocks = [
-  { key: "marketReality" as const, title: "Market Reality", icon: TrendingUp, description: "Is there real demand?" },
-  { key: "competitivePressure" as const, title: "Competitive Pressure", icon: Users, description: "How crowded is it?" },
-  { key: "possibleGaps" as const, title: "Possible Gaps", icon: Lightbulb, description: "Where are the openings?" },
-  { key: "signalInterpretation" as const, title: "Signal Interpretation", icon: BarChart3, description: "What does it all mean?" },
+  { key: "marketReality" as const, title: "Market Reality", icon: TrendingUp, description: "Is there real demand?", color: "text-green-500 dark:text-green-400" },
+  { key: "competitivePressure" as const, title: "Competitive Pressure", icon: Users, description: "How crowded is it?", color: "text-blue-500 dark:text-blue-400" },
+  { key: "possibleGaps" as const, title: "Possible Gaps", icon: Lightbulb, description: "Where are the openings?", color: "text-purple-500 dark:text-purple-400" },
+  { key: "signalInterpretation" as const, title: "Signal Interpretation", icon: BarChart3, description: "What does it all mean?", color: "text-teal" },
 ];
 
 export function FounderInsight({ data }: FounderInsightProps) {
