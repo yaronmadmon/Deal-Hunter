@@ -27,6 +27,8 @@ import { FounderDecision } from "@/components/report/FounderDecision";
 import { KillShotAnalysis } from "@/components/report/KillShotAnalysis";
 import { ScoreExplanation } from "@/components/report/ScoreExplanation";
 import { DataQualitySummary } from "@/components/report/DataQualitySummary";
+import { ConflictingSignals } from "@/components/report/ConflictingSignals";
+import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBanner";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
