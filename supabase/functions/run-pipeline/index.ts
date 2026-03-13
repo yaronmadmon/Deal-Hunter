@@ -1272,7 +1272,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const ghResults: any[] = [];
     for (const kw of ghSearches) {
       githubPromises.push(
-        githubSearch(kw, 5)
+        githubSearch(kw, 30)
           .then(r => { ghResults.push(...r.repos); })
           .catch(e => console.error("GitHub error:", e))
       );
