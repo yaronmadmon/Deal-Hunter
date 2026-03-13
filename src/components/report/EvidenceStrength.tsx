@@ -164,7 +164,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
                 </ul>
               )}
 
-              <p className="text-[11px] text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 {availableCount}/{tier.items.length} signals available
               </p>
             </div>

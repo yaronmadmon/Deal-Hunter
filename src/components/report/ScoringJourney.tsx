@@ -28,7 +28,7 @@ export const ScoringJourney = ({ journey }: Props) => {
   return (
     <div className="bg-card border rounded-2xl p-6 mb-8">
       <h3 className="font-heading text-lg font-bold text-foreground mb-1">Scoring Journey</h3>
-      <p className="text-xs text-muted-foreground mb-5">How the final score was constructed step-by-step</p>
+      <p className="text-sm text-muted-foreground mb-5">How the final score was constructed step-by-step</p>
 
       {/* Step flow */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
