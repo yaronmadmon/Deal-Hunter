@@ -11,6 +11,19 @@ const sentimentConfig = {
   neutral: { icon: Minus, color: "text-muted-foreground", bg: "bg-muted" },
 };
 
+const statExplanations: Record<string, string> = {
+  "Market Signal Score": "Overall market viability based on all signals",
+  "Signal Score": "Overall market viability based on all signals",
+  "Data Points Analyzed": "Total verified data points collected across sources",
+  "Data Points": "Total verified data points collected across sources",
+  "Interest Change (90d)": "How search interest has shifted in the last 90 days",
+  "Revenue Potential (est.)": "Estimated annual revenue range for this market",
+  "Revenue Est.": "Estimated annual revenue range for this market",
+  "Competition Count": "Number of existing competitors identified",
+  "Competition count": "Number of existing competitors identified",
+  "Sources Analyzed": "Number of independent data sources used",
+};
+
 export const KeyStatsBar = ({ stats }: Props) => {
   if (!stats || stats.length === 0) return null;
 
@@ -20,6 +33,7 @@ export const KeyStatsBar = ({ stats }: Props) => {
         const s = stat.sentiment || "neutral";
         const config = sentimentConfig[s];
         const Icon = config.icon;
+        const explanation = statExplanations[stat.label] || "";
 
         return (
           <div
@@ -40,6 +54,11 @@ export const KeyStatsBar = ({ stats }: Props) => {
             <span className="text-[13px] text-muted-foreground leading-tight">
               {stat.label}
             </span>
+            {explanation && (
+              <span className="text-[11px] text-muted-foreground/60 leading-tight">
+                {explanation}
+              </span>
+            )}
           </div>
         );
       })}
