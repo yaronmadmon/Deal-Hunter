@@ -3070,7 +3070,54 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Perplexity dominance: flag low confidence if triggered
+        // ══════════════════════════════════════════════════════════════
+        // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
+        // Subtracts 0-15 points based on build complexity score.
+        // ══════════════════════════════════════════════════════════════
+        const scoreBeforeComplexity = reportData.overallScore || 0;
+        let complexityPenalty = 0;
+        if (reportData.buildComplexity) {
+          const cs = Number(reportData.buildComplexity.complexityScore) || 0;
+          // Map: 1-3 = 0, 4-6 = -5, 7-8 = -10, 9-10 = -15
+          if (cs >= 9) complexityPenalty = -15;
+          else if (cs >= 7) complexityPenalty = -10;
+          else if (cs >= 4) complexityPenalty = -5;
+          
+          // Enforce vibeCoderFeasibility label
+          if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";
+          else if (cs >= 7) reportData.buildComplexity.vibeCoderFeasibility = "Hard";
+          else if (cs >= 4) reportData.buildComplexity.vibeCoderFeasibility = "Moderate";
+          else reportData.buildComplexity.vibeCoderFeasibility = "Easy";
+
+          if (complexityPenalty !== 0) {
+            reportData.overallScore = Math.max(0, (reportData.overallScore || 0) + complexityPenalty);
+            console.warn(`[COMPLEXITY PENALTY] Score adjusted: ${scoreBeforeComplexity} -> ${reportData.overallScore} (complexity: ${cs}/10, penalty: ${complexityPenalty})`);
+          }
+
+          // Store penalty in report for UI
+          reportData.buildComplexity.scorePenalty = complexityPenalty;
+        }
+
+        // Apply verdict AFTER complexity penalty (final verdict determination)
+        {
+          const fs = reportData.overallScore || 0;
+          const fv = fs >= 75 ? "Build Now"
+            : fs >= 55 ? "Build, But Niche Down"
+            : fs >= 40 ? "Validate Further"
+            : "Do Not Build Yet";
+          if (reportData.founderDecision) {
+            reportData.founderDecision.decision = fv;
+          }
+          reportData.signalStrength = fs >= 70 ? "Strong" : fs >= 45 ? "Moderate" : "Weak";
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // SCORING JOURNEY LOG
+        // ══════════════════════════════════════════════════════════════
+        const aiRawScore = reportData._aiRawScore ?? reportData.overallScore;
+        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${reportData._viabilityScore ?? aiRawScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+
+
         if (perplexityDominanceWarning && reportData.methodology) {
           reportData.methodology.confidenceNote = `[LOW CONFIDENCE] Only ${tier1SourcesWithData} primary evidence sources returned data. Report relies heavily on AI-synthesized information. ${reportData.methodology.confidenceNote || ""}`.trim();
         }
