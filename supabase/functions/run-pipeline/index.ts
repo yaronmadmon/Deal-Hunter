@@ -568,7 +568,7 @@ async function validateCompetitors(
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
   // Pre-filter: reject names that look like article titles, not product names
-  const articlePatterns = /^(best |top \d|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is|why you|should you|complete guide)/i;
+  const articlePatterns = /^(the best |the top |best |top \d|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is |what are |what's |why you|should you|complete guide|which |where to find)/i;
   const maxNameWords = 8; // Real product names are rarely >8 words
   const preFiltered = competitors.filter(c => {
     const words = c.name.trim().split(/\s+/);
@@ -957,6 +957,10 @@ Deno.serve(async (req) => {
     for (const pattern of uiTextPatterns) {
       trimmedIdea = trimmedIdea.replace(pattern, ' ');
     }
+    // Strip everything after common description separators (em-dash, pipe, double-dash)
+    trimmedIdea = trimmedIdea.replace(/\s*[—–|]\s*.{20,}$/, '').replace(/\s*--\s*.{20,}$/, '');
+    // Strip quoted wrapper if the entire idea is wrapped in quotes
+    trimmedIdea = trimmedIdea.replace(/^[""](.+)[""]$/, '$1');
     trimmedIdea = trimmedIdea.replace(/\s+/g, ' ').trim();
 
     if (trimmedIdea.length < 10) {
@@ -1270,32 +1274,39 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         })
       );
 
-      // serper_reddit: Run multiple semantic queries to maximize Reddit discovery
+      // serper_reddit: Use BROAD queries for Reddit (site-scoped queries need generic terms)
       {
-        // Build 2-3 Reddit queries from semantic keywords: niche + problem-focused
         const redditQueries: string[] = [];
-        if (semanticQueries.length > 1) redditQueries.push(semanticQueries[1]); // niche query
-        if (semanticQueries.length > 2) redditQueries.push(semanticQueries[2]); // another niche or problem
-        if (rawData.queryStrategy?.problem?.[0]) redditQueries.push(rawData.queryStrategy.problem[0]); // problem query
-        if (redditQueries.length === 0) redditQueries.push(serperKeywords); // fallback
+        // Use the BROAD semantic queries (index 0) — these are generic category terms like "budgeting app"
+        if (semanticQueries.length > 0) redditQueries.push(semanticQueries[0]); // broad query
+        // Add problem-focused query — great for Reddit where people describe pain
+        if (rawData.queryStrategy?.problem?.[0]) redditQueries.push(rawData.queryStrategy.problem[0]);
+        // Add a broad keyword-only query as fallback
+        if (rawData.queryStrategy?.broad?.[1]) redditQueries.push(rawData.queryStrategy.broad[1]);
+        if (redditQueries.length === 0) redditQueries.push(serperKeywords);
         // Deduplicate
         const uniqueRedditQueries = [...new Set(redditQueries)].slice(0, 3);
-        console.log(`[SERPER REDDIT] Using ${uniqueRedditQueries.length} queries: ${JSON.stringify(uniqueRedditQueries)}`);
+        console.log(`[SERPER REDDIT] Using ${uniqueRedditQueries.length} broad queries: ${JSON.stringify(uniqueRedditQueries)}`);
 
         const redditAllResults: any[] = [];
         for (let rqi = 0; rqi < uniqueRedditQueries.length; rqi++) {
           const rq = uniqueRedditQueries[rqi];
           serperPromises.push(
             trackSource(rqi === 0 ? "serper_reddit" : `serper_reddit_${rqi}`, async () => {
-              const r = await serperSearch(serperKey, `${rq} site:reddit.com`, "search", 30);
-              redditAllResults.push(...r.organic);
-              return r.organic.length;
+              // Use the query WITHOUT site: restriction first, then filter reddit URLs
+              // site:reddit.com with specific terms often returns 0
+              const r = await serperSearch(serperKey, `${rq} reddit`, "search", 30);
+              const redditOnly = r.organic.filter((o: any) => 
+                (o.link || "").toLowerCase().includes("reddit.com")
+              );
+              // Also keep non-reddit results as they may reference reddit discussions
+              const allRelevant = redditOnly.length > 0 ? redditOnly : r.organic.slice(0, 10);
+              redditAllResults.push(...allRelevant);
+              return allRelevant.length;
             })
           );
         }
 
-        // After all serper promises resolve, merge and dedupe Reddit results
-        // We'll use a post-processing step (handled below after Promise.all)
         rawData._redditAllResults = redditAllResults;
       }
 
