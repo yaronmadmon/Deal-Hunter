@@ -2754,7 +2754,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             const reduction = Number(opportunityEntry.value) - 10;
             opportunityEntry.value = 10;
             reportData.overallScore = (reportData.overallScore || 0) - reduction;
-
+            viabilityCappedCategories.add("Opportunity");
             applyVerdictToReport(reportData);
           }
         }
