@@ -3423,7 +3423,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // Check: extremely high signal count from single source
         for (const [src, count] of Object.entries(sourceTotals)) {
-          if (count > 50) {
+          if (count > 80) {
             manipulationWarnings.push(`${src}: ${count} signals (unusually high volume)`);
           }
         }
