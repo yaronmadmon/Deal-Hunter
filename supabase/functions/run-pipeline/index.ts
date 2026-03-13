@@ -2756,8 +2756,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // Track which categories were capped by viability checks — floors must NOT override these
-        const viabilityCappedCategories: Set<string> = new Set();
 
         // ══════════════════════════════════════════════════════════════
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
