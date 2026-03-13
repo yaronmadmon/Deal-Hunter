@@ -49,7 +49,7 @@ export const ScoringJourney = ({ journey }: Props) => {
                 {delta !== 0 && (
                   <Badge
                     variant={delta > 0 ? "go" : "nogo"}
-                    className="text-[9px] px-1.5 py-0 mt-0.5"
+                    className="text-[11px] px-1.5 py-0 mt-0.5"
                   >
                     {delta > 0 ? `+${delta}` : delta}
                   </Badge>
