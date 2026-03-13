@@ -2551,7 +2551,7 @@ The AI-assisted build estimates MUST reflect realistic costs using modern AI cod
 Traditional dev costs should be 5-20x higher than AI-assisted costs. Skills for AI-assisted should include "AI code generation", "Prompt engineering", "API integration" rather than traditional dev roles.
 
 REVIEW INTELLIGENCE INSTRUCTIONS:
-- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. If fewer, set reviewIntelligence to null.
+- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. However, for niche markets with fewer than 5 validated competitors, lower this threshold to 6 complaints/reviews. If fewer than the applicable threshold, set reviewIntelligence to null.
 - Cluster complaints into recurring themes with frequency counts and severity ratings.
 - Evaluate each cluster as "High Opportunity" (exploitable gap), "Moderate Opportunity" (partial gap), or "Already Solved" (competitors have fixed this).
 - Surface top 3 attack angles from the highest-opportunity clusters.
