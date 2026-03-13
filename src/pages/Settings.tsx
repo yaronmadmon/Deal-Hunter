@@ -59,16 +59,11 @@ const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Notification prefs (stored locally for now)
-  const [emailNotifs, setEmailNotifs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_email_notifs") ?? "true"); } catch { return true; }
-  });
-  const [watchlistAlerts, setWatchlistAlerts] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_watchlist_alerts") ?? "true"); } catch { return true; }
-  });
-  const [weeklyDigest, setWeeklyDigest] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pref_weekly_digest") ?? "false"); } catch { return false; }
-  });
+  // Notification prefs (loaded from DB, fallback to localStorage)
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [watchlistAlerts, setWatchlistAlerts] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   // Billing
   const [creditLog, setCreditLog] = useState<CreditLogEntry[]>([]);
@@ -93,6 +88,18 @@ const Settings = () => {
     supabase.from("subscriptions").select("plan, status, current_period_end").eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => { if (data) setSubscription(data); });
+
+    // Load notification preferences from DB
+    (supabase.from("user_preferences" as any) as any).select("email_notifications, watchlist_alerts, weekly_digest")
+      .eq("user_id", user.id).maybeSingle()
+      .then(({ data }: { data: any }) => {
+        if (data) {
+          setEmailNotifs(data.email_notifications);
+          setWatchlistAlerts(data.watchlist_alerts);
+          setWeeklyDigest(data.weekly_digest);
+        }
+        setPrefsLoaded(true);
+      });
   }, [user]);
 
   const handleSaveProfile = async () => {
@@ -120,8 +127,28 @@ const Settings = () => {
     toast.info("Please contact support to delete your account.");
   };
 
-  const savePref = (key: string, value: boolean) => {
+  const savePref = async (key: string, value: boolean) => {
+    if (!user) return;
+    // Optimistically update localStorage as fallback
     localStorage.setItem(key, JSON.stringify(value));
+
+    // Upsert to database
+    const updates: Record<string, any> = {
+      user_id: user.id,
+      updated_at: new Date().toISOString(),
+      email_notifications: emailNotifs,
+      watchlist_alerts: watchlistAlerts,
+      weekly_digest: weeklyDigest,
+    };
+    if (key === "pref_email_notifs") updates.email_notifications = value;
+    if (key === "pref_watchlist_alerts") updates.watchlist_alerts = value;
+    if (key === "pref_weekly_digest") updates.weekly_digest = value;
+
+    const { error } = await (supabase.from("user_preferences" as any) as any).upsert(updates, { onConflict: "user_id" });
+    if (error) {
+      toast.error("Failed to save preference");
+      console.error("Preference save error:", error);
+    }
   };
 
   if (loading) return (

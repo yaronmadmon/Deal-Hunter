@@ -120,13 +120,13 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   doc.rect(0, 0, pw, 50, "F");
 
   doc.setFontSize(20); doc.setFont("helvetica", "bold"); setColor(C.indigo);
-  doc.text("Gold Rush", m, y);
+  doc.text(sanitizeForPdf("Gold Rush"), m, y);
   doc.setFontSize(10); setColor(C.muted);
-  doc.text("Startup Blueprint", m + 38, y);
+  doc.text(sanitizeForPdf("Startup Blueprint"), m + 38, y);
   y += 10;
 
   doc.setFontSize(12); doc.setFont("helvetica", "bold"); setColor(C.text);
-  const ideaLines = doc.splitTextToSize(idea, cw - 45);
+  const ideaLines = doc.splitTextToSize(sanitizeForPdf(idea), cw - 45);
   writeLines(ideaLines, m, 6);
 
   // Score ring in header
@@ -143,7 +143,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   if (hasSparkline || hasDonut) {
     checkPage(35);
     doc.setFontSize(10); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Market Context", m, y);
+    doc.text(sanitizeForPdf("Market Context"), m, y);
     y += 8;
 
     if (hasSparkline && hasDonut) {
@@ -169,9 +169,9 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   if (blueprint.reportSummary) {
     checkPage(16);
     doc.setFontSize(10); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Report-Linked Summary", m, y); y += 6;
+    doc.text(sanitizeForPdf("Report-Linked Summary"), m, y); y += 6;
     doc.setFontSize(9); doc.setFont("helvetica", "italic"); setColor(C.muted);
-    const sumLines = doc.splitTextToSize(blueprint.reportSummary, cw);
+    const sumLines = doc.splitTextToSize(sanitizeForPdf(blueprint.reportSummary), cw);
     writeLines(sumLines, m, 4.5); y += 4;
     drawHRule();
   }
@@ -199,16 +199,16 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
 
     checkPage(14);
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text(title, m, y);
+    doc.text(sanitizeForPdf(title), m, y);
     // Colored underline
     setDraw(color); doc.setLineWidth(0.5);
-    doc.line(m, y + 1.5, m + doc.getTextWidth(title), y + 1.5);
+    doc.line(m, y + 1.5, m + doc.getTextWidth(sanitizeForPdf(title)), y + 1.5);
     y += 7;
 
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(C.text);
 
     if (typeof content === "string") {
-      const lines = doc.splitTextToSize(content, cw);
+      const lines = doc.splitTextToSize(sanitizeForPdf(content), cw);
       writeLines(lines, m, 4.5);
       y += 5;
     } else {
@@ -219,7 +219,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
         doc.text(`${i + 1}.`, m + 2, y);
         doc.setFont("helvetica", "normal");
         setColor(C.text);
-        const lines = doc.splitTextToSize(item, cw - 10);
+        const lines = doc.splitTextToSize(sanitizeForPdf(item), cw - 10);
         writeLines(lines, m + 9, 4.5);
         y += 2;
       });
@@ -232,12 +232,12 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     drawHRule();
     checkPage(15 + ctx.scoreBreakdown.length * 7);
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Score Breakdown", m, y); y += 7;
+    doc.text(sanitizeForPdf("Score Breakdown"), m, y); y += 7;
 
     ctx.scoreBreakdown.forEach((item) => {
       checkPage(8);
       doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-      doc.text(item.label, m + 2, y);
+      doc.text(sanitizeForPdf(item.label), m + 2, y);
       const barX = m + 48; const barMaxW = cw - 68; const barH = 3.5;
       setFill(C.border); doc.roundedRect(barX, y - 2.5, barMaxW, barH, 1, 1, "F");
       const fillW = (item.value / 20) * barMaxW;

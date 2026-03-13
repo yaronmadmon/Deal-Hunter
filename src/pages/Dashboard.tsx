@@ -86,8 +86,23 @@ const Dashboard = () => {
       .then(({ data }) => { if (data) setAnalyses(data); });
   };
 
+  // Fetch data on mount and when window regains focus (returning from processing/report)
   useEffect(() => {
     fetchData();
+
+    const handleFocus = () => fetchData();
+    window.addEventListener("focus", handleFocus);
+
+    // Also listen for visibility change (tab switching)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchData();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [user]);
 
   const handleSubmit = async () => {
