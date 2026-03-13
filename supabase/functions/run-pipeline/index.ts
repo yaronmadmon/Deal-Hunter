@@ -3387,10 +3387,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           confidenceReasons.push(`Only ${uniqueSourceTypes.size} unique source types (-0.05)`);
         }
 
-        // --- Conflicting signals penalty ---
-        if (conflictingSignals.length > 0) {
+        // --- Conflicting signals penalty (uses early pre-check, full detection runs later) ---
+        if (earlyConflictCount > 0) {
           evidenceConfidence -= 0.05;
-          confidenceReasons.push(`${conflictingSignals.length} conflicting signal(s) detected (-0.05)`);
+          confidenceReasons.push(`${earlyConflictCount} conflicting signal(s) detected (-0.05)`);
         }
 
         // --- IMPROVEMENT #3: Source diversity check ---
