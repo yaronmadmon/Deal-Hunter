@@ -3071,6 +3071,49 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // B2B NICHE MODE
+        // Non-consumer ideas (healthcare, compliance, enterprise, B2B)
+        // shouldn't be penalized for low GitHub/ProductHunt signals.
+        // Boost Growth floor using Serper/Perplexity demand instead.
+        // ══════════════════════════════════════════════════════════════
+        const b2bKeywords = ["medicaid", "medicare", "compliance", "enterprise", "b2b", "saas", "erp", "hipaa", 
+          "nursing home", "assisted living", "hospital", "insurance", "legal", "regulatory", "procurement",
+          "accounting", "payroll", "fleet", "logistics", "supply chain", "warehouse"];
+        const isB2BIdea = b2bKeywords.some(kw => (idea || "").toLowerCase().includes(kw));
+        
+        if (isB2BIdea && reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          console.log(`[B2B NICHE MODE] Detected B2B/enterprise idea — adjusting Growth weighting`);
+          
+          const b2bGrowthEvidence = 
+            (rawData.serperTrends?.organic?.length ?? 0) +
+            (rawData.perplexityMarket?.citations?.length ?? 0) +
+            (rawData.perplexityVC?.citations?.length ?? 0) +
+            (rawData.serperNews?.organic?.length ?? 0);
+          
+          const growthEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Growth");
+          if (growthEntry && b2bGrowthEvidence >= 5) {
+            const b2bFloor = 10;
+            if (Number(growthEntry.value) < b2bFloor) {
+              const oldVal = Number(growthEntry.value);
+              growthEntry.value = b2bFloor;
+              const delta = b2bFloor - oldVal;
+              reportData.overallScore = (reportData.overallScore || 0) + delta;
+              console.warn(`[B2B NICHE BOOST] Growth raised from ${oldVal} to ${b2bFloor} using ${b2bGrowthEvidence} Serper/Perplexity signals`);
+              
+              const bScore = reportData.overallScore;
+              const bVerdict = bScore >= 75 ? "Build Now"
+                : bScore >= 55 ? "Build, But Niche Down"
+                : bScore >= 40 ? "Validate Further"
+                : "Do Not Build Yet";
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = bVerdict;
+              }
+              reportData.signalStrength = bScore >= 70 ? "Strong" : bScore >= 45 ? "Moderate" : "Weak";
+            }
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
         // found real products, flag inconsistency and lower confidence.
