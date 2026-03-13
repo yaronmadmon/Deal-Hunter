@@ -772,7 +772,7 @@ export function generateReportPdf(report: MockReportData) {
     if (mem.whereToWin?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("Where You Can Win", m, y); y += 5;
-      drawBulletList(mem.whereToWin, C.success, "→");
+      drawBulletList(mem.whereToWin, C.success, "->");
     }
     if (mem.attackAngle) {
       checkPage(12);
