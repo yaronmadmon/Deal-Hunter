@@ -621,7 +621,9 @@ export function generateReportPdf(report: MockReportData) {
   };
 
   // ── Helper: bullet list ──
-  const drawBulletList = (items: string[], bulletColor: [number, number, number], bullet = "▸") => {
+  const drawBulletList = (items: string[], bulletColor: [number, number, number], bullet = ">") => {
+    // Sanitize bullet for jsPDF (no Unicode symbols)
+    const safeBullet = bullet.replace(/[^\x20-\x7E]/g, "-");
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     items.forEach((item) => {
