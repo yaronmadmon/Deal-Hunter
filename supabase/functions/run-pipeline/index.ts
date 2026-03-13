@@ -698,6 +698,62 @@ async function productHuntSearch(
 ): Promise<{ products: any[] }> {
   // Strategy 1: PH GraphQL API — fetch top posts and filter by keyword
   if (apiKey) {
+    // Strategy 1a: Topic-based query (more targeted discovery)
+    try {
+      const topicSlug = topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const topicQuery = `
+        query {
+          topic(slug: "${topicSlug}") {
+            posts(first: 20) {
+              edges {
+                node {
+                  id
+                  name
+                  tagline
+                  votesCount
+                  createdAt
+                  url
+                  website
+                }
+              }
+            }
+          }
+        }
+      `;
+      const topicRes = await fetch("https://api.producthunt.com/v2/api/graphql", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query: topicQuery }),
+      });
+
+      if (topicRes.ok) {
+        const topicData = await topicRes.json();
+        if (!topicData.errors && topicData.data?.topic?.posts?.edges) {
+          const topicPosts = topicData.data.topic.posts.edges.map((e: any) => e.node);
+          if (topicPosts.length > 0) {
+            console.log(`[PRODUCT HUNT] Topic query "${topicSlug}" found ${topicPosts.length} products`);
+            return {
+              products: topicPosts.slice(0, first).map((p: any) => ({
+                name: p.name,
+                tagline: p.tagline,
+                upvotes: p.votesCount,
+                launchDate: p.createdAt,
+                url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+                website: p.website,
+              })),
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[PRODUCT HUNT] Topic query failed:", e);
+    }
+
+    // Strategy 1b: Global ranking with keyword filter (original approach)
     try {
       const query = `
         query {
@@ -730,7 +786,6 @@ async function productHuntSearch(
         const data = await res.json();
         if (!data.errors) {
           const allPosts = (data.data?.posts?.edges || []).map((e: any) => e.node);
-          // Filter by keyword match in name/tagline
           const kwLower = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
           const matched = allPosts.filter((p: any) =>
             kwLower.some((kw: string) =>
