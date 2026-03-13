@@ -266,12 +266,25 @@ const Report = () => {
           { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
+        {/* Perplexity Dominance Warning Banner */}
+        {r.pipelineMetrics?.perplexityDominanceBanner && (
+          <PerplexityWarningBanner 
+            percentage={r.pipelineMetrics.perplexityDominanceBanner.percentage} 
+            message={r.pipelineMetrics.perplexityDominanceBanner.message} 
+          />
+        )}
+
         {/* Data Quality Summary */}
         {r.dataQualitySummary && (
           <DataQualitySummary 
             data={r.dataQualitySummary} 
             relevanceFilter={r.pipelineMetrics?.relevanceFilter}
           />
+        )}
+
+        {/* Conflicting Evidence */}
+        {r.conflictingSignals && r.conflictingSignals.length > 0 && (
+          <ConflictingSignals signals={r.conflictingSignals} />
         )}
 
         {/* Founder Insight — plain-English interpretation */}
