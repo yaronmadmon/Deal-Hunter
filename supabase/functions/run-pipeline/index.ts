@@ -1512,6 +1512,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
               rawData.relevanceFilterStats.sourceContamination = contaminatedSources;
               if (contaminatedSources.length > 0) {
                 console.log(`[SOURCE CONTAMINATION] ${contaminatedSources.length} sources flagged: ${contaminatedSources.map(s => s.source).join(", ")}`);
+              }
             }
           } else {
             console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
