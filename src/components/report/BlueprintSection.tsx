@@ -1,17 +1,27 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText, Cpu, Rocket, ShieldAlert, CheckCircle, UserCheck, BadgeDollarSign } from "lucide-react";
+import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Download, Shield, FileText, Cpu, Rocket, ShieldAlert, CheckCircle, UserCheck, BadgeDollarSign, Loader2, Clock, Banknote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
 import type { BlueprintData } from "@/data/mockReport";
+
+interface BuildComplexityData {
+  mvpTimeline?: string;
+  estimatedCost?: string;
+  mvpScope?: string[];
+  techChallenges?: string[];
+  voiceApiCosts?: string;
+  onDeviceNote?: string;
+}
 
 interface Props {
   blueprint: BlueprintData;
   analysisId?: string;
   idea?: string;
   pdfContext?: BlueprintPdfContext;
+  buildComplexity?: BuildComplexityData;
 }
 
 const sections = [
