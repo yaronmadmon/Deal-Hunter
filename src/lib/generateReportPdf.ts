@@ -364,10 +364,10 @@ export function generateReportPdf(report: MockReportData) {
       drawSparkline(m + 2, y, cw * 0.6, 18, card.googleTrendsSparkline, C.indigo, "Google Trends — Search Interest (12 months)");
       y += 26;
     }
-    // Trend sparkline
+    // Trend sparkline (simulated)
     else if (card.sparkline && card.sparkline.length > 1) {
       checkPage(28);
-      drawSparkline(m + 2, y, cw * 0.6, 18, card.sparkline, C.teal, "Trend — Interest Over Time");
+      drawSparkline(m + 2, y, cw * 0.6, 18, card.sparkline, C.teal, "Simulated Trend (illustrative only)");
       y += 26;
     }
 
