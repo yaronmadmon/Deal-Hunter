@@ -757,7 +757,7 @@ export function generateReportPdf(report: MockReportData) {
     if (mem.competitorStrengths?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("What Competitors Do Well", m, y); y += 5;
-      drawBulletList(mem.competitorStrengths, C.success, "✓");
+      drawBulletList(mem.competitorStrengths, C.success, "+");
     }
     if (mem.topComplaints?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
