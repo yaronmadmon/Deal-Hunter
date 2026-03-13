@@ -172,18 +172,69 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
         {renderPhasing()}
       </div>
 
+      {/* Build Complexity Cost Estimates */}
+      {buildComplexity && (buildComplexity.estimatedCost || buildComplexity.mvpTimeline) && (
+        <Card className="md:col-span-2 mt-5 border-primary/20 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Banknote className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="font-heading font-semibold text-foreground">Build Cost Estimates</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {buildComplexity.mvpTimeline && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                  <Clock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">MVP Timeline</p>
+                    <p className="text-sm font-semibold text-foreground">{buildComplexity.mvpTimeline}</p>
+                  </div>
+                </div>
+              )}
+              {buildComplexity.estimatedCost && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-background border">
+                  <Banknote className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Estimated Cost Range</p>
+                    <p className="text-sm font-semibold text-foreground">{buildComplexity.estimatedCost}</p>
+                  </div>
+                </div>
+              )}
+              {buildComplexity.voiceApiCosts && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-background border sm:col-span-2">
+                  <DollarSign className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">API / Infrastructure Costs</p>
+                    <p className="text-sm font-semibold text-foreground">{buildComplexity.voiceApiCosts}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-center mt-8">
-        <Button variant="default" size="lg" onClick={() => {
+        <Button variant="default" size="lg" disabled={pdfGenerating} onClick={async () => {
+          setPdfGenerating(true);
           try {
             toast.info("Generating Blueprint PDF...");
+            await new Promise(resolve => setTimeout(resolve, 50));
             generateBlueprintPdf(blueprint, idea, pdfContext);
             toast.success("Blueprint PDF downloaded!");
           } catch (err) {
             console.error("Blueprint PDF generation failed:", err);
             toast.error("PDF generation failed. Please try again or use a desktop browser.");
+          } finally {
+            setPdfGenerating(false);
           }
         }}>
-          <Download className="mr-1" /> Download Blueprint PDF
+          {pdfGenerating ? (
+            <><Loader2 className="mr-1 w-4 h-4 animate-spin" /> Generating…</>
+          ) : (
+            <><Download className="mr-1" /> Download Blueprint PDF</>
+          )}
         </Button>
       </div>
 

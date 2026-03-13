@@ -445,6 +445,7 @@ const Report = () => {
             donut: r.signalCards.find(c => c.donut)?.donut,
             scoreBreakdown: r.scoreBreakdown,
           }}
+          buildComplexity={r.buildComplexity}
         />
       </main>
 
