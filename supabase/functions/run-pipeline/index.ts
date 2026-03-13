@@ -1321,7 +1321,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const hnPromises: Promise<void>[] = [];
     hnPromises.push(
       trackSource("hackernews", async () => {
-        const r = await hackerNewsSearch(primaryKeywords, 10);
+        const r = await hackerNewsSearch(primaryKeywords, 30);
         rawData.hackerNews = r;
         rawData.sources.push(...r.hits.map((h: any) => ({ url: h.hnUrl, type: "hackernews" })));
         return r.hits.length;
