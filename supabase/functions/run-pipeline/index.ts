@@ -3082,15 +3082,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               reportData.overallScore = (reportData.overallScore || 0) + delta;
               console.warn(`[B2B NICHE BOOST] Growth raised from ${oldVal} to ${b2bFloor} using ${b2bGrowthEvidence} Serper/Perplexity signals`);
               
-              const bScore = reportData.overallScore;
-              const bVerdict = bScore >= 75 ? "Build Now"
-                : bScore >= 55 ? "Build, But Niche Down"
-                : bScore >= 40 ? "Validate Further"
-                : "Do Not Build Yet";
-              if (reportData.founderDecision) {
-                reportData.founderDecision.decision = bVerdict;
-              }
-              reportData.signalStrength = bScore >= 70 ? "Strong" : bScore >= 45 ? "Moderate" : "Weak";
+              applyVerdictToReport(reportData);
             }
           }
         }
