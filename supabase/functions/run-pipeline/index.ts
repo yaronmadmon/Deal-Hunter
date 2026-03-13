@@ -208,9 +208,9 @@ async function twitterSearch(
     }));
     // Filter 10+ likes and sort by engagement
     const filtered = tweets
-      .filter((t: any) => t.like_count >= 10)
+      .filter((t: any) => t.like_count >= 1)
       .sort((a: any, b: any) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2))
-      .slice(0, 10);
+      .slice(0, 30);
     return { tweets: filtered, total_fetched: tweets.length };
   } catch (e) {
     console.error("Twitter search error:", e);
