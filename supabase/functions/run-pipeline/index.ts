@@ -2923,37 +2923,75 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Each scoring category has a max score (ceiling) based on how
         // many real signals were collected. No data = low ceiling.
         // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #1: EVIDENCE-WEIGHTED SIGNAL COUNTS
+        // Tier-weighted effective counts prevent large volumes of weak
+        // signals from inflating ceilings/floors.
+        // Tier 1 (Firecrawl, Serper verified) = 0.9 weight per signal
+        // Tier 2 (ProductHunt, GitHub, Twitter) = 0.7 weight per signal
+        // Tier 3 (Perplexity, HN) = 0.4 weight per signal
+        // ══════════════════════════════════════════════════════════════
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
-          // Count signals per category from rawData
-          const trendSignals =
+          const w = (count: number, tier: number): number => {
+            const weight = tier === 1 ? 0.9 : tier === 2 ? 0.7 : 0.4;
+            return count * weight;
+          };
+
+          // Raw counts (kept for logging)
+          const rawTrendSignals =
             (rawData.serperTrends?.organic?.length ?? 0) +
             (rawData.serperTrendsMonthly?.organic?.length ?? 0) +
             (rawData.serperNews?.organic?.length ?? 0) +
             (rawData.perplexityTrends?.citations?.length ?? 0);
-
-          const marketSignals =
+          const rawMarketSignals =
             (rawData.firecrawlAppStore?.results?.length ?? 0) +
             (rawData.serperCompetitors?.allResults?.length ?? 0) +
             (rawData.validatedCompetitors?.length ?? 0) +
             (rawData.perplexityMarket?.citations?.length ?? 0);
-
-          const sentimentSignals =
+          const rawSentimentSignals =
             (rawData.firecrawlReddit?.results?.length ?? 0) +
             (rawData.serperReddit?.organic?.length ?? 0) +
             (rawData.twitterSentiment?.tweets?.length ?? 0) +
             (rawData.hackerNews?.hits?.length ?? 0);
-
-          const growthSignals =
+          const rawGrowthSignals =
             (rawData.productHunt?.products?.length ?? 0) +
             (rawData.github?.repos?.length ?? 0) +
             (rawData.perplexityVC?.citations?.length ?? 0);
-
-          // INTEGRITY FIX: Opportunity uses its OWN unique signals, not demand+pain already counted elsewhere
-          const opportunitySignals =
+          const rawOpportunitySignals =
             (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
             (rawData.perplexityRevenue?.citations?.length ?? 0) +
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             (rawData.perplexityBuildCosts?.citations?.length ?? 0);
+
+          // Effective weighted counts
+          const trendSignals = Math.round(
+            w(rawData.serperTrends?.organic?.length ?? 0, 1) +
+            w(rawData.serperTrendsMonthly?.organic?.length ?? 0, 1) +
+            w(rawData.serperNews?.organic?.length ?? 0, 1) +
+            w(rawData.perplexityTrends?.citations?.length ?? 0, 3)
+          );
+          const marketSignals = Math.round(
+            w(rawData.firecrawlAppStore?.results?.length ?? 0, 1) +
+            w(rawData.serperCompetitors?.allResults?.length ?? 0, 1) +
+            w(rawData.validatedCompetitors?.length ?? 0, 1) +
+            w(rawData.perplexityMarket?.citations?.length ?? 0, 3)
+          );
+          const sentimentSignals = Math.round(
+            w(rawData.firecrawlReddit?.results?.length ?? 0, 1) +
+            w(rawData.serperReddit?.organic?.length ?? 0, 1) +
+            w(rawData.twitterSentiment?.tweets?.length ?? 0, 2) +
+            w(rawData.hackerNews?.hits?.length ?? 0, 3)
+          );
+          const growthSignals = Math.round(
+            w(rawData.productHunt?.products?.length ?? 0, 2) +
+            w(rawData.github?.repos?.length ?? 0, 2) +
+            w(rawData.perplexityVC?.citations?.length ?? 0, 3)
+          );
+          const opportunitySignals = Math.round(
+            w(rawData.serperAutoComplete?.suggestions?.length ?? 0, 1) +
+            w(rawData.perplexityRevenue?.citations?.length ?? 0, 3) +
+            w(rawData.perplexityChurn?.citations?.length ?? 0, 3) +
+            w(rawData.perplexityBuildCosts?.citations?.length ?? 0, 3)
+          );
 
           // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
           const computeCeiling = (signalCount: number, maxScore: number): number => {
@@ -2995,6 +3033,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             "Opportunity": computeFloor(opportunitySignals, categoryMaxMap["Opportunity"]),
           };
 
+          // Store raw vs effective for transparency
+          reportData._signalWeighting = {
+            raw: { trend: rawTrendSignals, market: rawMarketSignals, sentiment: rawSentimentSignals, growth: rawGrowthSignals, opportunity: rawOpportunitySignals },
+            effective: { trend: trendSignals, market: marketSignals, sentiment: sentimentSignals, growth: growthSignals, opportunity: opportunitySignals },
+          };
+
           let ceilingApplied = false;
           let floorApplied = false;
           for (const category of reportData.scoreBreakdown) {
@@ -3034,9 +3078,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             applyVerdictToReport(reportData);
           }
 
-          console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
-          console.log(`[SIGNAL CEILINGS] Trend: ${ceilingMap["Trend Momentum"]}, Market: ${ceilingMap["Market Saturation"]}, Sentiment: ${ceilingMap["Sentiment"]}, Growth: ${ceilingMap["Growth"]}, Opportunity: ${ceilingMap["Opportunity"]}`);
-          console.log(`[SIGNAL FLOORS] Trend: ${floorMap["Trend Momentum"]}, Market: ${floorMap["Market Saturation"]}, Sentiment: ${floorMap["Sentiment"]}, Growth: ${floorMap["Growth"]}, Opportunity: ${floorMap["Opportunity"]}`);
+          console.log(`[SIGNAL COUNTS RAW] Trend: ${rawTrendSignals}, Market: ${rawMarketSignals}, Sentiment: ${rawSentimentSignals}, Growth: ${rawGrowthSignals}, Opportunity: ${rawOpportunitySignals}`);
+          console.log(`[SIGNAL COUNTS EFFECTIVE] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
+          console.log(`[SIGNAL CEILINGS] ${JSON.stringify(ceilingMap)}`);
+          console.log(`[SIGNAL FLOORS] ${JSON.stringify(floorMap)}`);
         }
 
         // Capture score after signal bounds for journey log
@@ -3275,8 +3320,134 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           reportData.buildComplexity.scorePenalty = complexityPenalty;
         }
 
-        // Apply verdict AFTER complexity penalty (final verdict determination)
+        // Apply verdict AFTER complexity penalty
         applyVerdictToReport(reportData);
+
+        const scoreAfterComplexity = reportData.overallScore || 0;
+
+        // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #2 + #3 + #4: EVIDENCE CONFIDENCE SYSTEM
+        // Adjusts the final score when evidence quality is low.
+        // Combines: dataTier distribution, unique sources, source
+        // diversity, conflicting signals, and manipulation detection.
+        // ══════════════════════════════════════════════════════════════
+        let evidenceConfidence = 1.0;
+        const confidenceReasons: string[] = [];
+
+        // --- Compute dataTier distribution across all signal card metrics ---
+        let tierVerified = 0, tierReported = 0, tierEstimated = 0, tierTotal = 0;
+        (reportData.signalCards || []).forEach((card: any) => {
+          const allItems = [...(card.metrics || []), ...(card.competitors || [])];
+          allItems.forEach((m: any) => {
+            tierTotal++;
+            if (m.dataTier === "verified") tierVerified++;
+            else if (m.dataTier === "reported") tierReported++;
+            else tierEstimated++;
+          });
+        });
+
+        if (tierTotal > 0) {
+          const estimatedRatio = tierEstimated / tierTotal;
+          const reportedRatio = tierReported / tierTotal;
+          if (estimatedRatio > 0.5) {
+            evidenceConfidence -= 0.10;
+            confidenceReasons.push(`${Math.round(estimatedRatio * 100)}% of metrics are estimated (-0.10)`);
+          } else if (reportedRatio > 0.5) {
+            evidenceConfidence -= 0.05;
+            confidenceReasons.push(`${Math.round(reportedRatio * 100)}% of metrics are reported (-0.05)`);
+          }
+        }
+
+        // --- Unique source count ---
+        const uniqueSourceTypes = new Set<string>();
+        Object.entries(pipelineMetrics).forEach(([key, val]: [string, any]) => {
+          if (val.signalCount > 0) uniqueSourceTypes.add(key.split("_")[0]);
+        });
+        if (uniqueSourceTypes.size < 3) {
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`Only ${uniqueSourceTypes.size} unique source types (-0.05)`);
+        }
+
+        // --- Conflicting signals penalty ---
+        if (conflictingSignals.length > 0) {
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`${conflictingSignals.length} conflicting signal(s) detected (-0.05)`);
+        }
+
+        // --- IMPROVEMENT #3: Source diversity check ---
+        const sourceTotals: Record<string, number> = {};
+        let pipelineSignalTotal = 0;
+        Object.entries(pipelineMetrics).forEach(([key, val]: [string, any]) => {
+          const prefix = key.split("_")[0];
+          sourceTotals[prefix] = (sourceTotals[prefix] || 0) + (val.signalCount || 0);
+          pipelineSignalTotal += (val.signalCount || 0);
+        });
+        if (pipelineSignalTotal > 0) {
+          for (const [src, count] of Object.entries(sourceTotals)) {
+            if (count / pipelineSignalTotal > 0.70) {
+              evidenceConfidence -= 0.05;
+              confidenceReasons.push(`Source concentration: ${src} provides ${Math.round((count / pipelineSignalTotal) * 100)}% of signals (-0.05)`);
+              console.warn(`[SOURCE DIVERSITY] ${src} dominates with ${count}/${pipelineSignalTotal} signals (${Math.round((count / pipelineSignalTotal) * 100)}%)`);
+              break; // only penalize once
+            }
+          }
+        }
+
+        // --- IMPROVEMENT #4: Manipulation safety check ---
+        let signalIntegrityFlag = false;
+        const manipulationWarnings: string[] = [];
+
+        // Check: extremely high signal count from single source
+        for (const [src, count] of Object.entries(sourceTotals)) {
+          if (count > 50) {
+            manipulationWarnings.push(`${src}: ${count} signals (unusually high volume)`);
+          }
+        }
+
+        // Check: large volume of low-relevance signals (>60% of metrics are estimated)
+        if (tierTotal > 5 && tierEstimated / tierTotal > 0.6) {
+          manipulationWarnings.push(`${Math.round((tierEstimated / tierTotal) * 100)}% of ${tierTotal} metrics are estimated/unverified`);
+        }
+
+        // Check: repeated text in evidence (duplicate signals)
+        const evidenceTexts: string[] = [];
+        (reportData.signalCards || []).forEach((card: any) => {
+          (card.evidence || []).forEach((e: string) => evidenceTexts.push((e || "").toLowerCase().trim()));
+        });
+        const uniqueEvidence = new Set(evidenceTexts);
+        if (evidenceTexts.length > 5 && uniqueEvidence.size < evidenceTexts.length * 0.7) {
+          manipulationWarnings.push(`${evidenceTexts.length - uniqueEvidence.size} duplicate evidence strings detected`);
+        }
+
+        if (manipulationWarnings.length > 0) {
+          signalIntegrityFlag = true;
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`Signal integrity concerns: ${manipulationWarnings.length} issue(s) (-0.05)`);
+          console.warn(`[SIGNAL INTEGRITY] Flagged: ${manipulationWarnings.join("; ")}`);
+        }
+
+        // Clamp confidence to [0.6, 1.0]
+        evidenceConfidence = Math.max(0.6, Math.min(1.0, Math.round(evidenceConfidence * 100) / 100));
+
+        // Apply confidence multiplier to final score
+        const scoreBeforeConfidence = reportData.overallScore || 0;
+        if (evidenceConfidence < 1.0) {
+          reportData.overallScore = Math.round(scoreBeforeConfidence * evidenceConfidence);
+          console.warn(`[EVIDENCE CONFIDENCE] Score adjusted: ${scoreBeforeConfidence} × ${evidenceConfidence} = ${reportData.overallScore} | Reasons: ${confidenceReasons.join(", ")}`);
+          applyVerdictToReport(reportData);
+        } else {
+          console.log(`[EVIDENCE CONFIDENCE] Full confidence (1.0) — no adjustment`);
+        }
+
+        // Expose in report
+        reportData.evidenceConfidence = {
+          value: evidenceConfidence,
+          reasons: confidenceReasons,
+          dataTierDistribution: { verified: tierVerified, reported: tierReported, estimated: tierEstimated, total: tierTotal },
+          uniqueSourceTypes: [...uniqueSourceTypes],
+          manipulationWarnings,
+        };
+        reportData.signalIntegrityFlag = signalIntegrityFlag;
 
         // ══════════════════════════════════════════════════════════════
         // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
@@ -3288,16 +3459,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           steps: [
             { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
             { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
-            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-based floors & ceilings enforced per category" },
+            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-weighted floors & ceilings enforced per category" },
             { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
-            { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+            { label: "Complexity Penalty", value: scoreAfterComplexity, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+            { label: "Evidence Confidence", value: reportData.overallScore, description: evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment" },
           ],
           finalScore: reportData.overallScore,
           complexityPenalty,
+          evidenceConfidence,
           viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
-        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${reportData.overallScore}`);
+        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${scoreAfterComplexity} → Confidence (${evidenceConfidence}): ${reportData.overallScore}`);
 
 
 
