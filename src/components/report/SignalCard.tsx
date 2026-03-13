@@ -216,15 +216,13 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
 
         {card.donut && (
           <div className="h-20 flex items-center justify-center">
-            <ResponsiveContainer width={80} height={80}>
-              <RePieChart>
-                <Pie data={card.donut} dataKey="value" innerRadius={22} outerRadius={35} paddingAngle={3} strokeWidth={0}>
-                  <Cell fill="hsl(239 84% 67%)" />
-                  <Cell fill="hsl(220 14% 90%)" />
-                </Pie>
-                <Tooltip />
-              </RePieChart>
-            </ResponsiveContainer>
+            <RePieChart width={80} height={80}>
+              <Pie data={card.donut} dataKey="value" innerRadius={22} outerRadius={35} paddingAngle={3} strokeWidth={0}>
+                <Cell fill="hsl(239 84% 67%)" />
+                <Cell fill="hsl(220 14% 90%)" />
+              </Pie>
+              <Tooltip />
+            </RePieChart>
             <div className="text-[13px] text-muted-foreground ml-2 space-y-1">
               {card.donut.map(s => (
                 <div key={s.name} className="flex items-center gap-1.5">
