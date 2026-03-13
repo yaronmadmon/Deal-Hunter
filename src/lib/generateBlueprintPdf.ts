@@ -1,19 +1,7 @@
 import jsPDF from "jspdf";
 import type { BlueprintData, ChartPoint, DonutSegment, ScoreBreakdownItem } from "@/data/mockReport";
 import { sanitizeForPdf } from "./pdfSanitize";
-
-// ── Colors ──
-const C = {
-  indigo: [79, 70, 229] as [number, number, number],
-  teal: [20, 184, 166] as [number, number, number],
-  text: [30, 41, 59] as [number, number, number],
-  muted: [100, 116, 139] as [number, number, number],
-  success: [34, 197, 94] as [number, number, number],
-  gold: [234, 179, 8] as [number, number, number],
-  danger: [239, 68, 68] as [number, number, number],
-  border: [226, 232, 240] as [number, number, number],
-  white: [255, 255, 255] as [number, number, number],
-};
+import { PDF_COLORS as C, drawScoreRing as drawScoreRingHelper, drawSparkline as drawSparklineHelper } from "./pdfDrawHelpers";
 
 export interface BlueprintPdfContext {
   overallScore?: number;
@@ -43,47 +31,14 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   };
   const drawHRule = () => { checkPage(4); setDraw(C.border); doc.setLineWidth(0.3); doc.line(m, y, pw - m, y); y += 4; };
 
-  // ── Score Ring ──
+  // ── Score Ring (delegates to shared helper) ──
   const drawScoreRing = (cx: number, cy: number, radius: number, score: number, strength: string) => {
-    const startAngle = -90;
-    const endAngle = startAngle + (score / 100) * 360;
-    setDraw(C.border); doc.setLineWidth(2.5); doc.circle(cx, cy, radius, "S");
-    const color = score >= 70 ? C.success : score >= 40 ? C.gold : C.danger;
-    setDraw(color); doc.setLineWidth(3);
-    const steps = Math.max(2, Math.round((score / 100) * 60));
-    for (let i = 0; i < steps; i++) {
-      const a1 = (startAngle + (i / steps) * (endAngle - startAngle)) * (Math.PI / 180);
-      const a2 = (startAngle + ((i + 1) / steps) * (endAngle - startAngle)) * (Math.PI / 180);
-      doc.line(cx + radius * Math.cos(a1), cy + radius * Math.sin(a1), cx + radius * Math.cos(a2), cy + radius * Math.sin(a2));
-    }
-    doc.setFontSize(18); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text(`${score}`, cx, cy + 1, { align: "center" });
-    doc.setFontSize(7); setColor(C.muted); doc.text("/100", cx + 7, cy + 1, { align: "center" });
-    doc.setFontSize(7); setColor(color); doc.setFont("helvetica", "bold");
-    doc.text(strength, cx, cy + 5.5, { align: "center" });
+    drawScoreRingHelper(doc, cx, cy, radius, score, strength, C);
   };
 
-  // ── Sparkline ──
+  // ── Sparkline (delegates to shared helper) ──
   const drawSparkline = (x: number, yPos: number, w: number, h: number, points: ChartPoint[], color: [number, number, number], label?: string) => {
-    if (!points || points.length < 2) return;
-    const vals = points.map(p => p.value);
-    const minV = Math.min(...vals) * 0.8; const maxV = Math.max(...vals) * 1.1; const range = maxV - minV || 1;
-    setFill([248, 250, 252]); doc.roundedRect(x, yPos, w, h, 1.5, 1.5, "F");
-    setDraw([235, 238, 245]); doc.setLineWidth(0.15);
-    for (let i = 0; i <= 3; i++) doc.line(x + 1, yPos + (h / 3) * i, x + w - 1, yPos + (h / 3) * i);
-    setDraw(color); doc.setLineWidth(0.6);
-    const coords: [number, number][] = points.map((p, i) => [
-      x + 2 + ((w - 4) * i) / (points.length - 1),
-      yPos + h - 2 - ((p.value - minV) / range) * (h - 4),
-    ]);
-    for (let i = 0; i < coords.length - 1; i++) doc.line(coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1]);
-    setFill(color);
-    doc.circle(coords[0][0], coords[0][1], 0.6, "F");
-    doc.circle(coords[coords.length - 1][0], coords[coords.length - 1][1], 0.6, "F");
-    doc.setFontSize(5); setColor(C.muted); doc.setFont("helvetica", "normal");
-    const step = Math.max(1, Math.floor(points.length / 5));
-    for (let i = 0; i < points.length; i += step) doc.text(points[i].name, coords[i][0], yPos + h + 3, { align: "center" });
-    if (label) { doc.setFontSize(6); setColor(C.muted); doc.text(label, x, yPos - 1.5); }
+    drawSparklineHelper(doc, x, yPos, w, h, points, color, label, C);
   };
 
   // ── Donut ──
