@@ -205,16 +205,22 @@ const Report = () => {
     <div className="min-h-screen bg-background">
       <ReportNavigator />
 
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
-        <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
-        <div className="flex items-center gap-2">
+      <nav className="flex items-center justify-between px-4 sm:px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
+        <span className="font-heading text-xl font-bold text-foreground shrink-0">⛏️ Gold Rush</span>
+        <div className="flex items-center gap-1 sm:gap-2">
           <NotificationBell />
           <ThemeToggle />
-          <Button variant="outline" size="sm" onClick={() => navigate("/watchlist")}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/watchlist")} className="hidden sm:inline-flex">
             <Eye className="w-3.5 h-3.5 mr-1" /> Watchlist
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
+          <Button variant="outline" size="icon" className="sm:hidden w-8 h-8" onClick={() => navigate("/watchlist")}>
+            <Eye className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")} className="hidden sm:inline-flex">
             Dashboard
+          </Button>
+          <Button variant="outline" size="icon" className="sm:hidden w-8 h-8" onClick={() => navigate("/dashboard")}>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </nav>
