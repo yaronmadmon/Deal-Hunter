@@ -232,7 +232,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     drawHRule();
     checkPage(15 + ctx.scoreBreakdown.length * 7);
     doc.setFontSize(11); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Score Breakdown", m, y); y += 7;
+    doc.text(sanitizeForPdf("Score Breakdown"), m, y); y += 7;
 
     ctx.scoreBreakdown.forEach((item) => {
       checkPage(8);
