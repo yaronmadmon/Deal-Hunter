@@ -3319,8 +3319,134 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           reportData.buildComplexity.scorePenalty = complexityPenalty;
         }
 
-        // Apply verdict AFTER complexity penalty (final verdict determination)
+        // Apply verdict AFTER complexity penalty
         applyVerdictToReport(reportData);
+
+        const scoreAfterComplexity = reportData.overallScore || 0;
+
+        // ══════════════════════════════════════════════════════════════
+        // IMPROVEMENT #2 + #3 + #4: EVIDENCE CONFIDENCE SYSTEM
+        // Adjusts the final score when evidence quality is low.
+        // Combines: dataTier distribution, unique sources, source
+        // diversity, conflicting signals, and manipulation detection.
+        // ══════════════════════════════════════════════════════════════
+        let evidenceConfidence = 1.0;
+        const confidenceReasons: string[] = [];
+
+        // --- Compute dataTier distribution across all signal card metrics ---
+        let tierVerified = 0, tierReported = 0, tierEstimated = 0, tierTotal = 0;
+        (reportData.signalCards || []).forEach((card: any) => {
+          const allItems = [...(card.metrics || []), ...(card.competitors || [])];
+          allItems.forEach((m: any) => {
+            tierTotal++;
+            if (m.dataTier === "verified") tierVerified++;
+            else if (m.dataTier === "reported") tierReported++;
+            else tierEstimated++;
+          });
+        });
+
+        if (tierTotal > 0) {
+          const estimatedRatio = tierEstimated / tierTotal;
+          const reportedRatio = tierReported / tierTotal;
+          if (estimatedRatio > 0.5) {
+            evidenceConfidence -= 0.10;
+            confidenceReasons.push(`${Math.round(estimatedRatio * 100)}% of metrics are estimated (-0.10)`);
+          } else if (reportedRatio > 0.5) {
+            evidenceConfidence -= 0.05;
+            confidenceReasons.push(`${Math.round(reportedRatio * 100)}% of metrics are reported (-0.05)`);
+          }
+        }
+
+        // --- Unique source count ---
+        const uniqueSourceTypes = new Set<string>();
+        Object.entries(pipelineMetrics).forEach(([key, val]: [string, any]) => {
+          if (val.signalCount > 0) uniqueSourceTypes.add(key.split("_")[0]);
+        });
+        if (uniqueSourceTypes.size < 3) {
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`Only ${uniqueSourceTypes.size} unique source types (-0.05)`);
+        }
+
+        // --- Conflicting signals penalty ---
+        if (conflictingSignals.length > 0) {
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`${conflictingSignals.length} conflicting signal(s) detected (-0.05)`);
+        }
+
+        // --- IMPROVEMENT #3: Source diversity check ---
+        const sourceTotals: Record<string, number> = {};
+        let pipelineSignalTotal = 0;
+        Object.entries(pipelineMetrics).forEach(([key, val]: [string, any]) => {
+          const prefix = key.split("_")[0];
+          sourceTotals[prefix] = (sourceTotals[prefix] || 0) + (val.signalCount || 0);
+          pipelineSignalTotal += (val.signalCount || 0);
+        });
+        if (pipelineSignalTotal > 0) {
+          for (const [src, count] of Object.entries(sourceTotals)) {
+            if (count / pipelineSignalTotal > 0.70) {
+              evidenceConfidence -= 0.05;
+              confidenceReasons.push(`Source concentration: ${src} provides ${Math.round((count / pipelineSignalTotal) * 100)}% of signals (-0.05)`);
+              console.warn(`[SOURCE DIVERSITY] ${src} dominates with ${count}/${pipelineSignalTotal} signals (${Math.round((count / pipelineSignalTotal) * 100)}%)`);
+              break; // only penalize once
+            }
+          }
+        }
+
+        // --- IMPROVEMENT #4: Manipulation safety check ---
+        let signalIntegrityFlag = false;
+        const manipulationWarnings: string[] = [];
+
+        // Check: extremely high signal count from single source
+        for (const [src, count] of Object.entries(sourceTotals)) {
+          if (count > 50) {
+            manipulationWarnings.push(`${src}: ${count} signals (unusually high volume)`);
+          }
+        }
+
+        // Check: large volume of low-relevance signals (>60% of metrics are estimated)
+        if (tierTotal > 5 && tierEstimated / tierTotal > 0.6) {
+          manipulationWarnings.push(`${Math.round((tierEstimated / tierTotal) * 100)}% of ${tierTotal} metrics are estimated/unverified`);
+        }
+
+        // Check: repeated text in evidence (duplicate signals)
+        const evidenceTexts: string[] = [];
+        (reportData.signalCards || []).forEach((card: any) => {
+          (card.evidence || []).forEach((e: string) => evidenceTexts.push((e || "").toLowerCase().trim()));
+        });
+        const uniqueEvidence = new Set(evidenceTexts);
+        if (evidenceTexts.length > 5 && uniqueEvidence.size < evidenceTexts.length * 0.7) {
+          manipulationWarnings.push(`${evidenceTexts.length - uniqueEvidence.size} duplicate evidence strings detected`);
+        }
+
+        if (manipulationWarnings.length > 0) {
+          signalIntegrityFlag = true;
+          evidenceConfidence -= 0.05;
+          confidenceReasons.push(`Signal integrity concerns: ${manipulationWarnings.length} issue(s) (-0.05)`);
+          console.warn(`[SIGNAL INTEGRITY] Flagged: ${manipulationWarnings.join("; ")}`);
+        }
+
+        // Clamp confidence to [0.6, 1.0]
+        evidenceConfidence = Math.max(0.6, Math.min(1.0, Math.round(evidenceConfidence * 100) / 100));
+
+        // Apply confidence multiplier to final score
+        const scoreBeforeConfidence = reportData.overallScore || 0;
+        if (evidenceConfidence < 1.0) {
+          reportData.overallScore = Math.round(scoreBeforeConfidence * evidenceConfidence);
+          console.warn(`[EVIDENCE CONFIDENCE] Score adjusted: ${scoreBeforeConfidence} × ${evidenceConfidence} = ${reportData.overallScore} | Reasons: ${confidenceReasons.join(", ")}`);
+          applyVerdictToReport(reportData);
+        } else {
+          console.log(`[EVIDENCE CONFIDENCE] Full confidence (1.0) — no adjustment`);
+        }
+
+        // Expose in report
+        reportData.evidenceConfidence = {
+          value: evidenceConfidence,
+          reasons: confidenceReasons,
+          dataTierDistribution: { verified: tierVerified, reported: tierReported, estimated: tierEstimated, total: tierTotal },
+          uniqueSourceTypes: [...uniqueSourceTypes],
+          manipulationWarnings,
+        };
+        reportData.signalIntegrityFlag = signalIntegrityFlag;
 
         // ══════════════════════════════════════════════════════════════
         // SCORING JOURNEY LOG + STRUCTURED DATA FOR UI
@@ -3332,16 +3458,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           steps: [
             { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
             { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
-            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-based floors & ceilings enforced per category" },
+            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-weighted floors & ceilings enforced per category" },
             { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
-            { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+            { label: "Complexity Penalty", value: scoreAfterComplexity, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
+            { label: "Evidence Confidence", value: reportData.overallScore, description: evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment" },
           ],
           finalScore: reportData.overallScore,
           complexityPenalty,
+          evidenceConfidence,
           viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
-        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${reportData.overallScore}`);
+        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${scoreAfterComplexity} → Confidence (${evidenceConfidence}): ${reportData.overallScore}`);
 
 
 
