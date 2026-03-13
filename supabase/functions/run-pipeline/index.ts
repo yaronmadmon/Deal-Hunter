@@ -2910,16 +2910,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[CONCEPT VIABILITY] Score adjusted: ${reportData.overallScore} -> ${viabilitySum}`);
             reportData.overallScore = viabilitySum;
             reportData._viabilityScore = viabilitySum;
-            
-            const vScore = reportData.overallScore;
-            const vVerdict = vScore >= 75 ? "Build Now"
-              : vScore >= 55 ? "Build, But Niche Down"
-              : vScore >= 40 ? "Validate Further"
-              : "Do Not Build Yet";
-            if (reportData.founderDecision) {
-              reportData.founderDecision.decision = vVerdict;
-            }
-            reportData.signalStrength = vScore >= 70 ? "Strong" : vScore >= 45 ? "Moderate" : "Weak";
+            applyVerdictToReport(reportData);
           }
         }
 
