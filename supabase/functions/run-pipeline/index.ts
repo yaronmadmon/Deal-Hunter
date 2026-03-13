@@ -2625,8 +2625,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     });
 
     let reportData = null;
-    let overallScore = 0;
-    let signalStrength = "Weak";
 
     if (aiResponse.ok) {
       const aiResult = await aiResponse.json();
