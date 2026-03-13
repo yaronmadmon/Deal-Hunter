@@ -3192,12 +3192,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // If >50% of metrics in a scoring category are "estimated",
         // reduce that category's score by 30%.
         // ══════════════════════════════════════════════════════════════
-        const categoryToCardTitle: Record<string, string> = {
-          "Trend Momentum": "Trend Momentum",
-          "Market Saturation": "Market Saturation",
-          "Sentiment": "Sentiment & Pain Points",
-          "Growth": "Growth Signals",
-          "Opportunity": "Competitor Snapshot",
+        const categoryToCardTitle: Record<string, string[]> = {
+          "Trend Momentum": ["Trend Momentum"],
+          "Market Saturation": ["Market Saturation"],
+          "Sentiment": ["Sentiment & Pain Points"],
+          "Growth": ["Growth Signals"],
+          "Opportunity": ["Market Saturation", "Sentiment & Pain Points", "Growth Signals"],
         };
 
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
