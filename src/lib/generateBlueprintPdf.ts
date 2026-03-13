@@ -237,7 +237,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     ctx.scoreBreakdown.forEach((item) => {
       checkPage(8);
       doc.setFontSize(8); doc.setFont("helvetica", "normal"); setColor(C.text);
-      doc.text(item.label, m + 2, y);
+      doc.text(sanitizeForPdf(item.label), m + 2, y);
       const barX = m + 48; const barMaxW = cw - 68; const barH = 3.5;
       setFill(C.border); doc.roundedRect(barX, y - 2.5, barMaxW, barH, 1, 1, "F");
       const fillW = (item.value / 20) * barMaxW;

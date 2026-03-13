@@ -127,8 +127,22 @@ const Settings = () => {
     toast.info("Please contact support to delete your account.");
   };
 
-  const savePref = (key: string, value: boolean) => {
+  const savePref = async (key: string, value: boolean) => {
+    if (!user) return;
+    // Optimistically update localStorage as fallback
     localStorage.setItem(key, JSON.stringify(value));
+
+    // Upsert to database
+    const updates: Record<string, any> = { user_id: user.id, updated_at: new Date().toISOString() };
+    if (key === "pref_email_notifs") updates.email_notifications = value;
+    if (key === "pref_watchlist_alerts") updates.watchlist_alerts = value;
+    if (key === "pref_weekly_digest") updates.weekly_digest = value;
+
+    const { error } = await supabase.from("user_preferences").upsert(updates, { onConflict: "user_id" });
+    if (error) {
+      toast.error("Failed to save preference");
+      console.error("Preference save error:", error);
+    }
   };
 
   if (loading) return (

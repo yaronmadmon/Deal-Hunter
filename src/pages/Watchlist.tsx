@@ -104,6 +104,37 @@ const Watchlist = () => {
         return;
       }
 
+      // Subscribe to analysis completion to update watchlist scores
+      const channel = supabase
+        .channel(`watchlist-reanalyze-${newAnalysis.id}`)
+        .on("postgres_changes", {
+          event: "UPDATE",
+          schema: "public",
+          table: "analyses",
+          filter: `id=eq.${newAnalysis.id}`,
+        }, async (payload) => {
+          const row = payload.new as { status: string; overall_score: number | null };
+          if (row.status === "complete" && row.overall_score !== null) {
+            const scoreChange = item.current_score !== null
+              ? row.overall_score - item.current_score
+              : null;
+            await supabase
+              .from("watchlist")
+              .update({
+                current_score: row.overall_score,
+                score_change: scoreChange,
+              })
+              .eq("id", item.id);
+            // Refresh the list
+            fetchWatchlist();
+            supabase.removeChannel(channel);
+          }
+          if (row.status === "failed") {
+            supabase.removeChannel(channel);
+          }
+        })
+        .subscribe();
+
       toast.success("Re-analysis started! Redirecting to processing...");
       navigate(`/processing/${newAnalysis.id}`);
     } finally {
