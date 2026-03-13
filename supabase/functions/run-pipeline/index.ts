@@ -2723,19 +2723,28 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.perplexityChurn?.citations?.length ?? 0) +
             demandSignalCount + painSignalCount;
 
-          // Ceiling rules: 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
-          const computeCeiling = (signalCount: number): number => {
-            if (signalCount === 0) return 5;
-            if (signalCount <= 2) return 10;
-            if (signalCount <= 4) return 15;
-            return 20;
+          // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
+          const computeCeiling = (signalCount: number, maxScore: number): number => {
+            if (signalCount === 0) return Math.min(5, maxScore);
+            if (signalCount <= 2) return Math.min(10, maxScore);
+            if (signalCount <= 4) return Math.min(15, maxScore);
+            return maxScore;
           };
 
-          // Floor rules: 5-9 signals → min 8/20, 10+ signals → min 12/20
-          const computeFloor = (signalCount: number): number => {
-            if (signalCount >= 10) return 12;
-            if (signalCount >= 5) return 8;
+          // Floor rules: 5-9 signals → min 8, 10+ signals → min 12 (capped to category max)
+          const computeFloor = (signalCount: number, maxScore: number): number => {
+            if (signalCount >= 10) return Math.min(12, maxScore);
+            if (signalCount >= 5) return Math.min(8, maxScore);
             return 0;
+          };
+
+          // Category max scores (non-uniform weights)
+          const categoryMaxMap: Record<string, number> = {
+            "Trend Momentum": 25,
+            "Market Saturation": 20,
+            "Sentiment": 20,
+            "Growth": 15,
+            "Opportunity": 20,
           };
 
           const ceilingMap: Record<string, number> = {
