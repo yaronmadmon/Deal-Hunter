@@ -2649,6 +2649,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
 
+        // Store AI raw score for scoring journey log
+        reportData._aiRawScore = reportData.overallScore || 0;
+
         // ══════════════════════════════════════════════════════════════
         // DETERMINISTIC POST-AI VALIDATION
         // These checks enforce scoring rules in CODE, not just the prompt.
