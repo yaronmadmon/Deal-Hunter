@@ -370,6 +370,9 @@ const Report = () => {
         {/* Score Explanation */}
         {r.scoreExplanationData && <ScoreExplanation data={r.scoreExplanationData} score={r.overallScore} />}
 
+        {/* Scoring Journey — debug panel showing score transformation */}
+        {r.scoringJourney && <ScoringJourney journey={r.scoringJourney} />}
+
         {/* Score Breakdown */}
         <ScoreBreakdown
           breakdown={r.scoreBreakdown}
