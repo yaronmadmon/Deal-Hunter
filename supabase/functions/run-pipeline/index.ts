@@ -757,7 +757,7 @@ async function productHuntSearch(
     try {
       const query = `
         query {
-          posts(order: RANKING, first: 20) {
+          posts(order: RANKING, first: 50) {
             edges {
               node {
                 id
