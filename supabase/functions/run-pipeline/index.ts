@@ -3825,7 +3825,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       supabase.from("analytics_events").insert({
         event_name: "analysis_completed",
         user_id: pipelineUserId,
-        metadata: { analysis_id: analysisId, score: overallScore, signal_strength: signalStrength },
+        metadata: { analysis_id: analysisId, score: finalOverallScore, signal_strength: finalSignalStrength },
       }).then(() => {});
     }
 
