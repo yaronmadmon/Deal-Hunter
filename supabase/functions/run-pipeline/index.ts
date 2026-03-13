@@ -2536,6 +2536,19 @@ Produce the JSON report with this EXACT structure:
   }
 }
 
+BUILD COMPLEXITY SCORING INSTRUCTIONS:
+- complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
+- vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
+- complexityFactors: List the specific factors that increase complexity for THIS idea.
+
+REVIEW INTELLIGENCE INSTRUCTIONS:
+- Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. If fewer, set reviewIntelligence to null.
+- Cluster complaints into recurring themes with frequency counts and severity ratings.
+- Evaluate each cluster as "High Opportunity" (exploitable gap), "Moderate Opportunity" (partial gap), or "Already Solved" (competitors have fixed this).
+- Surface top 3 attack angles from the highest-opportunity clusters.
+- matrixData: Assign each theme a frequency (0-100 scale) and intensity (0-100 emotional intensity scale). Quadrants: frequency>=50 & intensity>=50 = "Critical Pain", frequency>=50 & intensity<50 = "Minor Annoyance", frequency<50 & intensity>=50 = "Hidden Gem", frequency<50 & intensity<50 = "Loved Feature".
+- differentiationStatements: Generate 3 specific positioning statements the founder can use, e.g. "Position as the only X that solves Y" or "Own the Z dimension where [competitor] scores lowest".
+
 CRITICAL REMINDERS:
 - If evidence does not exist for a section, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "Insufficient data — no evidence collected for this metric."
 - Never present estimated data as if from a real source.
