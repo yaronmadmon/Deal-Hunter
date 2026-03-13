@@ -8,10 +8,10 @@ interface FounderInsightProps {
 }
 
 const blocks = [
-  { key: "marketReality" as const, title: "Market Reality", icon: TrendingUp, description: "Is there real demand?" },
-  { key: "competitivePressure" as const, title: "Competitive Pressure", icon: Users, description: "How crowded is it?" },
-  { key: "possibleGaps" as const, title: "Possible Gaps", icon: Lightbulb, description: "Where are the openings?" },
-  { key: "signalInterpretation" as const, title: "Signal Interpretation", icon: BarChart3, description: "What does it all mean?" },
+  { key: "marketReality" as const, title: "Market Reality", icon: TrendingUp, description: "Is there real demand?", color: "text-green-500 dark:text-green-400" },
+  { key: "competitivePressure" as const, title: "Competitive Pressure", icon: Users, description: "How crowded is it?", color: "text-blue-500 dark:text-blue-400" },
+  { key: "possibleGaps" as const, title: "Possible Gaps", icon: Lightbulb, description: "Where are the openings?", color: "text-purple-500 dark:text-purple-400" },
+  { key: "signalInterpretation" as const, title: "Signal Interpretation", icon: BarChart3, description: "What does it all mean?", color: "text-teal" },
 ];
 
 export function FounderInsight({ data }: FounderInsightProps) {
@@ -35,7 +35,7 @@ export function FounderInsight({ data }: FounderInsightProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
+          <p className="text-[15px] text-foreground/90 leading-relaxed whitespace-pre-line">
             {data.summary}
           </p>
         </CardContent>
@@ -48,17 +48,17 @@ export function FounderInsight({ data }: FounderInsightProps) {
           Opportunity Interpretation
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {blocks.map(({ key, title, icon: Icon, description }) => {
+          {blocks.map(({ key, title, icon: Icon, description, color }) => {
             const content = data[key];
             if (!content) return null;
             return (
-              <Card key={key} className="shadow-sm">
-                <CardContent className="p-4">
+              <Card key={key} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-primary" />
+                    <Icon className={`w-4 h-4 ${color}`} />
                     <h4 className="font-heading text-sm font-bold text-foreground">{title}</h4>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mb-2">{description}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{description}</p>
                   <p className="text-sm text-foreground/85 leading-relaxed">{content}</p>
                 </CardContent>
               </Card>
@@ -70,7 +70,7 @@ export function FounderInsight({ data }: FounderInsightProps) {
       {/* Disclaimer */}
       <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
         <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           This interpretation summarizes patterns observed in publicly available data and competitor signals. It is intended to help readers understand the market landscape and does not predict the success of any specific product.
         </p>
       </div>

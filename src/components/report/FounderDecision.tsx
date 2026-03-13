@@ -25,7 +25,7 @@ export const FounderDecision = ({ data }: Props) => {
   const config = decisionConfig[data.decision] || decisionConfig["Validate Further"];
 
   return (
-    <div className="bg-card border rounded-2xl p-8 mb-8">
+    <div className="bg-card border-2 border-primary/20 rounded-2xl p-8 mb-8 shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -45,7 +45,7 @@ export const FounderDecision = ({ data }: Props) => {
           <span className="text-2xl">{config.icon}</span>
           <h3 className={`font-heading text-lg font-bold ${config.color}`}>{data.decision}</h3>
         </div>
-        <p className="text-sm text-foreground leading-relaxed">{data.reasoning}</p>
+        <p className="text-[15px] text-foreground leading-relaxed">{data.reasoning}</p>
       </div>
 
       {/* Why */}

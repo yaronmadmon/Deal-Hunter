@@ -125,7 +125,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
         </div>
         <div>
           <h2 className="font-heading text-xl font-bold text-foreground">Evidence Strength</h2>
-          <p className="text-[13px] text-muted-foreground italic">Signals ranked by reliability tier</p>
+          <p className="text-sm text-muted-foreground italic">Signals ranked by reliability tier</p>
         </div>
       </div>
 
@@ -138,12 +138,12 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
             <div key={tier.tier} className="bg-secondary/30 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-1">
                 <Icon className={`w-4 h-4 ${tierColors[tier.tier]}`} />
-                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${tierBadgeVariants[tier.tier]}`}>
+                <Badge variant="outline" className={`text-xs px-1.5 py-0 ${tierBadgeVariants[tier.tier]}`}>
                   Tier {tier.tier}
                 </Badge>
               </div>
               <h3 className="font-semibold text-sm text-foreground mb-0.5">{tier.title}</h3>
-              <p className="text-[11px] text-muted-foreground mb-3">{tier.description}</p>
+              <p className="text-xs text-muted-foreground mb-3">{tier.description}</p>
 
               {tier.items.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">No signals collected</p>
@@ -164,7 +164,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
                 </ul>
               )}
 
-              <p className="text-[11px] text-muted-foreground mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 {availableCount}/{tier.items.length} signals available
               </p>
             </div>

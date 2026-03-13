@@ -28,7 +28,7 @@ export const ScoringJourney = ({ journey }: Props) => {
   return (
     <div className="bg-card border rounded-2xl p-6 mb-8">
       <h3 className="font-heading text-lg font-bold text-foreground mb-1">Scoring Journey</h3>
-      <p className="text-xs text-muted-foreground mb-5">How the final score was constructed step-by-step</p>
+      <p className="text-sm text-muted-foreground mb-5">How the final score was constructed step-by-step</p>
 
       {/* Step flow */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
@@ -43,13 +43,13 @@ export const ScoringJourney = ({ journey }: Props) => {
                 <span className={`font-heading text-2xl font-bold ${color}`}>
                   {step.value}
                 </span>
-                <span className="text-[10px] text-muted-foreground text-center max-w-[80px] leading-tight">
+                <span className="text-xs text-muted-foreground text-center max-w-[80px] leading-tight">
                   {step.label}
                 </span>
                 {delta !== 0 && (
                   <Badge
                     variant={delta > 0 ? "go" : "nogo"}
-                    className="text-[9px] px-1.5 py-0 mt-0.5"
+                    className="text-[11px] px-1.5 py-0 mt-0.5"
                   >
                     {delta > 0 ? `+${delta}` : delta}
                   </Badge>
