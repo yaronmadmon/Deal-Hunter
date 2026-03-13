@@ -3041,6 +3041,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           console.log(`[SIGNAL FLOORS] Trend: ${floorMap["Trend Momentum"]}, Market: ${floorMap["Market Saturation"]}, Sentiment: ${floorMap["Sentiment"]}, Growth: ${floorMap["Growth"]}, Opportunity: ${floorMap["Opportunity"]}`);
         }
 
+        // Capture score after signal bounds for journey log
+        const scoreAfterSignalBounds = reportData.overallScore || 0;
+
         // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
