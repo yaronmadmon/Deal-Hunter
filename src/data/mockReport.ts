@@ -377,6 +377,10 @@ export interface MockReportData {
   scoreExplanationData?: ScoreExplanationData;
   dataQualitySummary?: { sourceName: string; dataTier: string; signalCount: string; reliabilityNote: string }[];
   founderInsight?: FounderInsightData;
+  pipelineMetrics?: {
+    relevanceFilter?: { scored?: number; filtered?: number; discardedItems?: { source: string; title: string; score: number }[] } | null;
+    [key: string]: any;
+  };
 }
 
 export const mockReport: MockReportData = {
