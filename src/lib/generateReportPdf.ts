@@ -606,7 +606,7 @@ export function generateReportPdf(report: MockReportData) {
 
   // ── Helper: Section title ──
   const drawSectionTitle = (title: string, subtitle?: string) => {
-    checkPage(15);
+    checkPage(20);
     drawHRule();
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
@@ -618,7 +618,7 @@ export function generateReportPdf(report: MockReportData) {
       setColor(C.muted);
       doc.text(subtitle, m + doc.getTextWidth(title) + 3, y);
     }
-    y += 7;
+    y += 8;
   };
 
   // ── Helper: bullet list ──
