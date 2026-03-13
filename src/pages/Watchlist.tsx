@@ -82,7 +82,7 @@ const Watchlist = () => {
 
       // Kick off pipeline
       try {
-        const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+        const { error: pipelineError } = await supabase.functions.invoke("start-pipeline", {
           body: { analysisId: newAnalysis.id, idea: item.idea },
         });
 

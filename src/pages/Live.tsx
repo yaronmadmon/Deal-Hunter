@@ -293,7 +293,7 @@ const Live = () => {
     setCredits((c) => Math.max(0, c - 1));
 
     try {
-      const { error: pipelineError } = await supabase.functions.invoke("run-pipeline", {
+      const { error: pipelineError } = await supabase.functions.invoke("start-pipeline", {
         body: { analysisId: data.id, idea: ideaText },
       });
 
