@@ -704,7 +704,7 @@ async function productHuntSearch(
       const topicQuery = `
         query {
           topic(slug: "${topicSlug}") {
-            posts(first: 20) {
+            posts(first: 50) {
               edges {
                 node {
                   id
