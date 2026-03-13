@@ -690,137 +690,171 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 1, delayMs = 2000): 
 
 // ── Product Hunt helper ─────────────────────────────────────────────
 // Strategy 1: PH GraphQL API (primary). Strategy 2: Serper scraper (fallback).
+
+function phFuzzyMatch(text: string, keywords: string[]): number {
+  const lower = (text || "").toLowerCase();
+  let score = 0;
+  for (const kw of keywords) {
+    if (lower.includes(kw)) score++;
+  }
+  return score;
+}
+
+function generateTopicSlugs(topic: string): string[] {
+  const words = topic.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+  const slugs = new Set<string>();
+  // Full slug
+  slugs.add(words.join("-"));
+  // Individual meaningful words as topic slugs
+  const stopwords = new Set(["app", "tool", "platform", "software", "the", "for", "and", "with", "best", "top", "new"]);
+  for (const w of words) {
+    if (!stopwords.has(w) && w.length > 3) slugs.add(w);
+  }
+  // Pairs of consecutive words
+  for (let i = 0; i < words.length - 1; i++) {
+    if (!stopwords.has(words[i]) && !stopwords.has(words[i + 1])) {
+      slugs.add(`${words[i]}-${words[i + 1]}`);
+    }
+  }
+  return Array.from(slugs).slice(0, 8);
+}
+
 async function productHuntSearch(
   apiKey: string,
   topic: string,
   first = 10,
   serperKey?: string | null
 ): Promise<{ products: any[] }> {
-  // Strategy 1: PH GraphQL API — fetch top posts and filter by keyword
+  const allProducts: any[] = [];
+  const seenNames = new Set<string>();
+
+  const addProduct = (p: any) => {
+    const key = (p.name || "").toLowerCase().trim();
+    if (key && !seenNames.has(key)) {
+      seenNames.add(key);
+      allProducts.push(p);
+    }
+  };
+
+  const mapPost = (p: any) => ({
+    name: p.name,
+    tagline: p.tagline,
+    upvotes: p.votesCount,
+    launchDate: p.createdAt,
+    url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
+    website: p.website,
+  });
+
+  // Strategy 1a: Try multiple topic slugs
   if (apiKey) {
-    // Strategy 1a: Topic-based query (more targeted discovery)
-    try {
-      const topicSlug = topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      const topicQuery = `
-        query {
-          topic(slug: "${topicSlug}") {
-            posts(first: 50) {
-              edges {
-                node {
-                  id
-                  name
-                  tagline
-                  votesCount
-                  createdAt
-                  url
-                  website
+    const slugs = generateTopicSlugs(topic);
+    console.log(`[PRODUCT HUNT] Trying ${slugs.length} topic slugs: ${slugs.join(", ")}`);
+
+    const topicPromises = slugs.map(async (slug) => {
+      try {
+        const topicQuery = `
+          query {
+            topic(slug: "${slug}") {
+              posts(first: 50) {
+                edges {
+                  node { id name tagline votesCount createdAt url website }
                 }
               }
             }
           }
-        }
-      `;
-      const topicRes = await fetch("https://api.producthunt.com/v2/api/graphql", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ query: topicQuery }),
-      });
+        `;
+        const topicRes = await fetch("https://api.producthunt.com/v2/api/graphql", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ query: topicQuery }),
+        });
 
-      if (topicRes.ok) {
-        const topicData = await topicRes.json();
-        if (!topicData.errors && topicData.data?.topic?.posts?.edges) {
-          const topicPosts = topicData.data.topic.posts.edges.map((e: any) => e.node);
-          if (topicPosts.length > 0) {
-            console.log(`[PRODUCT HUNT] Topic query "${topicSlug}" found ${topicPosts.length} products`);
-            return {
-              products: topicPosts.slice(0, first).map((p: any) => ({
-                name: p.name,
-                tagline: p.tagline,
-                upvotes: p.votesCount,
-                launchDate: p.createdAt,
-                url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
-                website: p.website,
-              })),
-            };
+        if (topicRes.ok) {
+          const topicData = await topicRes.json();
+          if (!topicData.errors && topicData.data?.topic?.posts?.edges) {
+            const posts = topicData.data.topic.posts.edges.map((e: any) => e.node);
+            console.log(`[PRODUCT HUNT] Topic "${slug}" returned ${posts.length} posts`);
+            return posts;
           }
+        } else {
+          await topicRes.text(); // consume body
+        }
+        return [];
+      } catch {
+        return [];
+      }
+    });
+
+    const topicResults = await Promise.all(topicPromises);
+    const keywords = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+    
+    for (const posts of topicResults) {
+      // For topic-matched posts, apply light fuzzy filter (at least 1 keyword match)
+      for (const p of posts) {
+        const score = phFuzzyMatch(`${p.name} ${p.tagline}`, keywords);
+        if (score >= 1) {
+          addProduct(mapPost(p));
         }
       }
-    } catch (e) {
-      console.warn("[PRODUCT HUNT] Topic query failed:", e);
     }
 
-    // Strategy 1b: Global ranking with keyword filter (original approach)
-    try {
-      const query = `
-        query {
-          posts(order: RANKING, first: 50) {
-            edges {
-              node {
-                id
-                name
-                tagline
-                votesCount
-                createdAt
-                url
-                website
+    if (allProducts.length > 0) {
+      console.log(`[PRODUCT HUNT] Topic queries found ${allProducts.length} relevant products`);
+    }
+
+    // Strategy 1b: Global ranking with fuzzy keyword filter
+    if (allProducts.length < first) {
+      try {
+        const query = `
+          query {
+            posts(order: RANKING, first: 50) {
+              edges {
+                node { id name tagline votesCount createdAt url website }
               }
             }
           }
-        }
-      `;
-      const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ query }),
-      });
+        `;
+        const res = await fetch("https://api.producthunt.com/v2/api/graphql", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ query }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (!data.errors) {
-          const allPosts = (data.data?.posts?.edges || []).map((e: any) => e.node);
-          const kwLower = topic.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-          const matched = allPosts.filter((p: any) =>
-            kwLower.some((kw: string) =>
-              (p.name || "").toLowerCase().includes(kw) ||
-              (p.tagline || "").toLowerCase().includes(kw)
-            )
-          );
-
-          if (matched.length > 0) {
-            console.log(`[PRODUCT HUNT] API found ${matched.length} products for "${topic}"`);
-            return {
-              products: matched.slice(0, first).map((p: any) => ({
-                name: p.name,
-                tagline: p.tagline,
-                upvotes: p.votesCount,
-                launchDate: p.createdAt,
-                url: p.url || `https://www.producthunt.com/posts/${(p.name || "").toLowerCase().replace(/\s+/g, "-")}`,
-                website: p.website,
-              })),
-            };
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.errors) {
+            const globalPosts = (data.data?.posts?.edges || []).map((e: any) => e.node);
+            const scored = globalPosts
+              .map((p: any) => ({ post: p, score: phFuzzyMatch(`${p.name} ${p.tagline}`, keywords) }))
+              .filter((s: any) => s.score >= 1)
+              .sort((a: any, b: any) => b.score - a.score);
+            
+            for (const { post } of scored) {
+              addProduct(mapPost(post));
+            }
+            console.log(`[PRODUCT HUNT] Global ranking matched ${scored.length} of ${globalPosts.length} posts`);
+          } else {
+            console.error("[PRODUCT HUNT] GraphQL errors:", JSON.stringify(data.errors));
           }
-          console.log(`[PRODUCT HUNT] API returned ${allPosts.length} posts but none matched "${topic}"`);
         } else {
-          console.error("[PRODUCT HUNT] GraphQL errors:", JSON.stringify(data.errors));
+          console.error(`[PRODUCT HUNT] API error (${res.status}): ${await res.text()}`);
         }
-      } else {
-        console.error(`[PRODUCT HUNT] API error (${res.status}): ${await res.text()}`);
+      } catch (e) {
+        console.error("[PRODUCT HUNT] API error:", e);
       }
-    } catch (e) {
-      console.error("[PRODUCT HUNT] API error:", e);
     }
   }
 
-  // Strategy 2: Serper site:producthunt.com fallback
-  if (serperKey) {
+  // Strategy 2: Serper site:producthunt.com fallback (always try if we have few results)
+  if (serperKey && allProducts.length < first) {
     try {
       const res = await fetch("https://google.serper.dev/search", {
         method: "POST",
@@ -828,7 +862,7 @@ async function productHuntSearch(
           "X-API-KEY": serperKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: Math.max(first, 10) }),
+        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: 30 }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -850,18 +884,23 @@ async function productHuntSearch(
           })
           .filter((p: any) => p.name && p.name.length > 1);
 
+        for (const p of products) {
+          addProduct(p);
+        }
         if (products.length > 0) {
           console.log(`[PRODUCT HUNT] Serper fallback found ${products.length} products for "${topic}"`);
-          return { products };
         }
+      } else {
+        console.error(`[PRODUCT HUNT] Serper fallback error (${res.status}): ${await res.text()}`);
       }
     } catch (e) {
       console.error("[PRODUCT HUNT] Serper fallback error:", e);
     }
   }
 
-  console.log(`[PRODUCT HUNT] No results from API or Serper for "${topic}"`);
-  return { products: [] };
+  const finalCount = allProducts.slice(0, first).length;
+  console.log(`[PRODUCT HUNT] Final: ${finalCount} products for "${topic}" (from ${allProducts.length} total deduplicated)`);
+  return { products: allProducts.slice(0, first) };
 }
 
 // ── Main pipeline ──────────────────────────────────────────────────
