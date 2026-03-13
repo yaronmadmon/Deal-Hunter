@@ -513,7 +513,7 @@ export function generateReportPdf(report: MockReportData) {
   report.opportunity.underservedUsers.forEach((u) => {
     checkPage(5);
     setColor(C.teal);
-    doc.text("▸", m + 2, y);
+    doc.text(">", m + 2, y);
     setColor(C.text);
     const ul = doc.splitTextToSize(u, cw - 8);
     writeLines(ul, m + 7, 4.5);
