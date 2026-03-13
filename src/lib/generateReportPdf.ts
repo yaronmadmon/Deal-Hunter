@@ -851,7 +851,7 @@ export function generateReportPdf(report: MockReportData) {
     if (rs.differentiators?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
       doc.text("Differentiation Opportunities", m, y); y += 5;
-      drawBulletList(rs.differentiators, C.indigo, "→");
+      drawBulletList(rs.differentiators, C.indigo, "->");
     }
     if (rs.channels?.length) {
       doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(C.text);
