@@ -3232,7 +3232,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           totalEvidence,
         },
         conflictingSignals: reportData.conflictingSignals || [],
-        perplexityDominanceBanner: perplexityDominanceBanner || null,
+        perplexityDominanceBanner: reportData.perplexityDominanceBanner || null,
         fallbackGaps: reportData.fallbackGaps || [],
         queryStrategy: rawData.queryStrategy || null,
         crossValidatedSignals: rawData.crossValidatedSignals || [],
