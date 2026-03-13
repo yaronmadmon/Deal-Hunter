@@ -1,0 +1,1 @@
+UPDATE profiles SET credits = credits + 1 WHERE id = '4655ef52-5fa5-44b2-99b0-8a976d7611d7';
