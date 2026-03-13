@@ -1487,6 +1487,31 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
                 filtered: filteredCount,
                 discardedItems: discardedItems.slice(0, 20), // Keep top 20 for report
               };
+
+              // ══════════════════════════════════════════════════════════
+              // SOURCE CONTAMINATION FLAGGING
+              // If >50% of a source's results were filtered as irrelevant,
+              // flag that source as "contaminated" (low confidence).
+              // ══════════════════════════════════════════════════════════
+              const sourceStats: Record<string, { total: number; filtered: number }> = {};
+              itemsToScore.forEach((item, idx) => {
+                if (!sourceStats[item.source]) sourceStats[item.source] = { total: 0, filtered: 0 };
+                sourceStats[item.source].total++;
+                if ((scores[idx] ?? 5) < 5) sourceStats[item.source].filtered++;
+              });
+
+              const contaminatedSources: { source: string; total: number; filtered: number; contaminationPct: number }[] = [];
+              for (const [source, stats] of Object.entries(sourceStats)) {
+                const pct = Math.round((stats.filtered / stats.total) * 100);
+                if (stats.total >= 2 && pct > 50) {
+                  contaminatedSources.push({ source, total: stats.total, filtered: stats.filtered, contaminationPct: pct });
+                  console.warn(`[SOURCE CONTAMINATION] ${source}: ${pct}% of ${stats.total} results irrelevant — flagged as low confidence`);
+                }
+              }
+
+              rawData.relevanceFilterStats.sourceContamination = contaminatedSources;
+              if (contaminatedSources.length > 0) {
+                console.log(`[SOURCE CONTAMINATION] ${contaminatedSources.length} sources flagged: ${contaminatedSources.map(s => s.source).join(", ")}`);
             }
           } else {
             console.warn("[RELEVANCE FILTER] AI scoring call failed, skipping filter");
