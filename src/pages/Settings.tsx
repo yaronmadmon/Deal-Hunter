@@ -133,12 +133,18 @@ const Settings = () => {
     localStorage.setItem(key, JSON.stringify(value));
 
     // Upsert to database
-    const updates: Record<string, any> = { user_id: user.id, updated_at: new Date().toISOString() };
+    const updates: Record<string, any> = {
+      user_id: user.id,
+      updated_at: new Date().toISOString(),
+      email_notifications: emailNotifs,
+      watchlist_alerts: watchlistAlerts,
+      weekly_digest: weeklyDigest,
+    };
     if (key === "pref_email_notifs") updates.email_notifications = value;
     if (key === "pref_watchlist_alerts") updates.watchlist_alerts = value;
     if (key === "pref_weekly_digest") updates.weekly_digest = value;
 
-    const { error } = await supabase.from("user_preferences").upsert(updates, { onConflict: "user_id" });
+    const { error } = await (supabase.from("user_preferences" as any) as any).upsert(updates, { onConflict: "user_id" });
     if (error) {
       toast.error("Failed to save preference");
       console.error("Preference save error:", error);
