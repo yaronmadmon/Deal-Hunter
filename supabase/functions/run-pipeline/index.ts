@@ -1213,8 +1213,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const serperPromises: Promise<void>[] = [];
 
     if (serperKey) {
-      // Use semantic keywords for all Serper queries
-      const serperKeywords = primaryKeywords;
+      // Use SHORT semantic keywords for Serper queries (not full idea text which can be multi-line)
+      const serperKeywords = semanticQueries.length > 0
+        ? semanticQueries[0]
+        : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
 
       serperPromises.push(
         trackSource("serper_trends", async () => {
@@ -1235,7 +1237,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_news", async () => {
-          const r = await serperSearch(serperKey, serperKeywords, "news", 30);
+          // Use short keywords for news — news endpoint is strict about query length
+          const newsQuery = semanticQueries.length > 0 ? semanticQueries[0] : serperKeywords;
+          const r = await serperSearch(serperKey, newsQuery, "news", 30);
           rawData.serperNews = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1243,7 +1247,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_reddit", async () => {
-          const r = await serperSearch(serperKey, `${serperKeywords} site:reddit.com`, "search", 30);
+          // Use short keywords + site:reddit.com
+          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : serperKeywords;
+          const r = await serperSearch(serperKey, `${redditQuery} site:reddit.com`, "search", 30);
           rawData.serperReddit = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
           return r.organic.length;
         })
@@ -1251,7 +1257,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       serperPromises.push(
         trackSource("serper_autocomplete", async () => {
-          const r = await serperAutoComplete(serperKey, idea);
+          // Use short keyword for autocomplete, not full multi-line idea
+          const autoQuery = semanticQueries.length > 0 ? semanticQueries[0] : primaryKeywords.split(/\s+/).slice(0, 4).join(" ");
+          const r = await serperAutoComplete(serperKey, autoQuery);
           rawData.serperAutoComplete = r;
           return r.suggestions.length;
         })
