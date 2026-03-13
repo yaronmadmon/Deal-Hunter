@@ -629,7 +629,7 @@ export function generateReportPdf(report: MockReportData) {
     items.forEach((item) => {
       checkPage(6);
       setColor(bulletColor);
-      doc.text(bullet, m + 2, y);
+      doc.text(safeBullet, m + 2, y);
       setColor(C.text);
       const lines = doc.splitTextToSize(item, cw - 10);
       writeLines(lines, m + 7, 4);
