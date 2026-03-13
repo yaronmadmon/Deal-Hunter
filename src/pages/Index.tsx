@@ -1,16 +1,20 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight, Search, BarChart3, FileText, Lightbulb, Map, Pickaxe,
-  TrendingUp, Users, Target, ShieldCheck, Layers, Rocket, Gem, Compass
+  TrendingUp, Users, Target, ShieldCheck, Layers, Rocket, Gem, Compass,
+  Menu, X
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -23,6 +27,7 @@ const Index = () => {
             Gold Rush
           </span>
 
+          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => scrollTo("how-it-works")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How It Works
@@ -35,7 +40,8 @@ const Index = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => navigate("/auth")} className="text-muted-foreground hover:text-foreground">
               Log In
@@ -45,8 +51,58 @@ const Index = () => {
               Start Digging
             </Button>
           </div>
+
+          {/* Mobile hamburger button */}
+          <div className="flex md:hidden items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
         </div>
       </nav>
+
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile slide-in panel */}
+      <div
+        className={`fixed top-0 right-0 h-full w-72 bg-background border-l border-border z-50 p-6 flex flex-col gap-3 md:hidden transition-transform duration-300 ease-out ${
+          mobileMenuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-heading text-lg font-bold text-foreground">Menu</span>
+          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
+        <Button variant="ghost" className="justify-start h-11 text-base" onClick={() => scrollTo("how-it-works")}>
+          <Search className="w-4 h-4 mr-3" /> How It Works
+        </Button>
+        <Button variant="ghost" className="justify-start h-11 text-base" onClick={() => { navigate("/live"); setMobileMenuOpen(false); }}>
+          <TrendingUp className="w-4 h-4 mr-3" /> Live Signals
+        </Button>
+        <Button variant="ghost" className="justify-start h-11 text-base" onClick={() => { navigate("/pricing"); setMobileMenuOpen(false); }}>
+          <Gem className="w-4 h-4 mr-3" /> Pricing
+        </Button>
+
+        <div className="mt-auto flex flex-col gap-3 pt-4 border-t border-border">
+          <Button variant="ghost" size="sm" onClick={() => { navigate("/auth"); setMobileMenuOpen(false); }} className="justify-start text-muted-foreground hover:text-foreground">
+            Log In
+          </Button>
+          <Button size="sm" onClick={() => { navigate("/auth"); setMobileMenuOpen(false); }} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
+            <Pickaxe className="w-3.5 h-3.5 mr-1" />
+            Start Digging
+          </Button>
+        </div>
+      </div>
 
       {/* ─── HERO ─── */}
       <section className="relative max-w-5xl mx-auto px-6 pt-24 pb-20 text-center overflow-hidden">
