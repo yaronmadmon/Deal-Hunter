@@ -3330,6 +3330,26 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Combines: dataTier distribution, unique sources, source
         // diversity, conflicting signals, and manipulation detection.
         // ══════════════════════════════════════════════════════════════
+        // NOTE: conflictingSignals is computed later (Improvement #8).
+        // We initialize the count reference here so confidence can use it.
+        // The full array is populated after evidence-locked validation.
+        let earlyConflictCount = 0;
+        {
+          // Quick pre-check for obvious conflicts (search vs twitter)
+          const _searchUp = (rawData.serperTrends?.organic?.length ?? 0) >= 3;
+          const _twitterDown = rawData.twitterCounts?.volume_change_pct < -20;
+          const _searchWeak = (rawData.serperTrends?.organic?.length ?? 0) <= 1;
+          const _twitterUp = rawData.twitterCounts?.volume_change_pct > 20;
+          if (_searchUp && _twitterDown) earlyConflictCount++;
+          if (_searchWeak && _twitterUp) earlyConflictCount++;
+          const _avgRating = (() => {
+            const ratings = (rawData.validatedCompetitors || []).map((c: any) => parseFloat(String(c.rating || "0"))).filter((r: number) => r > 0);
+            return ratings.length > 0 ? ratings.reduce((s: number, r: number) => s + r, 0) / ratings.length : 0;
+          })();
+          const _complaintCount = (rawData.firecrawlReddit?.results?.length ?? 0) + (rawData.serperReddit?.organic?.length ?? 0);
+          if (_avgRating >= 4.0 && _complaintCount >= 5) earlyConflictCount++;
+        }
+
         let evidenceConfidence = 1.0;
         const confidenceReasons: string[] = [];
 
