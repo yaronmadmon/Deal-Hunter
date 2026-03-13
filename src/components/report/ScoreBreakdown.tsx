@@ -47,20 +47,23 @@ export const ScoreBreakdown = ({ breakdown, total, signalStrength, explanation }
       </div>
 
       <div className="space-y-4 mb-8">
-        {breakdown.map((item, i) => (
-          <div key={item.label}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-muted-foreground">{item.label}</span>
-              <span className="text-sm font-semibold text-foreground">{item.value}<span className="text-muted-foreground font-normal">/20</span></span>
+        {breakdown.map((item, i) => {
+          const maxScore = defaultMaxScores[i] || 20;
+          return (
+            <div key={item.label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm text-muted-foreground">{item.label}</span>
+                <span className="text-sm font-semibold text-foreground">{item.value}<span className="text-muted-foreground font-normal">/{maxScore}</span></span>
+              </div>
+              <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${colorForIndex(i)}`}
+                  style={{ width: `${(item.value / maxScore) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${colorForIndex(i)}`}
-                style={{ width: `${(item.value / 20) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="border-t pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

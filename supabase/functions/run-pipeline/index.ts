@@ -2880,7 +2880,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (totalMetrics === 0) continue;
 
             const estimatedCount = metrics.filter((m: any) => 
-              m.dataTier === "estimated" || m.dataSource === "ai_estimated"
+              m.dataTier === "estimated" || m.dataSource === "ai_estimated" ||
+              m.value === "N/A" || m.value === "Insufficient data" || m.value === null
             ).length;
 
             if (totalMetrics > 0 && estimatedCount / totalMetrics > 0.5) {
