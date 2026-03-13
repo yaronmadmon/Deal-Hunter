@@ -138,7 +138,7 @@ export const EvidenceStrength = ({ proofDashboard }: Props) => {
             <div key={tier.tier} className="bg-secondary/30 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-1">
                 <Icon className={`w-4 h-4 ${tierColors[tier.tier]}`} />
-                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${tierBadgeVariants[tier.tier]}`}>
+                <Badge variant="outline" className={`text-xs px-1.5 py-0 ${tierBadgeVariants[tier.tier]}`}>
                   Tier {tier.tier}
                 </Badge>
               </div>
