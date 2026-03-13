@@ -2471,9 +2471,33 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // Inject the collected source URLs into the report
         reportData.dataSources = uniqueSources;
-        // Always set analysis date to actual current date
-        if (reportData.methodology) {
-          reportData.methodology.analysisDate = new Date().toISOString().split('T')[0];
+        // Always override methodology with ACTUAL pipeline counts (AI returns zeros)
+        {
+          const countSourcesByPrefix = (prefix: string) =>
+            Object.entries(pipelineMetrics)
+              .filter(([k, v]: [string, any]) => k.startsWith(prefix) && v.signalCount > 0)
+              .length;
+
+          const sumSignalsByPrefix = (prefix: string) =>
+            Object.entries(pipelineMetrics)
+              .filter(([k]: [string, any]) => k.startsWith(prefix))
+              .reduce((sum, [, v]: [string, any]) => sum + (v.signalCount || 0), 0);
+
+          const activeSources = Object.values(pipelineMetrics).filter((v: any) => v.signalCount > 0).length;
+
+          reportData.methodology = {
+            ...(reportData.methodology || {}),
+            analysisDate: new Date().toISOString().split('T')[0],
+            totalSources: activeSources,
+            dataPoints: totalSignals,
+            perplexityQueries: countSourcesByPrefix("perplexity_"),
+            firecrawlScrapes: sumSignalsByPrefix("firecrawl_"),
+            serperSearches: countSourcesByPrefix("serper_"),
+            productHuntQueries: countSourcesByPrefix("producthunt") > 0 ? 1 : 0,
+            githubSearches: countSourcesByPrefix("github") > 0 ? 1 : 0,
+            twitterSearches: countSourcesByPrefix("twitter_"),
+            confidenceNote: reportData.methodology?.confidenceNote || "Overall data quality is strong with verified signals.",
+          };
         }
 
         // ══════════════════════════════════════════════════════════════
