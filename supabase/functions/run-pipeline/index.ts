@@ -948,23 +948,24 @@ Deno.serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: `You generate search queries for market research. Given a startup idea, return 5 diverse search queries that someone would use to find competing products, market data, and user discussions about this type of product.
+                content: `You generate search queries for market research. Given a startup idea, return a JSON object with 3 query categories to maximize discovery from different angles.
 
 Rules:
 - Each query should be 2-5 words, using natural language people actually search
-- Include variations: category terms, synonym phrases, "app for X" patterns, and "[problem] solution"
 - Do NOT just split the idea into words — generate semantically meaningful queries
-- The first query should be the most direct product category search
-- Include at least one query focused on the user problem (not the solution)
 - Think about what a user looking for this type of product would actually type into Google
 
-Return ONLY a JSON array of 5 strings. Example for "AI voice workout coach app":
-["AI fitness coach app", "voice guided workout", "hands-free personal trainer", "workout motivation app", "exercise without looking at phone"]`
+Categories:
+1. "broad" (2 queries): General product category searches. Cast a wide net. Example: "fitness tracking app", "workout planner tool"
+2. "niche" (2 queries): Specific sub-category or feature-focused searches. Example: "AI voice workout coach", "hands-free gym assistant"
+3. "problem" (1 query): Focus on the user problem, NOT the solution. What pain would someone search for? Example: "can't stay motivated at gym"
+
+Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "problem": ["q5"]}`
               },
               { role: "user", content: `Startup idea: "${sanitizedIdea}"` }
             ],
             temperature: 0.3,
-            max_tokens: 300,
+            max_tokens: 400,
           }),
         });
 
