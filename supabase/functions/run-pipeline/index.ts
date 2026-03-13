@@ -568,7 +568,7 @@ async function validateCompetitors(
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
   // Pre-filter: reject names that look like article titles, not product names
-  const articlePatterns = /^(best |top \d|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison)/i;
+  const articlePatterns = /^(best |top \d|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is|why you|should you|complete guide)/i;
   const maxNameWords = 8; // Real product names are rarely >8 words
   const preFiltered = competitors.filter(c => {
     const words = c.name.trim().split(/\s+/);
@@ -940,8 +940,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing analysisId or idea" }), { status: 400, headers: corsHeaders });
     }
 
-    // ── Input validation ──
-    const trimmedIdea = idea.trim();
+    // ── Input validation & sanitization ──
+    // Strip common UI button text that gets accidentally appended
+    const uiTextPatterns = [
+      /\s*Track This Idea\s*/gi,
+      /\s*Validate Idea\s*/gi,
+      /\s*Starting…?\s*/gi,
+      /\s*Re-?analyze\s*/gi,
+      /\s*Download PDF\s*/gi,
+      /\s*Share Report\s*/gi,
+      /\s*Add to Watchlist\s*/gi,
+      /\s*View Report\s*/gi,
+      /\s*Delete\s*$/gi,
+    ];
+    let trimmedIdea = idea.trim();
+    for (const pattern of uiTextPatterns) {
+      trimmedIdea = trimmedIdea.replace(pattern, ' ');
+    }
+    trimmedIdea = trimmedIdea.replace(/\s+/g, ' ').trim();
+
     if (trimmedIdea.length < 10) {
       return new Response(JSON.stringify({ error: "Idea must be at least 10 characters" }), { status: 400, headers: corsHeaders });
     }
@@ -950,6 +967,7 @@ Deno.serve(async (req) => {
     }
     // Strip HTML/script tags
     const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
+    console.log(`[INPUT SANITIZATION] Original: "${idea.slice(0, 100)}" → Sanitized: "${sanitizedIdea.slice(0, 100)}"`);
 
     // ── Get user_id from analysis record ──
     const { data: analysisRecord } = await supabase.from("analyses").select("user_id").eq("id", analysisId).single();
@@ -3131,6 +3149,64 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         overallScore = reportData.overallScore || 0;
         signalStrength = reportData.signalStrength || "Moderate";
+
+        // ── Populate githubRepos from rawData if AI didn't return them ──
+        if (!reportData.githubRepos || !Array.isArray(reportData.githubRepos) || reportData.githubRepos.length === 0) {
+          const ghRepos = rawData.github?.repos || [];
+          if (ghRepos.length > 0) {
+            reportData.githubRepos = ghRepos.slice(0, 10).map((r: any) => ({
+              name: r.name || "",
+              description: r.description || "",
+              stars: r.stars || 0,
+              forks: r.forks || 0,
+              openIssues: r.openIssues || 0,
+              language: r.language || "Unknown",
+              url: r.url || "",
+              updatedAt: r.updatedAt || null,
+              pushedAt: r.pushedAt || null,
+              topics: r.topics || [],
+            }));
+            console.log(`[FIELD POPULATION] githubRepos: populated ${reportData.githubRepos.length} repos from rawData`);
+          }
+        }
+
+        // ── Populate Competitor Snapshot card from validated competitors if AI returned empty ──
+        const compSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
+        if (compSnapshotCard && (!compSnapshotCard.competitors || compSnapshotCard.competitors.length === 0)) {
+          const validated = rawData.validatedCompetitors || [];
+          if (validated.length > 0) {
+            compSnapshotCard.competitors = validated.slice(0, 8).map((c: any) => ({
+              name: c.name,
+              classification: "direct",
+              rating: c.rating ? String(c.rating) : "N/A",
+              reviews: "N/A",
+              downloads: c.downloads || "N/A",
+              weakness: "See user sentiment section",
+              whatTheyDoWell: c.description || "Established in market",
+              dataSource: c.sources?.[0]?.toLowerCase() || "serper",
+              sourceUrl: c.url || null,
+              dataTier: c.validationScore >= 4 ? "verified" : "reported",
+              signalNote: `Validated via ${c.sources?.join(", ") || "pipeline"} (score ${c.validationScore}/5)`,
+            }));
+            compSnapshotCard.evidenceCount = compSnapshotCard.competitors.length;
+            compSnapshotCard.confidence = validated.length >= 3 ? "High" : validated.length >= 1 ? "Medium" : "Low";
+            console.log(`[FIELD POPULATION] Competitor Snapshot: populated ${compSnapshotCard.competitors.length} competitors from validated pipeline`);
+          }
+        }
+
+        // ── Ensure scoreBreakdown exists with defaults ──
+        if (!reportData.scoreBreakdown || !Array.isArray(reportData.scoreBreakdown) || reportData.scoreBreakdown.length !== 5) {
+          const defaultScore = Math.round((reportData.overallScore || 50) / 5);
+          reportData.scoreBreakdown = [
+            { label: "Trend Momentum", value: defaultScore, weight: "20%" },
+            { label: "Market Saturation", value: defaultScore, weight: "20%" },
+            { label: "Sentiment", value: defaultScore, weight: "20%" },
+            { label: "Growth", value: defaultScore, weight: "20%" },
+            { label: "Opportunity", value: defaultScore, weight: "20%" },
+          ];
+          reportData.overallScore = defaultScore * 5;
+          console.log(`[FIELD POPULATION] scoreBreakdown: generated defaults (${defaultScore}/20 each)`);
+        }
 
         // ── Fill missing sections with safe defaults so UI always renders ──
         if (!reportData.proofDashboard) {
