@@ -2540,6 +2540,15 @@ BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
 - vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
 - complexityFactors: List the specific factors that increase complexity for THIS idea.
+- voiceApiCosts and onDeviceNote: Only provide real values if the idea actually involves voice APIs or on-device processing. Otherwise set to "N/A".
+
+BUILD ESTIMATE COMPARISON — AI-ASSISTED COST TIERS (CRITICAL):
+The AI-assisted build estimates MUST reflect realistic costs using modern AI coding tools (Lovable, Cursor, Bolt, Replit Agent). Use these tiers:
+- complexityScore 1-3 (Easy): AI-assisted cost $500-$2,000, time 1-3 weeks
+- complexityScore 4-6 (Moderate): AI-assisted cost $2,000-$10,000, time 3-8 weeks
+- complexityScore 7-8 (Hard): AI-assisted cost $10,000-$50,000, time 6-16 weeks
+- complexityScore 9-10 (Do Not Attempt): AI-assisted cost $50,000-$200,000, time 12-24+ weeks
+Traditional dev costs should be 5-20x higher than AI-assisted costs. Skills for AI-assisted should include "AI code generation", "Prompt engineering", "API integration" rather than traditional dev roles.
 
 REVIEW INTELLIGENCE INSTRUCTIONS:
 - Only populate reviewIntelligence if you have at least 12 complaints/reviews to cluster. If fewer, set reviewIntelligence to null.
