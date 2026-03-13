@@ -2720,7 +2720,118 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
-        // DETERMINISTIC SIGNAL-COUNT FLOORS & CEILINGS
+        // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
+        // Detect declining trends, market mashups, and signal contamination.
+        // ══════════════════════════════════════════════════════════════
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          const ideaLower = (idea || "").toLowerCase();
+
+          // 1. DEAD/DECLINING TREND DETECTION
+          const decliningTrends = ["nft", "metaverse", "web3", "crypto kitties", "play to earn", "p2e", "ico", "defi yield"];
+          const matchedDecliningTrend = decliningTrends.find(t => ideaLower.includes(t));
+          
+          if (matchedDecliningTrend) {
+            console.warn(`[CONCEPT VIABILITY] Declining trend detected: "${matchedDecliningTrend}"`);
+            
+            const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
+            if (trendEntry && Number(trendEntry.value) > 8) {
+              console.warn(`[DECLINING TREND CAP] Trend capped from ${trendEntry.value} to 8 (declining trend: ${matchedDecliningTrend})`);
+              trendEntry.value = 8;
+            }
+            
+            const growthEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Growth");
+            if (growthEntry && Number(growthEntry.value) > 5) {
+              console.warn(`[DECLINING TREND CAP] Growth capped from ${growthEntry.value} to 5 (declining trend: ${matchedDecliningTrend})`);
+              growthEntry.value = 5;
+            }
+
+            // Inject kill shot risk if not already present
+            if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
+              const hasDeclineRisk = reportData.killShotAnalysis.risks.some((r: any) => 
+                r.risk?.toLowerCase().includes("declin") || r.risk?.toLowerCase().includes("peak")
+              );
+              if (!hasDeclineRisk) {
+                reportData.killShotAnalysis.risks.unshift({
+                  risk: `The ${matchedDecliningTrend.toUpperCase()} market has declined significantly since its 2021-2022 peak. User interest, trading volume, and investor appetite have dropped dramatically.`,
+                  severity: "High",
+                  mitigation: "Validate that your specific niche still has active users before investing resources."
+                });
+              }
+            }
+          }
+
+          // 2. MARKET MASHUP DETECTION
+          // Ideas that combine 3+ distinct market categories get penalized
+          // unless the INTERSECTION has dedicated demand
+          const marketCategories = [
+            { keywords: ["social network", "social media", "community"], label: "social" },
+            { keywords: ["nft", "token", "blockchain", "crypto", "web3"], label: "crypto" },
+            { keywords: ["pet", "animal", "dog", "cat"], label: "pets" },
+            { keywords: ["game", "gaming", "play"], label: "gaming" },
+            { keywords: ["fitness", "workout", "exercise"], label: "fitness" },
+            { keywords: ["dating", "match", "romance"], label: "dating" },
+            { keywords: ["food", "recipe", "cooking", "restaurant"], label: "food" },
+          ];
+          
+          const matchedCategories = marketCategories.filter(cat => 
+            cat.keywords.some(kw => ideaLower.includes(kw))
+          );
+
+          if (matchedCategories.length >= 3) {
+            console.warn(`[CONCEPT VIABILITY] Market mashup detected: ${matchedCategories.map(c => c.label).join(" + ")} (${matchedCategories.length} categories)`);
+            
+            // Check if direct search demand exists for the combination
+            const directDemandSignals = (rawData.serperTrends?.organic || []).filter((r: any) => {
+              const title = (r.title || "").toLowerCase();
+              const snippet = (r.snippet || "").toLowerCase();
+              // Must mention at least 2 of the matched categories
+              const matchCount = matchedCategories.filter(cat => 
+                cat.keywords.some(kw => title.includes(kw) || snippet.includes(kw))
+              ).length;
+              return matchCount >= 2;
+            }).length;
+
+            if (directDemandSignals < 3) {
+              console.warn(`[MASHUP PENALTY] Only ${directDemandSignals} signals reference the actual combination. Applying caps.`);
+              
+              const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
+              if (trendEntry && Number(trendEntry.value) > 10) {
+                console.warn(`[MASHUP CAP] Trend capped from ${trendEntry.value} to 10`);
+                trendEntry.value = 10;
+              }
+              
+              const oppEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Opportunity");
+              if (oppEntry && Number(oppEntry.value) > 10) {
+                console.warn(`[MASHUP CAP] Opportunity capped from ${oppEntry.value} to 10`);
+                oppEntry.value = 10;
+              }
+              
+              const sentEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Sentiment");
+              if (sentEntry && Number(sentEntry.value) > 10) {
+                console.warn(`[MASHUP CAP] Sentiment capped from ${sentEntry.value} to 10 (no user pain for this specific combination)`);
+                sentEntry.value = 10;
+              }
+            }
+          }
+
+          // Recalculate score after concept viability checks
+          const viabilitySum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
+          if (viabilitySum !== reportData.overallScore) {
+            console.warn(`[CONCEPT VIABILITY] Score adjusted: ${reportData.overallScore} -> ${viabilitySum}`);
+            reportData.overallScore = viabilitySum;
+            
+            const vScore = reportData.overallScore;
+            const vVerdict = vScore >= 75 ? "Build Now"
+              : vScore >= 55 ? "Build, But Niche Down"
+              : vScore >= 40 ? "Validate Further"
+              : "Do Not Build Yet";
+            if (reportData.founderDecision) {
+              reportData.founderDecision.decision = vVerdict;
+            }
+            reportData.signalStrength = vScore >= 70 ? "Strong" : vScore >= 45 ? "Moderate" : "Weak";
+          }
+        }
+
         // Each scoring category has a max score (ceiling) based on how
         // many real signals were collected. No data = low ceiling.
         // ══════════════════════════════════════════════════════════════
