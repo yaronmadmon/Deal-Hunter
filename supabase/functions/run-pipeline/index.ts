@@ -1255,7 +1255,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
             if (seen.has(p.name)) return false;
             seen.add(p.name);
             return true;
-          }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
+          }).sort((a: any, b: any) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 15);
           rawData.productHunt = { products: unique };
           rawData.sources.push(...unique.map((p: any) => ({ url: p.url, type: "producthunt" })));
           return unique.length;
