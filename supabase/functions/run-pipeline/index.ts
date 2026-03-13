@@ -3243,6 +3243,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
+        // Capture score after data quality penalty for journey log
+        const scoreAfterDataQuality = reportData.overallScore || 0;
+
         // ══════════════════════════════════════════════════════════════
         // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
         // Subtracts 0-15 points based on build complexity score.
