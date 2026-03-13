@@ -3067,7 +3067,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 floorApplied = true;
               }
             }
-            }
           }
 
           if (ceilingApplied || floorApplied) {
