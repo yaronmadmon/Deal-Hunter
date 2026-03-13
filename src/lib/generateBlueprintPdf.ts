@@ -148,12 +148,14 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
 
     if (hasSparkline && hasDonut) {
       const sparkData = ctx?.googleTrendsSparkline || ctx?.sparkline || [];
-      drawSparkline(m, y, cw * 0.55, 18, sparkData, C.indigo, ctx?.googleTrendsSparkline ? "Google Trends — Search Interest" : "Trend Momentum");
+      const sparkLabel = ctx?.googleTrendsSparkline ? "Google Trends — Search Interest" : "Simulated Trend (illustrative only)";
+      drawSparkline(m, y, cw * 0.55, 18, sparkData, C.indigo, sparkLabel);
       drawDonut(m + cw * 0.55 + 25, y + 9, 8, ctx!.donut!);
       y += 28;
     } else if (hasSparkline) {
       const sparkData = ctx?.googleTrendsSparkline || ctx?.sparkline || [];
-      drawSparkline(m, y, cw * 0.65, 18, sparkData, C.indigo, ctx?.googleTrendsSparkline ? "Google Trends — Search Interest" : "Trend Momentum");
+      const sparkLabel = ctx?.googleTrendsSparkline ? "Google Trends — Search Interest" : "Simulated Trend (illustrative only)";
+      drawSparkline(m, y, cw * 0.65, 18, sparkData, C.indigo, sparkLabel);
       y += 28;
     } else if (hasDonut) {
       drawDonut(m + 25, y + 9, 10, ctx!.donut!);
