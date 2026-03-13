@@ -68,13 +68,15 @@ const ProductHuntInsight = ({ launches }: { launches: ProductHuntLaunch[] }) => 
 export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
   const IconComp = iconMap[card.icon] || TrendingUp;
 
+  const colors = iconColorMap[card.icon] || { bg: "bg-primary/10", text: "text-primary" };
+
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className="flex flex-col overflow-hidden hover:shadow-md transition-shadow duration-200">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <IconComp className="w-4 h-4 text-primary" />
+            <div className={`w-8 h-8 rounded-lg ${colors.bg} flex items-center justify-center shrink-0`}>
+              <IconComp className={`w-4 h-4 ${colors.text}`} />
             </div>
             <div>
               <CardTitle className="text-sm font-heading">{card.title}</CardTitle>
