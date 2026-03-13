@@ -3289,15 +3289,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         reportData.scoringJourney = {
           steps: [
             { label: "AI Raw Score", value: aiRawScore, description: "Initial score from GPT-4o analysis" },
-            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? "Declining trend / mashup caps applied" : "No viability adjustments needed" },
-            { label: "Signal Floors & Ceilings", value: scoreBeforeComplexity, description: "Evidence-based bounds enforced per category" },
+            { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
+            { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-based floors & ceilings enforced per category" },
+            { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
             { label: "Complexity Penalty", value: reportData.overallScore, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
           ],
           finalScore: reportData.overallScore,
           complexityPenalty,
+          viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
-        console.log(`[SCORING JOURNEY] AI Raw Score: ${aiRawScore} -> Viability Caps: ${viabilityScore} -> Floors/Ceilings: ${scoreBeforeComplexity} -> Complexity Penalty (${complexityPenalty}): ${reportData.overallScore} -> Final Score: ${reportData.overallScore}`);
+        console.log(`[SCORING JOURNEY] AI Raw: ${aiRawScore} → Viability: ${viabilityScore} → Signal Bounds: ${scoreAfterSignalBounds} → Boosts/Penalties: ${scoreAfterDataQuality} → Complexity (${complexityPenalty}): ${reportData.overallScore}`);
 
 
 
