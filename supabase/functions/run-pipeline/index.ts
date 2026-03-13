@@ -2230,6 +2230,95 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // DETERMINISTIC SIGNAL-COUNT FLOORS & CEILINGS
+        // Each scoring category has a max score (ceiling) based on how
+        // many real signals were collected. No data = low ceiling.
+        // ══════════════════════════════════════════════════════════════
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          // Count signals per category from rawData
+          const trendSignals =
+            (rawData.serperTrends?.organic?.length ?? 0) +
+            (rawData.serperTrendsMonthly?.organic?.length ?? 0) +
+            (rawData.serperNews?.organic?.length ?? 0) +
+            (rawData.perplexityTrends?.citations?.length ?? 0);
+
+          const marketSignals =
+            (rawData.firecrawlAppStore?.results?.length ?? 0) +
+            (rawData.serperCompetitors?.allResults?.length ?? 0) +
+            (rawData.validatedCompetitors?.length ?? 0) +
+            (rawData.perplexityMarket?.citations?.length ?? 0);
+
+          const sentimentSignals =
+            (rawData.firecrawlReddit?.results?.length ?? 0) +
+            (rawData.serperReddit?.organic?.length ?? 0) +
+            (rawData.twitterSentiment?.tweets?.length ?? 0) +
+            (rawData.hackerNews?.hits?.length ?? 0);
+
+          const growthSignals =
+            (rawData.productHunt?.products?.length ?? 0) +
+            (rawData.github?.repos?.length ?? 0) +
+            (rawData.perplexityVC?.citations?.length ?? 0) +
+            (rawData.hackerNews?.hits?.length ?? 0);
+
+          const opportunitySignals =
+            (rawData.serperAutoComplete?.suggestions?.length ?? 0) +
+            (rawData.perplexityRevenue?.citations?.length ?? 0) +
+            (rawData.perplexityChurn?.citations?.length ?? 0) +
+            demandSignalCount + painSignalCount;
+
+          // Ceiling rules: [signalThreshold, maxScore]
+          // 0 signals → max 5/20, 1-2 → max 10/20, 3-4 → max 15/20, 5+ → no cap
+          const computeCeiling = (signalCount: number): number => {
+            if (signalCount === 0) return 5;
+            if (signalCount <= 2) return 10;
+            if (signalCount <= 4) return 15;
+            return 20;
+          };
+
+          const ceilingMap: Record<string, number> = {
+            "Trend Momentum": computeCeiling(trendSignals),
+            "Market Saturation": computeCeiling(marketSignals),
+            "Sentiment": computeCeiling(sentimentSignals),
+            "Growth": computeCeiling(growthSignals),
+            "Opportunity": computeCeiling(opportunitySignals),
+          };
+
+          let ceilingApplied = false;
+          for (const category of reportData.scoreBreakdown) {
+            const ceiling = ceilingMap[category.label];
+            if (ceiling !== undefined && Number(category.value) > ceiling) {
+              console.warn(`[SIGNAL CEILING] ${category.label}: only ${
+                category.label === "Trend Momentum" ? trendSignals :
+                category.label === "Market Saturation" ? marketSignals :
+                category.label === "Sentiment" ? sentimentSignals :
+                category.label === "Growth" ? growthSignals : opportunitySignals
+              } signals → ceiling ${ceiling}/20. Capping from ${category.value}.`);
+              category.value = ceiling;
+              ceilingApplied = true;
+            }
+          }
+
+          if (ceilingApplied) {
+            const newSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
+            console.warn(`[SIGNAL CEILING] Overall score adjusted: ${reportData.overallScore} -> ${newSum}`);
+            reportData.overallScore = newSum;
+
+            const ceilScore = reportData.overallScore;
+            const ceilVerdict = ceilScore >= 75 ? "Build Now"
+              : ceilScore >= 55 ? "Build, But Niche Down"
+              : ceilScore >= 40 ? "Validate Further"
+              : "Do Not Build Yet";
+            if (reportData.founderDecision) {
+              reportData.founderDecision.decision = ceilVerdict;
+            }
+            reportData.signalStrength = ceilScore >= 70 ? "Strong" : ceilScore >= 45 ? "Moderate" : "Weak";
+          }
+
+          console.log(`[SIGNAL COUNTS] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
+          console.log(`[SIGNAL CEILINGS] Trend: ${ceilingMap["Trend Momentum"]}, Market: ${ceilingMap["Market Saturation"]}, Sentiment: ${ceilingMap["Sentiment"]}, Growth: ${ceilingMap["Growth"]}, Opportunity: ${ceilingMap["Opportunity"]}`);
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // COMPETITOR COUNT VALIDATION (uses validated competitors)
         // Cross-check: if AI says 0 competitors but validated pipeline
         // found real products, flag inconsistency and lower confidence.
