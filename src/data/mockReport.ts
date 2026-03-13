@@ -387,6 +387,7 @@ export interface MockReportData {
   nicheAnalysis?: NicheAnalysisData;
   unitEconomics?: UnitEconomicsData;
   buildComplexity?: BuildComplexityData;
+  reviewIntelligence?: ReviewIntelligenceData;
   scoreBreakdown: ScoreBreakdownItem[];
   scoreExplanation: string;
   blueprint: BlueprintData;
