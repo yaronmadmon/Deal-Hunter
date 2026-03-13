@@ -2820,6 +2820,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (trendEntry && Number(trendEntry.value) > 8) {
               console.warn(`[DECLINING TREND CAP] Trend capped from ${trendEntry.value} to 8 (declining trend: ${matchedDecliningTrend})`);
               trendEntry.value = 8;
+              viabilityCappedCategories.add("Trend Momentum");
             }
             
             const growthEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Growth");
