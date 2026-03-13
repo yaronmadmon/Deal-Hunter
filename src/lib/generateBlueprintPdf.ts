@@ -202,7 +202,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
     doc.text(sanitizeForPdf(title), m, y);
     // Colored underline
     setDraw(color); doc.setLineWidth(0.5);
-    doc.line(m, y + 1.5, m + doc.getTextWidth(title), y + 1.5);
+    doc.line(m, y + 1.5, m + doc.getTextWidth(sanitizeForPdf(title)), y + 1.5);
     y += 7;
 
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(C.text);
