@@ -2815,6 +2815,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 });
               }
             }
+          } else if (matchedDecliningTrend && trendPosition === "secondary") {
+            // Secondary position: keyword is a modifier, not the core idea
+            // Apply only a softer trend cap, no growth cap, no kill shot
+            console.warn(`[CONCEPT VIABILITY] SECONDARY declining trend "${matchedDecliningTrend}" — applying soft trend cap only`);
+            
+            const trendEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Trend Momentum");
+            if (trendEntry && Number(trendEntry.value) > 15) {
+              console.warn(`[DECLINING TREND SOFT CAP] Trend capped from ${trendEntry.value} to 15 (secondary mention: ${matchedDecliningTrend})`);
+              trendEntry.value = 15;
+            }
           }
 
           // 2. MARKET MASHUP DETECTION
