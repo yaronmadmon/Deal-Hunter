@@ -1218,7 +1218,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         const cq = competitorQueryTemplates[i];
         serperPromises.push(
           trackSource(`serper_competitor_${i}`, async () => {
-            const r = await serperSearch(serperKey, cq, "search", 10);
+            const r = await serperSearch(serperKey, cq, "search", 30);
             rawData.serperCompetitors.allResults.push(...r.organic.map((o: any) => ({
               ...o,
               _query: cq,
