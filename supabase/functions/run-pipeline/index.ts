@@ -2706,24 +2706,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // 2. Enforce verdict thresholds deterministically
-        const finalScore = reportData.overallScore || 0;
-        const correctVerdict = finalScore >= 75 ? "Build Now"
-          : finalScore >= 55 ? "Build, But Niche Down"
-          : finalScore >= 40 ? "Validate Further"
-          : "Do Not Build Yet";
-
-        if (reportData.founderDecision) {
-          if (reportData.founderDecision.decision !== correctVerdict) {
-            console.warn(`[VERDICT VALIDATION] AI verdict "${reportData.founderDecision.decision}" doesn't match score ${finalScore}. Correcting to "${correctVerdict}".`);
-            reportData.founderDecision.decision = correctVerdict;
+        {
+          const finalScore = reportData.overallScore || 0;
+          const correctVerdict = computeVerdict(finalScore);
+          const correctStrength = computeSignalStrength(finalScore);
+          if (reportData.founderDecision?.decision !== correctVerdict) {
+            console.warn(`[VERDICT VALIDATION] AI verdict "${reportData.founderDecision?.decision}" doesn't match score ${finalScore}. Correcting to "${correctVerdict}".`);
           }
-        }
-
-        // Also enforce signalStrength consistency
-        const correctSignalStrength = finalScore >= 70 ? "Strong" : finalScore >= 45 ? "Moderate" : "Weak";
-        if (reportData.signalStrength !== correctSignalStrength) {
-          console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctSignalStrength}".`);
-          reportData.signalStrength = correctSignalStrength;
+          if (reportData.signalStrength !== correctStrength) {
+            console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctStrength}".`);
+          }
+          applyVerdictToReport(reportData);
         }
 
         // 3. Demand Override Rule — code-level enforcement
