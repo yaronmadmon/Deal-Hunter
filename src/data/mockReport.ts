@@ -145,6 +145,17 @@ export interface UnitEconomicsData {
   sourceUrls?: string[];
 }
 
+export interface BuildEstimate {
+  timeRange: string;
+  costRange: string;
+  skillsRequired: string[];
+}
+
+export interface BuildEstimateComparison {
+  traditional: BuildEstimate;
+  aiAssisted: BuildEstimate;
+}
+
 export interface BuildComplexityData {
   mvpTimeline: string;
   mvpScope: string[];
@@ -156,6 +167,7 @@ export interface BuildComplexityData {
   vibeCoderFeasibility?: "Easy" | "Moderate" | "Hard" | "Do Not Attempt";
   complexityFactors?: string[];
   scorePenalty?: number;
+  buildEstimateComparison?: BuildEstimateComparison;
   dataSource?: DataSourceType;
   sourceUrls?: string[];
 }

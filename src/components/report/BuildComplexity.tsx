@@ -1,5 +1,5 @@
-import { Hammer, Clock, AlertTriangle, Gauge } from "lucide-react";
-import type { BuildComplexityData } from "@/data/mockReport";
+import { Hammer, Clock, AlertTriangle, Gauge, Code2, Sparkles } from "lucide-react";
+import type { BuildComplexityData, BuildEstimate } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,9 +14,37 @@ const feasibilityConfig: Record<string, { variant: string; description: string }
   "Do Not Attempt": { variant: "nogo", description: "Enterprise-level complexity" },
 };
 
+const EstimateColumn = ({ estimate, icon, title }: { estimate: BuildEstimate; icon: React.ReactNode; title: string }) => (
+  <div className="bg-secondary/30 rounded-xl p-5 flex flex-col">
+    <div className="flex items-center gap-2 mb-4">
+      {icon}
+      <h4 className="font-semibold text-sm text-foreground">{title}</h4>
+    </div>
+    <div className="space-y-4 flex-1">
+      <div>
+        <p className="text-[13px] text-muted-foreground mb-1">Estimated Time</p>
+        <p className="text-lg font-bold text-foreground">{estimate.timeRange}</p>
+      </div>
+      <div>
+        <p className="text-[13px] text-muted-foreground mb-1">Estimated Cost</p>
+        <p className="text-lg font-bold text-foreground">{estimate.costRange}</p>
+      </div>
+      <div>
+        <p className="text-[13px] text-muted-foreground mb-1">Skills Involved</p>
+        <div className="flex flex-wrap gap-1.5">
+          {estimate.skillsRequired.map((skill, i) => (
+            <span key={i} className="text-xs bg-background border rounded-full px-2.5 py-1 text-muted-foreground">{skill}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export const BuildComplexity = ({ data }: Props) => {
   const feasibility = data.vibeCoderFeasibility || "Moderate";
   const config = feasibilityConfig[feasibility] || feasibilityConfig["Moderate"];
+  const comparison = data.buildEstimateComparison;
 
   return (
     <div className="bg-card border rounded-2xl p-8 mb-12">
@@ -52,6 +80,26 @@ export const BuildComplexity = ({ data }: Props) => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Build Estimate Comparison */}
+      {comparison && (
+        <div className="mb-6">
+          <h3 className="font-semibold text-sm text-foreground mb-3">Build Estimate Comparison</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <EstimateColumn
+              estimate={comparison.traditional}
+              icon={<Code2 className="w-4 h-4 text-muted-foreground" />}
+              title="Traditional Dev Build"
+            />
+            <EstimateColumn
+              estimate={comparison.aiAssisted}
+              icon={<Sparkles className="w-4 h-4 text-accent" />}
+              title="AI-Assisted Build"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2 italic">Ranges are informational estimates based on typical projects of similar complexity.</p>
         </div>
       )}
 
