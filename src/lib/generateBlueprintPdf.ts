@@ -143,7 +143,7 @@ export function generateBlueprintPdf(blueprint: BlueprintData, idea: string, ctx
   if (hasSparkline || hasDonut) {
     checkPage(35);
     doc.setFontSize(10); doc.setFont("helvetica", "bold"); setColor(C.text);
-    doc.text("Market Context", m, y);
+    doc.text(sanitizeForPdf("Market Context"), m, y);
     y += 8;
 
     if (hasSparkline && hasDonut) {
