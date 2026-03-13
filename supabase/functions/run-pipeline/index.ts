@@ -3088,6 +3088,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           confidences: evidenceConfidences,
           totalEvidence,
         },
+        conflictingSignals: reportData.conflictingSignals || [],
+        perplexityDominanceBanner: perplexityDominanceBanner || null,
+        fallbackGaps: reportData.fallbackGaps || [],
+        queryStrategy: rawData.queryStrategy || null,
         timestamp: new Date().toISOString(),
       };
     }
