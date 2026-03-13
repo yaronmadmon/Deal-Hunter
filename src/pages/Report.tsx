@@ -32,7 +32,7 @@ import { PerplexityWarningBanner } from "@/components/report/PerplexityWarningBa
 import { CrossValidationCard } from "@/components/report/CrossValidationCard";
 import { SourceContaminationBanner } from "@/components/report/SourceContaminationBanner";
 import { ReportComparison } from "@/components/report/ReportComparison";
-import { FounderInsight } from "@/components/report/FounderInsight";
+import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
