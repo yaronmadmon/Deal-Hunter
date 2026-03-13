@@ -828,7 +828,7 @@ async function productHuntSearch(
           "X-API-KEY": serperKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: first }),
+        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: Math.max(first, 10) }),
       });
       if (res.ok) {
         const data = await res.json();
