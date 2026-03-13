@@ -971,10 +971,37 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
         if (semanticRes.ok) {
           const semanticData = await semanticRes.json();
-          const semanticContent = semanticData.choices?.[0]?.message?.content || "[]";
-          const semanticMatch = semanticContent.match(/\[[\s\S]*?\]/);
-          if (semanticMatch) {
-            const parsed = JSON.parse(semanticMatch[0]);
+          const semanticContent = semanticData.choices?.[0]?.message?.content || "{}";
+          // Try to parse as structured object first, fallback to array
+          const objMatch = semanticContent.match(/\{[\s\S]*\}/);
+          const arrMatch = semanticContent.match(/\[[\s\S]*?\]/);
+          if (objMatch) {
+            try {
+              const parsed = JSON.parse(objMatch[0]);
+              if (parsed.broad && parsed.niche && parsed.problem) {
+                const broad = (parsed.broad || []).map((q: any) => String(q).trim()).filter(Boolean);
+                const niche = (parsed.niche || []).map((q: any) => String(q).trim()).filter(Boolean);
+                const problem = (parsed.problem || []).map((q: any) => String(q).trim()).filter(Boolean);
+                semanticQueries = [...broad, ...niche, ...problem].slice(0, 5);
+                rawData.queryStrategy = { broad, niche, problem };
+                primaryKeywords = broad[0] || semanticQueries[0] || primaryKeywords;
+                console.log(`[SEMANTIC KEYWORDS] Multi-query strategy in ${Date.now() - semanticStart}ms: broad=${JSON.stringify(broad)}, niche=${JSON.stringify(niche)}, problem=${JSON.stringify(problem)}`);
+              } else {
+                throw new Error("Missing categories");
+              }
+            } catch {
+              // Fallback to flat array
+              if (arrMatch) {
+                const parsed = JSON.parse(arrMatch[0]);
+                if (Array.isArray(parsed) && parsed.length >= 3) {
+                  semanticQueries = parsed.slice(0, 5).map((q: any) => String(q).trim()).filter(Boolean);
+                  primaryKeywords = semanticQueries[0] || primaryKeywords;
+                }
+              }
+              console.log(`[SEMANTIC KEYWORDS] Fallback to flat array: ${JSON.stringify(semanticQueries)}`);
+            }
+          } else if (arrMatch) {
+            const parsed = JSON.parse(arrMatch[0]);
             if (Array.isArray(parsed) && parsed.length >= 3) {
               semanticQueries = parsed.slice(0, 5).map((q: any) => String(q).trim()).filter(Boolean);
               primaryKeywords = semanticQueries[0] || primaryKeywords;
