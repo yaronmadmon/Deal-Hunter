@@ -90,9 +90,9 @@ const Settings = () => {
       .then(({ data }) => { if (data) setSubscription(data); });
 
     // Load notification preferences from DB
-    supabase.from("user_preferences").select("email_notifications, watchlist_alerts, weekly_digest")
+    (supabase.from("user_preferences" as any) as any).select("email_notifications, watchlist_alerts, weekly_digest")
       .eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: { data: any }) => {
         if (data) {
           setEmailNotifs(data.email_notifications);
           setWatchlistAlerts(data.watchlist_alerts);
