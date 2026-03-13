@@ -567,6 +567,23 @@ async function validateCompetitors(
 ): Promise<ValidatedCompetitor[]> {
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
+  // Pre-filter: reject names that look like article titles, not product names
+  const articlePatterns = /^(best |top \d|how to |\d+ of the |the \d+ best|a guide|ultimate guide|review:|comparison)/i;
+  const maxNameWords = 8; // Real product names are rarely >8 words
+  const preFiltered = competitors.filter(c => {
+    const words = c.name.trim().split(/\s+/);
+    if (words.length > maxNameWords) {
+      console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — name too long (${words.length} words, likely article title)`);
+      return false;
+    }
+    if (articlePatterns.test(c.name)) {
+      console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — matches article title pattern`);
+      return false;
+    }
+    return true;
+  });
+  console.log(`[COMPETITOR VALIDATION] After article-title filter: ${preFiltered.length} (removed ${competitors.length - preFiltered.length})`);
+
   const validated: ValidatedCompetitor[] = [];
 
   for (const comp of competitors) {
