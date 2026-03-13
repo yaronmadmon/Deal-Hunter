@@ -496,7 +496,7 @@ export function generateReportPdf(report: MockReportData) {
   report.opportunity.featureGaps.forEach((g) => {
     checkPage(5);
     setColor(C.indigo);
-    doc.text("▸", m + 2, y);
+    doc.text(">", m + 2, y);
     setColor(C.text);
     const gl = doc.splitTextToSize(g, cw - 8);
     writeLines(gl, m + 7, 4.5);
