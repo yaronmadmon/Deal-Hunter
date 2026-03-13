@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink, Twitter, Heart, Repeat2, BadgeCheck } from "lucide-react";
+import { TrendingUp, PieChart, Users, MessageCircle, Zap, ExternalLink, Twitter, Heart, Repeat2, BadgeCheck, ChevronDown } from "lucide-react";
 import {
   AreaChart, Area, PieChart as RePieChart, Pie, Cell,
   LineChart, Line, BarChart, Bar,
@@ -10,6 +11,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { SignalCardData, ProductHuntLaunch, TwitterSentimentItem, InfluencerSignal } from "@/data/mockReport";
 import { DataSourceBadge } from "./DataSourceBadge";
 import { EvidenceLink } from "./EvidenceLink";
+
+const EVIDENCE_PREVIEW_COUNT = 2;
+
+const EvidenceQuoteBox = ({ evidence }: { evidence: string[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = evidence.length > EVIDENCE_PREVIEW_COUNT;
+  const visible = expanded ? evidence : evidence.slice(0, EVIDENCE_PREVIEW_COUNT);
+
+  return (
+    <div className="bg-secondary/50 border border-border/50 rounded-lg p-3 space-y-2">
+      {visible.map((e, i) => (
+        <p key={i} className="text-[13px] text-muted-foreground italic leading-relaxed">
+          {e}
+        </p>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors pt-1"
+        >
+          <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? "Show less" : `Show ${evidence.length - EVIDENCE_PREVIEW_COUNT} more`}
+        </button>
+      )}
+    </div>
+  );
+};
 
 interface SignalCardProps {
   card: SignalCardData;
@@ -485,14 +513,8 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
           </div>
         )}
 
-        {/* Evidence quote box */}
-        <div className="bg-secondary/50 border border-border/50 rounded-lg p-3 space-y-2">
-          {card.evidence.map((e, i) => (
-            <p key={i} className="text-[13px] text-muted-foreground italic leading-relaxed">
-              {e}
-            </p>
-          ))}
-        </div>
+        {/* Evidence quote box — show first 2, expand for more */}
+        <EvidenceQuoteBox evidence={card.evidence} />
 
         {/* Insight footer */}
         <p className="text-sm font-medium text-foreground mt-auto pt-3 border-t border-border/50">
