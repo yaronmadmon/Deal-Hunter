@@ -1608,7 +1608,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
               const discardedItems: { source: string; title: string; score: number }[] = [];
 
               itemsToScore.forEach((item, idx) => {
-                const score = scores[idx] ?? 5; // default to 5 if missing
+                const score = scores[idx] ?? 3; // INTEGRITY FIX: default to BELOW threshold (reject) if AI didn't score this item
                 if (score < 5) {
                   toRemove[item.source]?.add(item.index);
                   filteredCount++;
