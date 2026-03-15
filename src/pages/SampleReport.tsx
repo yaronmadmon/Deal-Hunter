@@ -145,15 +145,21 @@ const SampleReport = () => {
           icon={<Brain className="w-4 h-4 text-teal" />}
         />
 
-        <ScoreDeepDive report={r} />
+        <CollapsibleSection title="Score Deep Dive" icon={<Brain className="w-4 h-4 text-teal" />} summary="Why you got this score">
+          <ScoreDeepDive report={r} />
+        </CollapsibleSection>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
-          {r.signalCards.map((card) => (
-            <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
-          ))}
-        </div>
+        <CollapsibleSection title="Signal Cards" icon={<Search className="w-4 h-4 text-primary" />} summary={`${r.signalCards.length} market signals analyzed`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {r.signalCards.map((card) => (
+              <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
+            ))}
+          </div>
+        </CollapsibleSection>
 
-        <OpportunitySection opportunity={r.opportunity} />
+        <CollapsibleSection title="Opportunity Gaps" icon={<Target className="w-4 h-4 text-success" />} summary="Where you can win">
+          <OpportunitySection opportunity={r.opportunity} />
+        </CollapsibleSection>
 
         {/* Mid-page CTA */}
         <div className="my-10 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6 text-center">
@@ -172,29 +178,52 @@ const SampleReport = () => {
           icon={<Search className="w-4 h-4 text-success" />}
         />
 
-        {r.proofDashboard && <ProofDashboard data={r.proofDashboard} />}
-        <EvidenceStrength proofDashboard={r.proofDashboard} />
-        {r.keywordDemand && <KeywordDemand data={r.keywordDemand} />}
+        {r.proofDashboard && (
+          <CollapsibleSection title="Proof Dashboard" icon={<Search className="w-4 h-4 text-success" />} summary="Verified evidence overview">
+            <ProofDashboard data={r.proofDashboard} />
+          </CollapsibleSection>
+        )}
 
-        <UserQuotesSection quotes={(() => {
-          if (r.userQuotes && r.userQuotes.length > 0) return r.userQuotes.slice(0, 5);
-          const extracted = r.signalCards.flatMap(c =>
-            c.evidence.map(e => {
-              const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
-              if (!match) return null;
-              const src = match[2];
-              return {
-                text: match[1],
-                source: src,
-                platform: (src.toLowerCase().includes("reddit") || src.toLowerCase().includes("r/") ? "reddit" : src.toLowerCase().includes("app store") ? "app_store" : "other") as any,
-              };
-            }).filter(Boolean)
-          ) as any[];
-          return extracted.slice(0, 5);
-        })()} />
+        <CollapsibleSection title="Evidence Strength" icon={<BarChart3 className="w-4 h-4 text-primary" />} summary="How strong is the proof?">
+          <EvidenceStrength proofDashboard={r.proofDashboard} />
+        </CollapsibleSection>
 
-        {r.appStoreIntelligence && <AppStoreIntelligence data={r.appStoreIntelligence} />}
-        {r.githubRepos && <OpenSourceLandscape repos={r.githubRepos} />}
+        {r.keywordDemand && (
+          <CollapsibleSection title="Keyword Demand" icon={<Search className="w-4 h-4 text-teal" />} summary="Search volume insights">
+            <KeywordDemand data={r.keywordDemand} />
+          </CollapsibleSection>
+        )}
+
+        <CollapsibleSection title="User Quotes" icon={<MessageSquare className="w-4 h-4 text-purple-400" />} summary="What real users are saying">
+          <UserQuotesSection quotes={(() => {
+            if (r.userQuotes && r.userQuotes.length > 0) return r.userQuotes.slice(0, 5);
+            const extracted = r.signalCards.flatMap(c =>
+              c.evidence.map(e => {
+                const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
+                if (!match) return null;
+                const src = match[2];
+                return {
+                  text: match[1],
+                  source: src,
+                  platform: (src.toLowerCase().includes("reddit") || src.toLowerCase().includes("r/") ? "reddit" : src.toLowerCase().includes("app store") ? "app_store" : "other") as any,
+                };
+              }).filter(Boolean)
+            ) as any[];
+            return extracted.slice(0, 5);
+          })()} />
+        </CollapsibleSection>
+
+        {r.appStoreIntelligence && (
+          <CollapsibleSection title="App Store Intelligence" icon={<Eye className="w-4 h-4 text-primary" />} summary="App store insights">
+            <AppStoreIntelligence data={r.appStoreIntelligence} />
+          </CollapsibleSection>
+        )}
+
+        {r.githubRepos && (
+          <CollapsibleSection title="Open Source Landscape" icon={<GitCompare className="w-4 h-4 text-muted-foreground" />} summary="Related open-source projects">
+            <OpenSourceLandscape repos={r.githubRepos} />
+          </CollapsibleSection>
+        )}
 
         {/* LAYER 4 — DEEP ANALYSIS */}
         <ReportLayerHeader
