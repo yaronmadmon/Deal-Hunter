@@ -159,11 +159,13 @@ async function fetchKeywordsEverywhere(
       params.append("kw[]", kw);
     }
 
+    console.log(`[KE-API] Requesting data for ${keywords.slice(0, 10).length} keywords: ${keywords.slice(0, 3).join(", ")}...`);
     const res = await fetch("https://api.keywordseverywhere.com/v1/get_keyword_data", {
       method: "POST",
       headers: {
         "Accept": "application/json",
         "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
     });
