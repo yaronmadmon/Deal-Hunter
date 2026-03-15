@@ -105,6 +105,7 @@ const Report = () => {
               mvpPlan: [],
             },
           });
+          trackEvent("report_viewed", user.id, { analysis_id: id });
           return;
         }
 
