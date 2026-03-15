@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Users, Eye, MousePointerClick, TrendingUp, Activity, Clock } from "lucide-react";
+import { RefreshCw, Users, Eye, MousePointerClick, TrendingUp, Activity, Clock, Timer, BarChart3 } from "lucide-react";
 
 interface AnalyticsEvent {
   id: string;
@@ -32,6 +32,7 @@ const EVENT_LABELS: Record<string, string> = {
   credit_purchase: "Credit Purchase",
   blueprint_generated: "Blueprint Generated",
   report_downloaded: "Report Downloaded",
+  session_end: "Session End",
 };
 
 const EVENT_COLORS: Record<string, string> = {
@@ -43,6 +44,7 @@ const EVENT_COLORS: Record<string, string> = {
   report_viewed: "bg-indigo-500/10 text-indigo-500",
   watchlist_added: "bg-pink-500/10 text-pink-500",
   credit_purchase: "bg-yellow-500/10 text-yellow-500",
+  session_end: "bg-slate-500/10 text-slate-500",
 };
 
 export const AnalyticsDashboard = () => {
@@ -80,14 +82,42 @@ export const AnalyticsDashboard = () => {
   // Compute metrics
   const pageViews = events.filter(e => e.event_name === "page_view");
   const uniqueUsers = new Set(events.map(e => e.user_id).filter(Boolean));
-  const actions = events.filter(e => e.event_name !== "page_view");
+  const actions = events.filter(e => e.event_name !== "page_view" && e.event_name !== "session_end");
   const signups = events.filter(e => e.event_name === "signup");
+  const sessionEnds = events.filter(e => e.event_name === "session_end");
+
+  // Engagement metrics from session_end events
+  const sessionDurations = sessionEnds
+    .map(e => e.metadata?.duration_seconds)
+    .filter((d): d is number => typeof d === "number" && d > 0);
+  const sessionPageCounts = sessionEnds
+    .map(e => e.metadata?.pages_viewed)
+    .filter((p): p is number => typeof p === "number" && p > 0);
+
+  const avgDuration = sessionDurations.length > 0
+    ? Math.round(sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length)
+    : 0;
+  const avgPages = sessionPageCounts.length > 0
+    ? (sessionPageCounts.reduce((a, b) => a + b, 0) / sessionPageCounts.length).toFixed(1)
+    : "0";
+  const bounceCount = sessionPageCounts.filter(p => p <= 1).length;
+  const bounceRate = sessionPageCounts.length > 0
+    ? Math.round((bounceCount / sessionPageCounts.length) * 100)
+    : 0;
+
+  const formatDuration = (secs: number) => {
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    const remaining = secs % 60;
+    if (mins < 60) return `${mins}m ${remaining}s`;
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
 
   const metrics: MetricCard[] = [
     { label: "Unique Visitors", value: uniqueUsers.size, icon: Users },
     { label: "Page Views", value: pageViews.length, icon: Eye },
-    { label: "Actions", value: actions.length, icon: MousePointerClick },
-    { label: "Signups", value: signups.length, icon: TrendingUp },
+    { label: "Avg. Duration", value: formatDuration(avgDuration), icon: Timer },
+    { label: "Bounce Rate", value: `${bounceRate}%`, icon: TrendingUp },
   ];
 
   // Top pages
@@ -204,8 +234,9 @@ export const AnalyticsDashboard = () => {
       </div>
 
       <Tabs defaultValue="feed" className="space-y-4">
-        <TabsList className="bg-muted/50">
+        <TabsList className="bg-muted/50 flex-wrap">
           <TabsTrigger value="feed">Live Feed</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
           <TabsTrigger value="pages">Top Pages</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
@@ -347,6 +378,91 @@ export const AnalyticsDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Engagement */}
+        <TabsContent value="engagement">
+          <div className="space-y-4">
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <Timer className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{formatDuration(avgDuration)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Avg. Session</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{avgPages}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Pages / Session</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{bounceRate}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">Bounce Rate</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <Activity className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{sessionEnds.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Total Sessions</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Session details table */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-primary" />
+                  Recent Sessions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium">User</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">Duration</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">Pages</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">When</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {sessionEnds.slice(0, 20).map(e => (
+                        <tr key={e.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2.5 text-foreground font-medium truncate max-w-[180px]">
+                            {e.user_id ? (userEmails[e.user_id] || e.user_id.slice(0, 12)) : "anon"}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-bold">
+                            {formatDuration(e.metadata?.duration_seconds || 0)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground">
+                            {e.metadata?.pages_viewed || 0}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground text-xs">
+                            {formatTime(e.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {sessionEnds.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No session data yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Session data is recorded when users leave or close the app</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

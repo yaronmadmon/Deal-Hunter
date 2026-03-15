@@ -6,8 +6,33 @@ const getSessionId = (): string => {
   if (!sessionId) {
     sessionId = crypto.randomUUID();
     sessionStorage.setItem("analytics_session_id", sessionId);
+    sessionStorage.setItem("analytics_session_start", Date.now().toString());
+    sessionStorage.setItem("analytics_page_count", "0");
   }
   return sessionId;
+};
+
+/** Get session start timestamp */
+const getSessionStart = (): number => {
+  const raw = sessionStorage.getItem("analytics_session_start");
+  return raw ? parseInt(raw, 10) : Date.now();
+};
+
+/** Increment and return page count for this session */
+export const incrementPageCount = (): number => {
+  const count = parseInt(sessionStorage.getItem("analytics_page_count") || "0", 10) + 1;
+  sessionStorage.setItem("analytics_page_count", count.toString());
+  return count;
+};
+
+/** Get current session duration in seconds */
+export const getSessionDuration = (): number => {
+  return Math.round((Date.now() - getSessionStart()) / 1000);
+};
+
+/** Get page count */
+export const getPageCount = (): number => {
+  return parseInt(sessionStorage.getItem("analytics_page_count") || "0", 10);
 };
 
 /**
@@ -34,4 +59,55 @@ export const trackEvent = (
     .then(({ error }) => {
       if (error) console.warn("[analytics]", error.message);
     });
+};
+
+/**
+ * Send a session_end event. Uses fetch with keepalive for reliability on page unload.
+ */
+export const trackSessionEnd = (userId: string) => {
+  const sessionId = sessionStorage.getItem("analytics_session_id");
+  if (!sessionId) return;
+  
+  // Prevent duplicate session_end for the same session
+  const endKey = `session_end_${sessionId}`;
+  if (sessionStorage.getItem(endKey)) return;
+  sessionStorage.setItem(endKey, "1");
+
+  const duration = getSessionDuration();
+  const pages = getPageCount();
+
+  // Try to get the current user token from localStorage for authenticated insert
+  let token = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  try {
+    const storageKey = Object.keys(localStorage).find(k => k.includes("auth-token"));
+    if (storageKey) {
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      if (parsed?.access_token) token = parsed.access_token;
+    }
+  } catch {}
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/analytics_events`;
+  const payload = JSON.stringify({
+    event_name: "session_end",
+    user_id: userId,
+    metadata: {
+      session_id: sessionId,
+      duration_seconds: duration,
+      pages_viewed: pages,
+      url: window.location.pathname,
+      timestamp: new Date().toISOString(),
+    },
+  });
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${token}`,
+      Prefer: "return=minimal",
+    },
+    body: payload,
+    keepalive: true,
+  }).catch(() => {});
 };
