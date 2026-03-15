@@ -71,26 +71,6 @@ const tiers = [
     badge: "Most Popular",
     priceId: SUBSCRIPTION_TIERS.pro.price_id,
   },
-  {
-    key: "agency" as SubscriptionTier,
-    name: "Agency",
-    icon: Building2,
-    monthly: 79,
-    annual: 790,
-    sub: "For teams validating at scale",
-    features: [
-      "Everything in Pro",
-      "3 team seats",
-      "White label PDF (your logo)",
-      "Bulk analyze 10 ideas at once",
-      "Priority support",
-    ],
-    btnLabel: "Get Agency",
-    btnVariant: "outline" as const,
-    btnClass: "border-[hsl(270,60%,60%)] text-[hsl(270,60%,60%)] hover:bg-[hsl(270,60%,60%)] hover:text-white",
-    highlight: false,
-    priceId: SUBSCRIPTION_TIERS.agency.price_id,
-  },
 ];
 
 const comparisonFeatures = [
