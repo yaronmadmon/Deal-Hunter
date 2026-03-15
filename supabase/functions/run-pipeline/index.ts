@@ -1974,6 +1974,12 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     (rawData.serperAutoComplete?.suggestions || []).forEach((s: string) => {
       evidenceBlock.demandSignals.push({ signal: "Google Autocomplete", value: s, source: "Serper Autocomplete", sourceUrl: null, tier: "verified" });
     });
+    // Add keyword intelligence volume/trend data as verified signals
+    (rawData.serperKeywordIntel?.keywords || []).forEach((kw: any) => {
+      if (kw.volume && kw.volume !== "N/A") {
+        evidenceBlock.demandSignals.push({ signal: `Keyword Volume: ${kw.keyword}`, value: `${kw.volume}/mo (${kw.trend})`, source: "Serper + Google Trends", sourceUrl: null, tier: "verified" });
+      }
+    });
     (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
       evidenceBlock.demandSignals.push({ signal: "App Store Listing", value: r.title || r.url, source: "Firecrawl App Store", sourceUrl: r.url, tier: "verified" });
     });
