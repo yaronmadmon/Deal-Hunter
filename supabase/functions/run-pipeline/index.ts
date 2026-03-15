@@ -1604,7 +1604,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
     // Run keyword intelligence after serper autocomplete has completed
-    if (serperKey) {
+    if (keywordIntelPromise) {
       await keywordIntelPromise();
     }
     const totalFetchDurationMs = Date.now() - fetchStart;
