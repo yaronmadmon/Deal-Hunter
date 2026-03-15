@@ -273,25 +273,25 @@ export const DataSourceHealth = () => {
           )}
           <div className="divide-y divide-border/30">
             {sources.map((src) => (
-              <div key={src.name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-base leading-none">{getStatusEmoji(src.status)}</span>
+              <div key={src.name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0 gap-2">
+                <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                  <span className="text-sm md:text-base leading-none">{getStatusEmoji(src.status)}</span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{src.displayName}</p>
+                    <p className="text-xs md:text-sm font-medium text-foreground truncate">{src.displayName}</p>
                     {src.lastError && src.status !== "connected" && (
-                      <p className="text-xs text-red-400 truncate mt-0.5 max-w-[300px]">{src.lastError}</p>
+                      <p className="text-[10px] md:text-xs text-red-400 truncate mt-0.5 max-w-[200px] md:max-w-[300px]">{src.lastError}</p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 ml-3">
+                <div className="flex items-center gap-2 md:gap-3 shrink-0">
                   <div className="text-right hidden sm:block">
                     <p className="text-xs text-muted-foreground">{src.avgDurationMs}ms avg</p>
                     <p className="text-xs text-muted-foreground">{src.avgSignals} signals</p>
                   </div>
                   {src.failRate > 0 && (
-                    <span className="text-xs text-muted-foreground">{src.failRate}% fail</span>
+                    <span className="text-[10px] md:text-xs text-muted-foreground hidden sm:inline">{src.failRate}% fail</span>
                   )}
-                  <Badge variant={getStatusBadgeVariant(src.status)} className="text-xs min-w-[80px] justify-center">
+                  <Badge variant={getStatusBadgeVariant(src.status)} className="text-[10px] md:text-xs min-w-[60px] md:min-w-[80px] justify-center">
                     {src.statusLabel}
                   </Badge>
                 </div>
