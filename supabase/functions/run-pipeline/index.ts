@@ -151,15 +151,18 @@ async function fetchKeywordsEverywhere(
 ): Promise<{ data: { keyword: string; vol: number; cpc: { value: string; currency: string }; competition: number; trend: { monthly: number[] } }[] } | null> {
   try {
     // KE API expects form-encoded data with kw[] for each keyword
-    const params = new URLSearchParams();
-    params.append("country", "us");
-    params.append("currency", "usd");
-    params.append("dataSource", "gkp");
-    for (const kw of keywords.slice(0, 10)) {
-      params.append("kw[]", kw);
-    }
+    // Build body manually to avoid URLSearchParams encoding [] as %5B%5D
+    const kwSlice = keywords.slice(0, 10);
+    const bodyParts = [
+      "country=us",
+      "currency=usd",
+      "dataSource=gkp",
+      ...kwSlice.map((kw) => `kw[]=${encodeURIComponent(kw)}`),
+    ];
+    const bodyStr = bodyParts.join("&");
 
-    console.log(`[KE-API] Requesting data for ${keywords.slice(0, 10).length} keywords: ${keywords.slice(0, 3).join(", ")}...`);
+    console.log(`[KE-API] Requesting data for ${kwSlice.length} keywords: ${kwSlice.slice(0, 3).join(", ")}...`);
+    console.log(`[KE-API] Request body: ${bodyStr.slice(0, 200)}`);
     const res = await fetch("https://api.keywordseverywhere.com/v1/get_keyword_data", {
       method: "POST",
       headers: {
@@ -167,7 +170,7 @@ async function fetchKeywordsEverywhere(
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: params.toString(),
+      body: bodyStr,
     });
 
     if (!res.ok) {
