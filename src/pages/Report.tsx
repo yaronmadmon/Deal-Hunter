@@ -302,18 +302,24 @@ const Report = () => {
           icon={<Brain className="w-4 h-4 text-teal" />}
         />
 
-        {/* Score Deep Dive (merged explanation/breakdown/journey) */}
-        <ScoreDeepDive report={r} />
+        {/* Score Deep Dive */}
+        <CollapsibleSection title="Score Deep Dive" icon={<Brain className="w-4 h-4 text-teal" />} summary="Why you got this score">
+          <ScoreDeepDive report={r} />
+        </CollapsibleSection>
 
         {/* Signal Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
-          {r.signalCards.map((card) => (
-            <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
-          ))}
-        </div>
+        <CollapsibleSection title="Signal Cards" icon={<Search className="w-4 h-4 text-primary" />} summary={`${r.signalCards.length} market signals analyzed`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {r.signalCards.map((card) => (
+              <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
+            ))}
+          </div>
+        </CollapsibleSection>
 
         {/* Opportunity */}
-        <OpportunitySection opportunity={r.opportunity} />
+        <CollapsibleSection title="Opportunity Gaps" icon={<Target className="w-4 h-4 text-success" />} summary="Where you can win">
+          <OpportunitySection opportunity={r.opportunity} />
+        </CollapsibleSection>
 
 
         {/* ═══════════════════════════════════════════════════════
