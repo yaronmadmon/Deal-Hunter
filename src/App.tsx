@@ -16,6 +16,7 @@ import Live from "./pages/Live";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
+import SampleReport from "./pages/SampleReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
