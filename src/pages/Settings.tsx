@@ -68,6 +68,7 @@ const Settings = () => {
   // Billing
   const [creditLog, setCreditLog] = useState<CreditLogEntry[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
