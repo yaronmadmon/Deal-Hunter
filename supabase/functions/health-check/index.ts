@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
   const TWITTER_BEARER_TOKEN = Deno.env.get("TWITTER_BEARER_TOKEN") || "";
   const PRODUCTHUNT_API_KEY = Deno.env.get("PRODUCTHUNT_API_KEY") || "";
   const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY") || "";
+  const KEYWORDS_EVERYWHERE_API_KEY = Deno.env.get("KEYWORDS_EVERYWHERE_API_KEY") || "";
 
   // Run all checks in parallel
   const checks = await Promise.all([
@@ -177,6 +178,22 @@ Deno.serve(async (req) => {
         "https://hn.algolia.com/api/v1/search?query=test&hitsPerPage=1"
       )
     ),
+
+    pingEndpoint("keywords_everywhere", "Keywords Everywhere", () => {
+      const params = new URLSearchParams();
+      params.append("country", "us");
+      params.append("currency", "usd");
+      params.append("dataSource", "gkp");
+      params.append("kw[]", "resume builder");
+      return fetch("https://api.keywordseverywhere.com/v1/get_keyword_data", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${KEYWORDS_EVERYWHERE_API_KEY}`,
+        },
+        body: params.toString(),
+      });
+    }),
   ]);
 
   return new Response(JSON.stringify({ results: checks, timestamp: new Date().toISOString() }), {
