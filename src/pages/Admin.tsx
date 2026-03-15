@@ -14,12 +14,15 @@ import { EmailLogs } from "@/components/admin/EmailLogs";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
   ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
+  Menu,
 } from "lucide-react";
 
 const navSections = [
