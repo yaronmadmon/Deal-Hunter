@@ -97,6 +97,7 @@ const Report = () => {
             signalStrength: (data.signal_strength as MockReportData["signalStrength"]) ?? rd.signalStrength,
             blueprint: savedBlueprint || {
               productConcept: "",
+              strategicPositioning: "",
               coreFeatures: [],
               targetUsers: [],
               monetization: [],
