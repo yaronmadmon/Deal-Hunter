@@ -4142,6 +4142,15 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             confidence: "Low",
           };
         }
+        // Ensure "Your Idea" in competitorMatrix always has scores filled in
+        if (reportData.competitorMatrix?.competitors && reportData.competitorMatrix?.features) {
+          const yourIdea = reportData.competitorMatrix.competitors.find((c: any) => c.isYou);
+          if (yourIdea && (!yourIdea.scores || Object.keys(yourIdea.scores).length === 0)) {
+            yourIdea.scores = Object.fromEntries(
+              reportData.competitorMatrix.features.map((f: string) => [f, "Medium"])
+            );
+          }
+        }
         if (!reportData.founderDecision) {
           const score = reportData.overallScore || 65;
           reportData.founderDecision = {
