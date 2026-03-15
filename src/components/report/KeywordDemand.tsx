@@ -24,6 +24,8 @@ const DifficultyBadge = ({ level }: { level: string }) => {
 export const KeywordDemand = ({ data }: Props) => {
   if (!data.keywords || data.keywords.length === 0) return null;
 
+  const hasCpc = data.keywords.some(kw => kw.cpc);
+
   return (
     <div className="bg-card border rounded-2xl p-8 mb-8">
       <div className="flex items-center justify-between mb-6">
@@ -45,6 +47,7 @@ export const KeywordDemand = ({ data }: Props) => {
             <TableRow className="bg-secondary/30">
               <TableHead className="h-9 text-[13px] font-semibold">Keyword</TableHead>
               <TableHead className="h-9 text-[13px] font-semibold text-right">Monthly Volume</TableHead>
+              {hasCpc && <TableHead className="h-9 text-[13px] font-semibold text-right">CPC</TableHead>}
               <TableHead className="h-9 text-[13px] font-semibold text-center">Difficulty</TableHead>
               <TableHead className="h-9 text-[13px] font-semibold text-center">Trend</TableHead>
             </TableRow>
@@ -54,6 +57,7 @@ export const KeywordDemand = ({ data }: Props) => {
               <TableRow key={kw.keyword}>
                 <TableCell className="py-2.5 text-sm font-medium text-foreground">{kw.keyword}</TableCell>
                 <TableCell className="py-2.5 text-sm text-right font-semibold text-foreground">{kw.volume}</TableCell>
+                {hasCpc && <TableCell className="py-2.5 text-sm text-right text-muted-foreground">{kw.cpc || "—"}</TableCell>}
                 <TableCell className="py-2.5 text-center"><DifficultyBadge level={kw.difficulty} /></TableCell>
                 <TableCell className="py-2.5">
                   <div className="flex items-center justify-center gap-1.5">

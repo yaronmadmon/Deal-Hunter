@@ -144,15 +144,100 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
-// ── Keyword Intelligence: Serper search volume proxy + trend estimation ──
+// ── KeywordsEverywhere API helper ──────────────────────────────────
+async function fetchKeywordsEverywhere(
+  apiKey: string,
+  keywords: string[]
+): Promise<{ data: { keyword: string; vol: number; cpc: { value: string; currency: string }; competition: number; trend: { monthly: number[] } }[] } | null> {
+  try {
+    // KE API expects form-encoded data with kw[] for each keyword
+    const params = new URLSearchParams();
+    params.append("country", "us");
+    params.append("currency", "usd");
+    params.append("dataSource", "gkp");
+    for (const kw of keywords.slice(0, 10)) {
+      params.append("kw[]", kw);
+    }
+
+    const res = await fetch("https://api.keywordseverywhere.com/v1/get_keyword_data", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: params.toString(),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[KE-API] Request failed (${res.status}): ${errText}`);
+      return null;
+    }
+
+    const data = await res.json();
+    console.log(`[KE-API] Successfully retrieved data for ${data.data?.length || 0} keywords`);
+    return data;
+  } catch (e) {
+    console.error("[KE-API] Error:", e);
+    return null;
+  }
+}
+
+function formatVolume(vol: number): string {
+  if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
+  if (vol >= 1_000) return `${(vol / 1_000).toFixed(1)}K`;
+  return String(vol);
+}
+
+function deriveTrendFromMonthly(monthly: number[]): string {
+  if (!monthly || monthly.length < 4) return "Stable";
+  const half = Math.floor(monthly.length / 2);
+  const firstHalf = monthly.slice(0, half).reduce((a, b) => a + b, 0) / half;
+  const secondHalf = monthly.slice(half).reduce((a, b) => a + b, 0) / (monthly.length - half);
+  if (firstHalf === 0 && secondHalf === 0) return "Stable";
+  const change = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : (secondHalf > 0 ? 100 : 0);
+  if (change > 15) return "Rising";
+  if (change < -15) return "Declining";
+  return "Stable";
+}
+
+function deriveDifficultyFromCompetition(competition: number): string {
+  if (competition >= 0.7) return "High";
+  if (competition >= 0.3) return "Medium";
+  return "Low";
+}
+
+// ── Keyword Intelligence: KE primary, Serper/Perplexity fallback ──
 async function fetchKeywordIntelligence(
   serperKey: string,
   perplexityKey: string,
   keywords: string[]
-): Promise<{ keywords: { keyword: string; volume: string; difficulty: string; trend: string }[]; confidence: string; source: string }> {
+): Promise<{ keywords: { keyword: string; volume: string; difficulty: string; trend: string; cpc?: string }[]; confidence: string; source: string }> {
   if (keywords.length === 0) return { keywords: [], confidence: "Low", source: "No data" };
 
-  // Step 1: Use Serper to get totalResults count for each keyword as a demand/difficulty proxy
+  // ── Primary: KeywordsEverywhere API ──
+  const keApiKey = Deno.env.get("KEYWORDS_EVERYWHERE_API_KEY");
+  if (keApiKey) {
+    const keResult = await fetchKeywordsEverywhere(keApiKey, keywords);
+    if (keResult?.data && keResult.data.length > 0) {
+      const kwData = keResult.data.map((item) => ({
+        keyword: item.keyword,
+        volume: formatVolume(item.vol),
+        difficulty: deriveDifficultyFromCompetition(item.competition),
+        trend: deriveTrendFromMonthly(item.trend?.monthly || []),
+        cpc: item.cpc?.value ? `$${item.cpc.value}` : undefined,
+      }));
+      console.log(`[KEYWORD-INTEL] Using KeywordsEverywhere data (${kwData.length} keywords)`);
+      return {
+        keywords: kwData,
+        confidence: "High",
+        source: "Keywords Everywhere (Google Keyword Planner data)",
+      };
+    }
+    console.warn("[KEYWORD-INTEL] KeywordsEverywhere returned no data, falling back to Serper/Perplexity");
+  }
+
+  // ── Fallback: Serper + Perplexity (original logic) ──
   const keywordData: { keyword: string; totalResults: number; volume: string; difficulty: string; trend: string }[] = [];
   
   const serperPromises = keywords.slice(0, 8).map(async (kw) => {
@@ -178,7 +263,6 @@ async function fetchKeywordIntelligence(
 
   const serperResults = await Promise.all(serperPromises);
   
-  // Step 2: Estimate difficulty from totalResults count
   for (const r of serperResults) {
     let difficulty = "Medium";
     if (r.totalResults > 500_000_000) difficulty = "High";
@@ -188,7 +272,6 @@ async function fetchKeywordIntelligence(
     keywordData.push({ ...r, volume: "N/A", difficulty, trend: "Stable" });
   }
 
-  // Step 3: Use Perplexity to get Google Trends volume + trend data
   if (perplexityKey && keywords.length > 0) {
     try {
       const kwList = keywords.slice(0, 8).join(", ");
@@ -213,12 +296,10 @@ async function fetchKeywordIntelligence(
       const trendData = await trendRes.json();
       const content = trendData.choices?.[0]?.message?.content || "";
       
-      // Parse JSON from response (handle markdown code blocks)
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0]) as { keyword: string; volume: string; trend: string }[];
-          // Merge Perplexity volume/trend data with Serper difficulty data
           for (const p of parsed) {
             const match = keywordData.find(k => k.keyword.toLowerCase() === p.keyword?.toLowerCase());
             if (match) {
