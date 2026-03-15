@@ -62,16 +62,20 @@ export const trackEvent = (
 };
 
 /**
- * Send a session_end beacon. Uses sendBeacon for reliability on page unload.
+ * Send a session_end event. Uses fetch with keepalive for reliability on page unload.
  */
 export const trackSessionEnd = (userId: string) => {
   const sessionId = sessionStorage.getItem("analytics_session_id");
   if (!sessionId) return;
+  
+  // Prevent duplicate session_end for the same session
+  const endKey = `session_end_${sessionId}`;
+  if (sessionStorage.getItem(endKey)) return;
+  sessionStorage.setItem(endKey, "1");
 
   const duration = getSessionDuration();
   const pages = getPageCount();
 
-  // Use sendBeacon for reliability during unload
   const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/analytics_events`;
   const payload = JSON.stringify({
     event_name: "session_end",
@@ -85,23 +89,15 @@ export const trackSessionEnd = (userId: string) => {
     },
   });
 
-  const sent = navigator.sendBeacon(
-    url,
-    new Blob([payload], { type: "application/json" })
-  );
-
-  // sendBeacon doesn't support auth headers, so fall back to fetch if needed
-  if (!sent) {
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        Prefer: "return=minimal",
-      },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {});
-  }
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Prefer: "return=minimal",
+    },
+    body: payload,
+    keepalive: true,
+  }).catch(() => {});
 };
