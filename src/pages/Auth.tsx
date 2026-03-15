@@ -56,6 +56,7 @@ const Auth = () => {
       } else {
         const { error, needsEmailConfirmation } = await signUp(email, password);
         if (error) { toast.error(error.message); return; }
+        trackEvent("signup", null, { email });
 
         if (needsEmailConfirmation) {
           toast.success("Account created! Check your email to confirm your account.");
