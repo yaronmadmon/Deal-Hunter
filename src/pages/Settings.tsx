@@ -354,8 +354,15 @@ const Settings = () => {
                     <p className="text-xs text-muted-foreground">Credits remaining</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  {(!subscription || subscription.status !== "active") && (
+                <div className="flex gap-3 flex-wrap">
+                  {subscription?.status === "active" ? (
+                    <>
+                      <Button onClick={handleManageSubscription} disabled={portalLoading}>
+                        {portalLoading ? "Opening…" : "Manage Subscription"}
+                      </Button>
+                      <Button variant="outline" onClick={() => navigate("/pricing")}>Change Plan</Button>
+                    </>
+                  ) : (
                     <Button onClick={() => navigate("/pricing")}>Upgrade Plan</Button>
                   )}
                   <Button variant="outline" onClick={() => navigate("/buy-credits")}>Buy Credits</Button>
