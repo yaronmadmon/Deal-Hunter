@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { RefreshCw, Wifi, WifiOff, AlertTriangle, Clock, Activity } from "lucide-react";
+import { RefreshCw, Wifi, WifiOff, AlertTriangle, Clock, Activity, Zap, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface SourceMetric {
@@ -65,6 +65,8 @@ export const DataSourceHealth = () => {
   const [loading, setLoading] = useState(true);
   const [lastPipelineTime, setLastPipelineTime] = useState<string | null>(null);
   const [nextRefreshMinutes, setNextRefreshMinutes] = useState<number | null>(null);
+  const [liveChecking, setLiveChecking] = useState(false);
+  const [liveResults, setLiveResults] = useState<Record<string, { status: "connected" | "degraded" | "down"; latencyMs: number; error?: string }> | null>(null);
 
   const fetchHealth = async () => {
     setLoading(true);
@@ -182,6 +184,33 @@ export const DataSourceHealth = () => {
 
   useEffect(() => { fetchHealth(); }, []);
 
+  const runLiveHealthCheck = async () => {
+    setLiveChecking(true);
+    setLiveResults(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in");
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("health-check", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      for (const r of data.results) {
+        map[r.name] = { status: r.status, latencyMs: r.latencyMs, error: r.error };
+      }
+      setLiveResults(map);
+      toast.success(`Live check complete — ${data.results.filter((r: any) => r.status === "connected").length}/${data.results.length} healthy`);
+    } catch (err: any) {
+      console.error("Live health check failed:", err);
+      toast.error("Live health check failed");
+    } finally {
+      setLiveChecking(false);
+    }
+  };
+
   const summary = useMemo(() => {
     const connected = sources.filter(s => s.status === "connected").length;
     const degraded = sources.filter(s => s.status === "degraded").length;
@@ -193,10 +222,26 @@ export const DataSourceHealth = () => {
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-semibold text-foreground">Data Source Health</h2>
-        <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runLiveHealthCheck}
+            disabled={liveChecking}
+            className="border-primary/30 text-primary hover:bg-primary/10"
+          >
+            {liveChecking ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <Zap className="h-4 w-4 mr-1.5" />
+            )}
+            <span className="hidden sm:inline">{liveChecking ? "Pinging..." : "Live Check"}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -258,6 +303,41 @@ export const DataSourceHealth = () => {
         )}
       </div>
 
+      {/* Live Check Results */}
+      {liveResults && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Live Health Check Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y divide-border/30">
+              {Object.entries(liveResults).map(([name, result]) => (
+                <div key={name} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm leading-none">{getStatusEmoji(result.status)}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs md:text-sm font-medium text-foreground truncate">{getDisplayName(name)}</p>
+                      {result.error && (
+                        <p className="text-[10px] md:text-xs text-destructive truncate mt-0.5 max-w-[200px] md:max-w-[300px]">{result.error}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">{result.latencyMs}ms</span>
+                    <Badge variant={getStatusBadgeVariant(result.status)} className="text-[10px] md:text-xs min-w-[60px] justify-center">
+                      {result.status === "connected" ? "OK" : result.status === "degraded" ? "Degraded" : "Down"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Source List */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-2">
@@ -279,7 +359,7 @@ export const DataSourceHealth = () => {
                   <div className="min-w-0">
                     <p className="text-xs md:text-sm font-medium text-foreground truncate">{src.displayName}</p>
                     {src.lastError && src.status !== "connected" && (
-                      <p className="text-[10px] md:text-xs text-red-400 truncate mt-0.5 max-w-[200px] md:max-w-[300px]">{src.lastError}</p>
+                      <p className="text-[10px] md:text-xs text-destructive truncate mt-0.5 max-w-[200px] md:max-w-[300px]">{src.lastError}</p>
                     )}
                   </div>
                 </div>
