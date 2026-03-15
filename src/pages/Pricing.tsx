@@ -251,7 +251,7 @@ const Pricing = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-20 max-w-4xl mx-auto">
           {tiers.map((tier) => {
             const price = annual ? tier.annual : tier.monthly;
             const monthlyEquiv = annual && tier.annual > 0 ? (tier.annual / 12).toFixed(0) : null;
