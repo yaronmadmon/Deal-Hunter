@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // ── Shared verdict + signal strength helpers ───────────────────────
 function computeVerdict(score: number): string {
