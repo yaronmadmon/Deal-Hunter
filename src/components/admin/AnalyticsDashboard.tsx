@@ -44,6 +44,7 @@ const EVENT_COLORS: Record<string, string> = {
   report_viewed: "bg-indigo-500/10 text-indigo-500",
   watchlist_added: "bg-pink-500/10 text-pink-500",
   credit_purchase: "bg-yellow-500/10 text-yellow-500",
+  session_end: "bg-slate-500/10 text-slate-500",
 };
 
 export const AnalyticsDashboard = () => {
