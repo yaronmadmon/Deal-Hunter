@@ -242,7 +242,13 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      const cacheKey = `counts:${query}`;
+      const sanitized = sanitizeTwitterQuery(query);
+      if (!sanitized || sanitized.length < 2) {
+        return new Response(JSON.stringify({ counts: [], total_count: 0, volume_change_pct: 0 }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `counts:${sanitized}`;
       const cached = await getCached(cacheKey, 'tweet_counts');
       if (cached) {
         return new Response(JSON.stringify({ ...cached, cached: true }),
@@ -253,7 +259,7 @@ serve(async (req) => {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 1000); // +1min buffer on start
 
       const searchParams = new URLSearchParams({
-        query,
+        query: sanitized,
         granularity,
         start_time: params.start_time || sevenDaysAgo.toISOString(),
         end_time: params.end_time || now.toISOString(),
