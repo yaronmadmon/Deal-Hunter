@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Trophy, Brain, Search, Microscope, Crosshair, Map, GitCompare, MessageSquare, Target, DollarSign, BarChart3, Wrench, Compass, Pickaxe, Layers } from "lucide-react";
+import { ArrowRight, Trophy, Brain, Search, Microscope, Crosshair, Map, GitCompare, MessageSquare, Target, DollarSign, BarChart3, Wrench, Compass, Pickaxe, Layers, Eye } from "lucide-react";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
