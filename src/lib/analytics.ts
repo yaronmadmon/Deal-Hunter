@@ -76,6 +76,16 @@ export const trackSessionEnd = (userId: string) => {
   const duration = getSessionDuration();
   const pages = getPageCount();
 
+  // Try to get the current user token from localStorage for authenticated insert
+  let token = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  try {
+    const storageKey = Object.keys(localStorage).find(k => k.includes("auth-token"));
+    if (storageKey) {
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      if (parsed?.access_token) token = parsed.access_token;
+    }
+  } catch {}
+
   const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/analytics_events`;
   const payload = JSON.stringify({
     event_name: "session_end",
@@ -94,7 +104,7 @@ export const trackSessionEnd = (userId: string) => {
     headers: {
       "Content-Type": "application/json",
       apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      Authorization: `Bearer ${token}`,
       Prefer: "return=minimal",
     },
     body: payload,
