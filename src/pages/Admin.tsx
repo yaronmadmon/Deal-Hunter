@@ -73,6 +73,7 @@ const AdminPage = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "overview": return <AdminOverview />;
+      case "analytics": return <AnalyticsDashboard />;
       case "users": return <UserManagement />;
       case "revenue": return <RevenueManagement />;
       case "analyses": return <AnalysisManagement />;
