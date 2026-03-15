@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, X, Sparkles, Zap, Building2, Star, Loader2, Settings } from "lucide-react";
+import { Check, X, Sparkles, Zap, Star, Loader2, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,43 +71,19 @@ const tiers = [
     badge: "Most Popular",
     priceId: SUBSCRIPTION_TIERS.pro.price_id,
   },
-  {
-    key: "agency" as SubscriptionTier,
-    name: "Agency",
-    icon: Building2,
-    monthly: 79,
-    annual: 790,
-    sub: "For teams validating at scale",
-    features: [
-      "Everything in Pro",
-      "3 team seats",
-      "White label PDF (your logo)",
-      "Bulk analyze 10 ideas at once",
-      "Priority support",
-    ],
-    btnLabel: "Get Agency",
-    btnVariant: "outline" as const,
-    btnClass: "border-[hsl(270,60%,60%)] text-[hsl(270,60%,60%)] hover:bg-[hsl(270,60%,60%)] hover:text-white",
-    highlight: false,
-    priceId: SUBSCRIPTION_TIERS.agency.price_id,
-  },
 ];
 
 const comparisonFeatures = [
-  { label: "Monthly credits", values: ["3 lifetime", "10/mo", "Unlimited", "Unlimited"] },
-  { label: "Free reports on signup", values: ["3", "3", "3", "3"] },
-  { label: "Score breakdown", values: [true, true, true, true] },
-  { label: "Full 6-card report", values: [false, true, true, true] },
-  { label: "Startup blueprint", values: [false, true, true, true] },
-  { label: "Clean PDF export", values: [false, true, true, true] },
-  { label: "Gold Rush Live", values: [false, false, true, true] },
-  { label: "Idea tracking", values: [false, false, true, true] },
-  { label: "GitHub trending signals", values: [false, false, true, true] },
-  { label: "Priority data refresh", values: [false, false, true, true] },
-  { label: "Team seats", values: ["1", "1", "1", "3"] },
-  { label: "White label PDF", values: [false, false, false, true] },
-  { label: "Bulk analysis", values: [false, false, false, true] },
-  { label: "Priority support", values: [false, false, false, true] },
+  { label: "Monthly credits", values: ["3 lifetime", "10/mo", "Unlimited"] },
+  { label: "Free reports on signup", values: ["3", "3", "3"] },
+  { label: "Score breakdown", values: [true, true, true] },
+  { label: "Full 6-card report", values: [false, true, true] },
+  { label: "Startup blueprint", values: [false, true, true] },
+  { label: "Clean PDF export", values: [false, true, true] },
+  { label: "Gold Rush Live", values: [false, false, true] },
+  { label: "Idea tracking", values: [false, false, true] },
+  { label: "GitHub trending signals", values: [false, false, true] },
+  { label: "Priority data refresh", values: [false, false, true] },
 ];
 
 const testimonials = [
@@ -200,7 +176,7 @@ const Pricing = () => {
     }
     // Upgrade nudge: if on a lower tier
     if (subscription.subscribed) {
-      const tierOrder: SubscriptionTier[] = ["free", "starter", "pro", "agency"];
+      const tierOrder: SubscriptionTier[] = ["free", "starter", "pro"];
       const currentIdx = tierOrder.indexOf(subscription.tier);
       const thisIdx = tierOrder.indexOf(tier.key);
       if (thisIdx > currentIdx) return `Upgrade to ${tier.name}`;
@@ -275,7 +251,7 @@ const Pricing = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-20 max-w-4xl mx-auto">
           {tiers.map((tier) => {
             const price = annual ? tier.annual : tier.monthly;
             const monthlyEquiv = annual && tier.annual > 0 ? (tier.annual / 12).toFixed(0) : null;

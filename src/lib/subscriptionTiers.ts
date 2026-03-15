@@ -15,14 +15,6 @@ export const SUBSCRIPTION_TIERS = {
     credits_per_month: -1, // unlimited
     free_reports_on_signup: 3,
   },
-  agency: {
-    name: "Agency",
-    price_id: "price_1TA021JxNS5tkQFqjTK3mxwJ",
-    product_id: "prod_U8GZdU4fzNjS0t",
-    monthly: 79,
-    credits_per_month: -1, // unlimited
-    free_reports_on_signup: 3,
-  },
 } as const;
 
 export type SubscriptionTier = keyof typeof SUBSCRIPTION_TIERS | "free";
