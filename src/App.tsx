@@ -16,6 +16,7 @@ import Live from "./pages/Live";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
+import SampleReport from "./pages/SampleReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,8 +39,9 @@ const App = () => (
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/live" element={<Live />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<Admin />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/sample-report" element={<SampleReport />} />
+            <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
