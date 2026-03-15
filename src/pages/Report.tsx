@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { MockReportData } from "@/data/mockReport";
 import { mockReport } from "@/data/mockReport";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 import { ReportNavigator } from "@/components/report/ReportNavigator";
 import { ReportLayerHeader } from "@/components/report/ReportLayerHeader";
 import { DataQualityGroup } from "@/components/report/DataQualityGroup";
