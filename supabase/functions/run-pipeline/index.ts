@@ -2064,12 +2064,23 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
     console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
 
-    // ── Source Failure Alerting: notify admins if >2 sources failed ──
-    if (failedSources.length > 2) {
+    // ── Source Failure & Degradation Alerting ──
+    // Categorize sources: down (error), degraded (ok but 0 signals)
+    const downSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error");
+    const degradedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "ok" && m.signalCount === 0);
+    const alertSources: { name: string; status: string; detail: string }[] = [];
+
+    for (const [name, m] of downSources) {
+      alertSources.push({ name, status: "🔴 Down", detail: m.error || "Unknown error" });
+    }
+    for (const [name] of degradedSources) {
+      alertSources.push({ name, status: "🟡 Degraded", detail: "Returned 0 signals" });
+    }
+
+    if (alertSources.length > 0) {
       try {
         const { data: adminEmails } = await supabase.from("admin_emails").select("email");
         if (adminEmails && adminEmails.length > 0) {
-          // Look up admin user IDs from profiles
           const adminEmailList = adminEmails.map((a: any) => a.email);
           const { data: adminProfiles } = await supabase
             .from("profiles")
@@ -2077,17 +2088,29 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
             .in("email", adminEmailList);
 
           if (adminProfiles && adminProfiles.length > 0) {
+            const downCount = downSources.length;
+            const degradedCount = degradedSources.length;
+            const statusSummary = [
+              downCount > 0 ? `${downCount} down` : "",
+              degradedCount > 0 ? `${degradedCount} degraded` : "",
+            ].filter(Boolean).join(", ");
+
+            const sourceDetails = alertSources
+              .map(s => `${s.status} ${s.name}: ${s.detail}`)
+              .slice(0, 8) // limit detail length
+              .join("\n");
+
             const notifications = adminProfiles.map((p: any) => ({
               user_id: p.id,
-              title: `Pipeline Alert: ${failedSources.length} sources failed`,
-              message: `Analysis "${idea.slice(0, 50)}..." had ${failedSources.length} source failures: ${failedSources.join(", ")}. Total signals: ${totalSignals}. Review in Admin > Pipeline.`,
+              title: `⚠️ Data Source Alert: ${statusSummary}`,
+              message: `Pipeline for "${idea.slice(0, 40)}…" detected issues:\n${sourceDetails}\n\nTotal signals: ${totalSignals}. Check Admin → Data Sources.`,
             }));
             await supabase.from("notifications").insert(notifications);
-            console.log(`[ALERT] Notified ${adminProfiles.length} admin(s) about ${failedSources.length} source failures`);
+            console.log(`[ALERT] Notified ${adminProfiles.length} admin(s): ${statusSummary}`);
           }
         }
       } catch (alertErr) {
-        console.error("[ALERT] Failed to send failure notification:", alertErr);
+        console.error("[ALERT] Failed to send source health notification:", alertErr);
       }
     }
 
