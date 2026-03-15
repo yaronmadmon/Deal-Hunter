@@ -45,7 +45,9 @@ const sections = [
 ] as const;
 
 export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity, report }: Props) => {
-  const [isVisible, setIsVisible] = useState(false);
+  // Auto-show if blueprint has real generated content (saved from a previous generation)
+  const hasSavedBlueprint = !!(initialBlueprint?.reportSummary || initialBlueprint?.productConcept);
+  const [isVisible, setIsVisible] = useState(hasSavedBlueprint);
   const [isGenerating, setIsGenerating] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [blueprint, setBlueprint] = useState<BlueprintData>(initialBlueprint);
