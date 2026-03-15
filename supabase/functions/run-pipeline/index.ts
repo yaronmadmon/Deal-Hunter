@@ -387,8 +387,14 @@ async function twitterTweetCounts(
   try {
     const now = new Date(Date.now() - 30 * 1000); // 30s buffer
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 1000); // +1min buffer
+    const sanitized = sanitizeTwitterQuery(query);
+    if (!sanitized || sanitized.length < 2) {
+      console.warn("[TWITTER] Counts query too short after sanitization, skipping");
+      return { counts: [], total_count: 0, volume_change_pct: 0 };
+    }
+    console.log(`[TWITTER] Counts query: "${sanitized.substring(0, 80)}..."`);
     const params = new URLSearchParams({
-      query,
+      query: sanitized,
       granularity: 'day',
       start_time: sevenDaysAgo.toISOString(),
       end_time: now.toISOString(),
