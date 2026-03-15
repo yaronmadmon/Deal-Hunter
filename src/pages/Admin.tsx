@@ -23,7 +23,7 @@ import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
   ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
-  Menu,
+  Menu, BarChart3,
 } from "lucide-react";
 
 const navSections = [
