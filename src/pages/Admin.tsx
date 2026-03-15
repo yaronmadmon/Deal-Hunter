@@ -77,6 +77,7 @@ const AdminPage = () => {
       case "reviews": return <ReviewsManagement />;
       case "live-feed": return <LiveFeedControl />;
       case "pipeline": return <PipelineMetricsPanel />;
+      case "data-health": return <DataSourceHealth />;
       default: return <AdminOverview />;
     }
   };
