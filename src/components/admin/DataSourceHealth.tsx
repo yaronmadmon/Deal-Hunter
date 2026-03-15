@@ -255,7 +255,8 @@ export const DataSourceHealth = () => {
             <RefreshCw className="h-3.5 w-3.5 shrink-0" />
             <span>Next check: {nextRefreshMinutes} min</span>
           </div>
-        )}
+      </div>
+
       {/* Source List */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-2">
