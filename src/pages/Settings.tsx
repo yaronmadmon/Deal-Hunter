@@ -68,6 +68,7 @@ const Settings = () => {
   // Billing
   const [creditLog, setCreditLog] = useState<CreditLogEntry[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -125,6 +126,22 @@ const Settings = () => {
 
   const handleDeleteAccount = async () => {
     toast.info("Please contact support to delete your account.");
+  };
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error || !data?.url) {
+        toast.error("Failed to open subscription management");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   const savePref = async (key: string, value: boolean) => {
@@ -354,8 +371,15 @@ const Settings = () => {
                     <p className="text-xs text-muted-foreground">Credits remaining</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  {(!subscription || subscription.status !== "active") && (
+                <div className="flex gap-3 flex-wrap">
+                  {subscription?.status === "active" ? (
+                    <>
+                      <Button onClick={handleManageSubscription} disabled={portalLoading}>
+                        {portalLoading ? "Opening…" : "Manage Subscription"}
+                      </Button>
+                      <Button variant="outline" onClick={() => navigate("/pricing")}>Change Plan</Button>
+                    </>
+                  ) : (
                     <Button onClick={() => navigate("/pricing")}>Upgrade Plan</Button>
                   )}
                   <Button variant="outline" onClick={() => navigate("/buy-credits")}>Buy Credits</Button>
