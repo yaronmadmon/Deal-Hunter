@@ -144,6 +144,106 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── Keyword Intelligence: Serper search volume proxy + trend estimation ──
+async function fetchKeywordIntelligence(
+  serperKey: string,
+  perplexityKey: string,
+  keywords: string[]
+): Promise<{ keywords: { keyword: string; volume: string; difficulty: string; trend: string }[]; confidence: string; source: string }> {
+  if (keywords.length === 0) return { keywords: [], confidence: "Low", source: "No data" };
+
+  // Step 1: Use Serper to get totalResults count for each keyword as a demand/difficulty proxy
+  const keywordData: { keyword: string; totalResults: number; volume: string; difficulty: string; trend: string }[] = [];
+  
+  const serperPromises = keywords.slice(0, 8).map(async (kw) => {
+    try {
+      const res = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ q: kw, num: 1 }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`[KEYWORD-INTEL] Serper search failed for "${kw}": ${errText}`);
+        return { keyword: kw, totalResults: 0 };
+      }
+      const data = await res.json();
+      const totalResults = data.searchInformation?.totalResults || 0;
+      return { keyword: kw, totalResults: parseInt(String(totalResults), 10) || 0 };
+    } catch (e) {
+      console.error(`[KEYWORD-INTEL] Error for "${kw}":`, e);
+      return { keyword: kw, totalResults: 0 };
+    }
+  });
+
+  const serperResults = await Promise.all(serperPromises);
+  
+  // Step 2: Estimate difficulty from totalResults count
+  for (const r of serperResults) {
+    let difficulty = "Medium";
+    if (r.totalResults > 500_000_000) difficulty = "High";
+    else if (r.totalResults > 50_000_000) difficulty = "Medium";
+    else if (r.totalResults > 0) difficulty = "Low";
+    
+    keywordData.push({ ...r, volume: "N/A", difficulty, trend: "Stable" });
+  }
+
+  // Step 3: Use Perplexity to get Google Trends volume + trend data
+  if (perplexityKey && keywords.length > 0) {
+    try {
+      const kwList = keywords.slice(0, 8).join(", ");
+      const trendQuery = `For each of these keywords, provide estimated monthly Google search volume and whether the trend is Rising, Stable, or Declining based on Google Trends data from the last 12 months. Keywords: ${kwList}. Return ONLY a JSON array like: [{"keyword":"term","volume":"50K","trend":"Rising"}]. No explanation.`;
+      
+      const trendRes = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${perplexityKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [
+            { role: "system", content: "You are a search volume analyst. Return ONLY valid JSON arrays. No markdown, no explanation." },
+            { role: "user", content: trendQuery },
+          ],
+          temperature: 0.1,
+        }),
+      });
+      
+      const trendData = await trendRes.json();
+      const content = trendData.choices?.[0]?.message?.content || "";
+      
+      // Parse JSON from response (handle markdown code blocks)
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]) as { keyword: string; volume: string; trend: string }[];
+          // Merge Perplexity volume/trend data with Serper difficulty data
+          for (const p of parsed) {
+            const match = keywordData.find(k => k.keyword.toLowerCase() === p.keyword?.toLowerCase());
+            if (match) {
+              if (p.volume) match.volume = p.volume;
+              if (p.trend) match.trend = p.trend;
+            }
+          }
+          console.log(`[KEYWORD-INTEL] Perplexity returned volume data for ${parsed.length} keywords`);
+        } catch (parseErr) {
+          console.error("[KEYWORD-INTEL] Failed to parse Perplexity trend JSON:", parseErr);
+        }
+      }
+    } catch (e) {
+      console.error("[KEYWORD-INTEL] Perplexity trend query failed:", e);
+    }
+  }
+
+  const hasVolume = keywordData.some(k => k.volume !== "N/A");
+  return {
+    keywords: keywordData.map(({ keyword, volume, difficulty, trend }) => ({ keyword, volume, difficulty, trend })),
+    confidence: hasVolume ? "High" : "Medium",
+    source: hasVolume ? "Serper.dev + Google Trends via Perplexity" : "Serper.dev Search Results",
+  };
+}
+
 // ── GitHub helper (authenticated for higher rate limits) ────────────────────
 async function githubSearch(
   query: string,
