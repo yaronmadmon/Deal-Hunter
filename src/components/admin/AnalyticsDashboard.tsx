@@ -234,8 +234,9 @@ export const AnalyticsDashboard = () => {
       </div>
 
       <Tabs defaultValue="feed" className="space-y-4">
-        <TabsList className="bg-muted/50">
+        <TabsList className="bg-muted/50 flex-wrap">
           <TabsTrigger value="feed">Live Feed</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
           <TabsTrigger value="pages">Top Pages</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
