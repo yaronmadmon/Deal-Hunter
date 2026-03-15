@@ -116,6 +116,26 @@ const SampleReport = () => {
         {r.founderInsight && <FounderInsight data={r.founderInsight} />}
         {r.founderDecision && <FounderDecision data={r.founderDecision} />}
 
+        {/* Data Quality & Integrity */}
+        {r.dataQualitySummary && (
+          <details className="mb-6 bg-card rounded-lg border border-border/60 p-4">
+            <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+              <Layers className="w-4 h-4" />
+              Data Quality & Integrity
+              <span className="ml-auto text-xs bg-secondary px-2 py-0.5 rounded-full">{r.dataQualitySummary.length} sources</span>
+            </summary>
+            <div className="mt-3 space-y-2">
+              {r.dataQualitySummary.map((s, i) => (
+                <div key={i} className="flex items-start gap-3 text-xs p-2 bg-secondary/30 rounded">
+                  <span className="font-medium text-foreground min-w-[120px]">{s.sourceName}</span>
+                  <span className="text-muted-foreground">{s.dataTier}</span>
+                  <span className="text-muted-foreground ml-auto">{s.signalCount} signals</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+
         {/* LAYER 2 — EXPLANATION */}
         <ReportLayerHeader
           id="layer-explanation"

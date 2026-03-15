@@ -777,7 +777,6 @@ export const mockReport: MockReportData = {
       "Multi-language support multiplies testing surface",
     ],
     scorePenalty: 5,
-    confidence: "Medium",
   },
   recommendedStrategy: {
     positioning: "The simple, offline-first AI note app built for students who can't afford to lose their lecture notes.",
