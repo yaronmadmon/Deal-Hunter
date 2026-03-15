@@ -500,6 +500,7 @@ const Report = () => {
             scoreBreakdown: r.scoreBreakdown,
           }}
           buildComplexity={r.buildComplexity}
+          report={r}
         />
       </main>
 

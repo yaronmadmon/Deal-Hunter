@@ -244,6 +244,8 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
         This blueprint is generated from market signals and competitive analysis.
         It is intended to guide product development decisions.
       </p>
+
+      {report && <AiExpansionPrompt report={report} blueprint={blueprint} />}
     </div>
   );
 };
