@@ -13,6 +13,7 @@ import { DataSourceHealth } from "@/components/admin/DataSourceHealth";
 import { EmailLogs } from "@/components/admin/EmailLogs";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
+import { AnalyticsDashboard } from "@/components/admin/AnalyticsDashboard";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
