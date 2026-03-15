@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Trophy, Brain, Search, Microscope, Crosshair, Map, GitCompare, MessageSquare, Target, DollarSign, BarChart3, Wrench, Compass, Pickaxe } from "lucide-react";
+import { ArrowRight, Trophy, Brain, Search, Microscope, Crosshair, Map, GitCompare, MessageSquare, Target, DollarSign, BarChart3, Wrench, Compass, Pickaxe, Layers } from "lucide-react";
 import { SignalCard } from "@/components/report/SignalCard";
 import { OpportunitySection } from "@/components/report/OpportunitySection";
 import { RevenueBenchmark } from "@/components/report/RevenueBenchmark";
@@ -25,6 +25,7 @@ import { ReviewIntelligence } from "@/components/report/ReviewIntelligence";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { mockReport } from "@/data/mockReport";
 import { ReportNavigator } from "@/components/report/ReportNavigator";
 import { ReportLayerHeader } from "@/components/report/ReportLayerHeader";
@@ -115,6 +116,26 @@ const SampleReport = () => {
 
         {r.founderInsight && <FounderInsight data={r.founderInsight} />}
         {r.founderDecision && <FounderDecision data={r.founderDecision} />}
+
+        {/* Data Quality & Integrity */}
+        {r.dataQualitySummary && (
+          <details className="mb-6 bg-card rounded-lg border border-border/60 p-4">
+            <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+              <Layers className="w-4 h-4" />
+              Data Quality & Integrity
+              <span className="ml-auto text-xs bg-secondary px-2 py-0.5 rounded-full">{r.dataQualitySummary.length} sources</span>
+            </summary>
+            <div className="mt-3 space-y-2">
+              {r.dataQualitySummary.map((s, i) => (
+                <div key={i} className="flex items-start gap-3 text-xs p-2 bg-secondary/30 rounded">
+                  <span className="font-medium text-foreground min-w-[120px]">{s.sourceName}</span>
+                  <span className="text-muted-foreground">{s.dataTier}</span>
+                  <span className="text-muted-foreground ml-auto">{s.signalCount} signals</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
 
         {/* LAYER 2 — EXPLANATION */}
         <ReportLayerHeader
@@ -252,6 +273,22 @@ const SampleReport = () => {
             <MethodologySection methodology={r.methodology} dataSources={r.dataSources} />
           </div>
         </details>
+
+        {/* Blueprint */}
+        <BlueprintSection
+          blueprint={r.blueprint}
+          analysisId="sample"
+          idea={r.idea}
+          pdfContext={{
+            overallScore: r.overallScore,
+            signalStrength: r.signalStrength,
+            sparkline: r.signalCards.find(c => c.sparkline)?.sparkline,
+            donut: r.signalCards.find(c => c.donut)?.donut,
+            scoreBreakdown: r.scoreBreakdown,
+          }}
+          buildComplexity={r.buildComplexity}
+          report={r}
+        />
 
         {/* Final CTA */}
         <div className="my-12 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-10 text-center">
