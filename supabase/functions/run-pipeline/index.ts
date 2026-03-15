@@ -1456,7 +1456,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
       // ── KEYWORD INTELLIGENCE: Real volume + trend data via Serper + Perplexity ──
       // This runs after serper promises resolve (added to a separate phase below)
-      const keywordIntelPromise = async () => {
+      keywordIntelPromise = async () => {
         await Promise.all(serperPromises);
         await trackSource("serper_keyword_intel", async () => {
           const suggestions = rawData.serperAutoComplete?.suggestions || [];
