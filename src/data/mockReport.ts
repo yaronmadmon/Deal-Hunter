@@ -738,7 +738,6 @@ export const mockReport: MockReportData = {
     competitorDetail: "12 direct competitors with AI note-taking features; top 3 control 65% of downloads but leave significant gaps in offline capability and language support.",
     xSignalInterpretation: "Twitter/X discussions around AI study tools grew 45% in Q1 2026, with particular interest from international student communities.",
     xVolumeContext: "~2,400 tweets/week mentioning AI note-taking tools, up from ~1,650/week in Q4 2025.",
-    confidence: "Medium",
   },
   unitEconomics: {
     churnBenchmarks: [
