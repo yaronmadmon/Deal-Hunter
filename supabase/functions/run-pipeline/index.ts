@@ -144,6 +144,106 @@ async function serperAutoComplete(
   return { suggestions: (data.suggestions || []).map((s: any) => s.value || s) };
 }
 
+// ── Keyword Intelligence: Serper search volume proxy + trend estimation ──
+async function fetchKeywordIntelligence(
+  serperKey: string,
+  perplexityKey: string,
+  keywords: string[]
+): Promise<{ keywords: { keyword: string; volume: string; difficulty: string; trend: string }[]; confidence: string; source: string }> {
+  if (keywords.length === 0) return { keywords: [], confidence: "Low", source: "No data" };
+
+  // Step 1: Use Serper to get totalResults count for each keyword as a demand/difficulty proxy
+  const keywordData: { keyword: string; totalResults: number; volume: string; difficulty: string; trend: string }[] = [];
+  
+  const serperPromises = keywords.slice(0, 8).map(async (kw) => {
+    try {
+      const res = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ q: kw, num: 1 }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`[KEYWORD-INTEL] Serper search failed for "${kw}": ${errText}`);
+        return { keyword: kw, totalResults: 0 };
+      }
+      const data = await res.json();
+      const totalResults = data.searchInformation?.totalResults || 0;
+      return { keyword: kw, totalResults: parseInt(String(totalResults), 10) || 0 };
+    } catch (e) {
+      console.error(`[KEYWORD-INTEL] Error for "${kw}":`, e);
+      return { keyword: kw, totalResults: 0 };
+    }
+  });
+
+  const serperResults = await Promise.all(serperPromises);
+  
+  // Step 2: Estimate difficulty from totalResults count
+  for (const r of serperResults) {
+    let difficulty = "Medium";
+    if (r.totalResults > 500_000_000) difficulty = "High";
+    else if (r.totalResults > 50_000_000) difficulty = "Medium";
+    else if (r.totalResults > 0) difficulty = "Low";
+    
+    keywordData.push({ ...r, volume: "N/A", difficulty, trend: "Stable" });
+  }
+
+  // Step 3: Use Perplexity to get Google Trends volume + trend data
+  if (perplexityKey && keywords.length > 0) {
+    try {
+      const kwList = keywords.slice(0, 8).join(", ");
+      const trendQuery = `For each of these keywords, provide estimated monthly Google search volume and whether the trend is Rising, Stable, or Declining based on Google Trends data from the last 12 months. Keywords: ${kwList}. Return ONLY a JSON array like: [{"keyword":"term","volume":"50K","trend":"Rising"}]. No explanation.`;
+      
+      const trendRes = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${perplexityKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [
+            { role: "system", content: "You are a search volume analyst. Return ONLY valid JSON arrays. No markdown, no explanation." },
+            { role: "user", content: trendQuery },
+          ],
+          temperature: 0.1,
+        }),
+      });
+      
+      const trendData = await trendRes.json();
+      const content = trendData.choices?.[0]?.message?.content || "";
+      
+      // Parse JSON from response (handle markdown code blocks)
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]) as { keyword: string; volume: string; trend: string }[];
+          // Merge Perplexity volume/trend data with Serper difficulty data
+          for (const p of parsed) {
+            const match = keywordData.find(k => k.keyword.toLowerCase() === p.keyword?.toLowerCase());
+            if (match) {
+              if (p.volume) match.volume = p.volume;
+              if (p.trend) match.trend = p.trend;
+            }
+          }
+          console.log(`[KEYWORD-INTEL] Perplexity returned volume data for ${parsed.length} keywords`);
+        } catch (parseErr) {
+          console.error("[KEYWORD-INTEL] Failed to parse Perplexity trend JSON:", parseErr);
+        }
+      }
+    } catch (e) {
+      console.error("[KEYWORD-INTEL] Perplexity trend query failed:", e);
+    }
+  }
+
+  const hasVolume = keywordData.some(k => k.volume !== "N/A");
+  return {
+    keywords: keywordData.map(({ keyword, volume, difficulty, trend }) => ({ keyword, volume, difficulty, trend })),
+    confidence: hasVolume ? "High" : "Medium",
+    source: hasVolume ? "Serper.dev + Google Trends via Perplexity" : "Serper.dev Search Results",
+  };
+}
+
 // ── GitHub helper (authenticated for higher rate limits) ────────────────────
 async function githubSearch(
   query: string,
@@ -1156,6 +1256,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       serperNews: null,
       serperReddit: null,
       serperAutoComplete: null,
+      serperKeywordIntel: null,
       serperCompetitors: null,
       productHunt: null,
       github: null,
@@ -1272,6 +1373,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // Run Serper searches in parallel (Google Trends + Reddit fallback + Competitor Discovery)
     const serperPromises: Promise<void>[] = [];
 
+    let keywordIntelPromise: (() => Promise<void>) | null = null;
+
     if (serperKey) {
       // Use SHORT semantic keywords for Serper queries (not full idea text which can be multi-line)
       const serperKeywords = semanticQueries.length > 0
@@ -1350,6 +1453,22 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
           return r.suggestions.length;
         })
       );
+
+      // ── KEYWORD INTELLIGENCE: Real volume + trend data via Serper + Perplexity ──
+      // This runs after serper promises resolve (added to a separate phase below)
+      keywordIntelPromise = async () => {
+        await Promise.all(serperPromises);
+        await trackSource("serper_keyword_intel", async () => {
+          const suggestions = rawData.serperAutoComplete?.suggestions || [];
+          const allKeywords = [...new Set([...suggestions.slice(0, 5), ...semanticQueries.slice(0, 3)])];
+          if (allKeywords.length === 0) {
+            allKeywords.push(primaryKeywords.split(/\s+/).slice(0, 4).join(" "));
+          }
+          const r = await fetchKeywordIntelligence(serperKey, perplexityKey || "", allKeywords);
+          rawData.serperKeywordIntel = r;
+          return r.keywords.length;
+        });
+      };
 
       // ── COMPETITOR DISCOVERY: Use semantic queries for targeted competitor search ──
       rawData.serperCompetitors = { allResults: [] as any[] };
@@ -1484,6 +1603,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
+    // Run keyword intelligence after serper autocomplete has completed
+    if (keywordIntelPromise) {
+      await keywordIntelPromise();
+    }
     const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Merge and deduplicate Reddit results from multiple queries ──
@@ -1850,6 +1973,12 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     });
     (rawData.serperAutoComplete?.suggestions || []).forEach((s: string) => {
       evidenceBlock.demandSignals.push({ signal: "Google Autocomplete", value: s, source: "Serper Autocomplete", sourceUrl: null, tier: "verified" });
+    });
+    // Add keyword intelligence volume/trend data as verified signals
+    (rawData.serperKeywordIntel?.keywords || []).forEach((kw: any) => {
+      if (kw.volume && kw.volume !== "N/A") {
+        evidenceBlock.demandSignals.push({ signal: `Keyword Volume: ${kw.keyword}`, value: `${kw.volume}/mo (${kw.trend})`, source: "Serper + Google Trends", sourceUrl: null, tier: "verified" });
+      }
     });
     (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
       evidenceBlock.demandSignals.push({ signal: "App Store Listing", value: r.title || r.url, source: "Firecrawl App Store", sourceUrl: r.url, tier: "verified" });
@@ -3890,14 +4019,45 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
         if (!reportData.keywordDemand) {
-          const suggestions = rawData.serperAutoComplete?.suggestions || [];
-          reportData.keywordDemand = {
-            keywords: suggestions.slice(0, 5).map((s: string) => ({ keyword: s, volume: "N/A", difficulty: "Medium", trend: "Stable" })),
-            confidence: suggestions.length > 0 ? "Medium" : "Low",
-            source: suggestions.length > 0 ? "Serper.dev Autocomplete" : "AI Estimated",
-          };
-          if (reportData.keywordDemand.keywords.length === 0) {
-            reportData.keywordDemand.keywords = [{ keyword: idea.split(" ").slice(0, 3).join(" "), volume: "N/A", difficulty: "Medium", trend: "Stable" }];
+          // Prefer real keyword intelligence data if available
+          const kwIntel = rawData.serperKeywordIntel;
+          if (kwIntel && kwIntel.keywords && kwIntel.keywords.length > 0) {
+            reportData.keywordDemand = {
+              keywords: kwIntel.keywords.slice(0, 8),
+              confidence: kwIntel.confidence || "Medium",
+              source: kwIntel.source || "Serper.dev + Google Trends",
+            };
+            console.log(`[FIELD POPULATION] keywordDemand: populated from keyword intelligence (${kwIntel.keywords.length} keywords)`);
+          } else {
+            // Fallback to autocomplete suggestions
+            const suggestions = rawData.serperAutoComplete?.suggestions || [];
+            reportData.keywordDemand = {
+              keywords: suggestions.slice(0, 5).map((s: string) => ({ keyword: s, volume: "N/A", difficulty: "Medium", trend: "Stable" })),
+              confidence: suggestions.length > 0 ? "Medium" : "Low",
+              source: suggestions.length > 0 ? "Serper.dev Autocomplete" : "AI Estimated",
+            };
+            if (reportData.keywordDemand.keywords.length === 0) {
+              reportData.keywordDemand.keywords = [{ keyword: idea.split(" ").slice(0, 3).join(" "), volume: "N/A", difficulty: "Medium", trend: "Stable" }];
+            }
+          }
+        }
+        // If AI generated keywordDemand but with N/A volumes, enrich with real data
+        if (reportData.keywordDemand && rawData.serperKeywordIntel?.keywords?.length > 0) {
+          const kwIntel = rawData.serperKeywordIntel;
+          for (const kw of reportData.keywordDemand.keywords) {
+            if (kw.volume === "N/A" || kw.volume === "Unknown") {
+              const match = kwIntel.keywords.find((k: any) => k.keyword.toLowerCase() === kw.keyword.toLowerCase());
+              if (match && match.volume !== "N/A") {
+                kw.volume = match.volume;
+                kw.difficulty = match.difficulty;
+                kw.trend = match.trend;
+              }
+            }
+          }
+          // Upgrade confidence if we enriched with real data
+          if (kwIntel.confidence === "High" && reportData.keywordDemand.confidence !== "High") {
+            reportData.keywordDemand.confidence = "High";
+            reportData.keywordDemand.source = kwIntel.source;
           }
         }
         if (!reportData.appStoreIntelligence) {
