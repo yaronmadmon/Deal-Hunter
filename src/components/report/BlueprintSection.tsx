@@ -23,6 +23,7 @@ interface Props {
   idea?: string;
   pdfContext?: BlueprintPdfContext;
   buildComplexity?: BuildComplexityData;
+  report?: MockReportData;
 }
 
 const sections = [
