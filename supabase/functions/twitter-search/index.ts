@@ -126,6 +126,7 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errorBody = await response.text();
+        console.error(`[TWITTER-SEARCH] API error ${response.status}: ${errorBody}`);
         throw new Error(`Twitter API error [${response.status}]: ${errorBody}`);
       }
 
