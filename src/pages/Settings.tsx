@@ -128,6 +128,22 @@ const Settings = () => {
     toast.info("Please contact support to delete your account.");
   };
 
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error || !data?.url) {
+        toast.error("Failed to open subscription management");
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const savePref = async (key: string, value: boolean) => {
     if (!user) return;
     // Optimistically update localStorage as fallback
