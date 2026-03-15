@@ -4008,14 +4008,45 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
         if (!reportData.keywordDemand) {
-          const suggestions = rawData.serperAutoComplete?.suggestions || [];
-          reportData.keywordDemand = {
-            keywords: suggestions.slice(0, 5).map((s: string) => ({ keyword: s, volume: "N/A", difficulty: "Medium", trend: "Stable" })),
-            confidence: suggestions.length > 0 ? "Medium" : "Low",
-            source: suggestions.length > 0 ? "Serper.dev Autocomplete" : "AI Estimated",
-          };
-          if (reportData.keywordDemand.keywords.length === 0) {
-            reportData.keywordDemand.keywords = [{ keyword: idea.split(" ").slice(0, 3).join(" "), volume: "N/A", difficulty: "Medium", trend: "Stable" }];
+          // Prefer real keyword intelligence data if available
+          const kwIntel = rawData.serperKeywordIntel;
+          if (kwIntel && kwIntel.keywords && kwIntel.keywords.length > 0) {
+            reportData.keywordDemand = {
+              keywords: kwIntel.keywords.slice(0, 8),
+              confidence: kwIntel.confidence || "Medium",
+              source: kwIntel.source || "Serper.dev + Google Trends",
+            };
+            console.log(`[FIELD POPULATION] keywordDemand: populated from keyword intelligence (${kwIntel.keywords.length} keywords)`);
+          } else {
+            // Fallback to autocomplete suggestions
+            const suggestions = rawData.serperAutoComplete?.suggestions || [];
+            reportData.keywordDemand = {
+              keywords: suggestions.slice(0, 5).map((s: string) => ({ keyword: s, volume: "N/A", difficulty: "Medium", trend: "Stable" })),
+              confidence: suggestions.length > 0 ? "Medium" : "Low",
+              source: suggestions.length > 0 ? "Serper.dev Autocomplete" : "AI Estimated",
+            };
+            if (reportData.keywordDemand.keywords.length === 0) {
+              reportData.keywordDemand.keywords = [{ keyword: idea.split(" ").slice(0, 3).join(" "), volume: "N/A", difficulty: "Medium", trend: "Stable" }];
+            }
+          }
+        }
+        // If AI generated keywordDemand but with N/A volumes, enrich with real data
+        if (reportData.keywordDemand && rawData.serperKeywordIntel?.keywords?.length > 0) {
+          const kwIntel = rawData.serperKeywordIntel;
+          for (const kw of reportData.keywordDemand.keywords) {
+            if (kw.volume === "N/A" || kw.volume === "Unknown") {
+              const match = kwIntel.keywords.find((k: any) => k.keyword.toLowerCase() === kw.keyword.toLowerCase());
+              if (match && match.volume !== "N/A") {
+                kw.volume = match.volume;
+                kw.difficulty = match.difficulty;
+                kw.trend = match.trend;
+              }
+            }
+          }
+          // Upgrade confidence if we enriched with real data
+          if (kwIntel.confidence === "High" && reportData.keywordDemand.confidence !== "High") {
+            reportData.keywordDemand.confidence = "High";
+            reportData.keywordDemand.source = kwIntel.source;
           }
         }
         if (!reportData.appStoreIntelligence) {
