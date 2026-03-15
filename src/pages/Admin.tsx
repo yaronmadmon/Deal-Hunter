@@ -53,6 +53,7 @@ const navSections = [
     items: [
       { id: "live-feed", label: "Live Feed", icon: Flame },
       { id: "pipeline", label: "Pipeline", icon: Activity },
+      { id: "data-health", label: "Data Sources", icon: HeartPulse },
     ],
   },
 ];
