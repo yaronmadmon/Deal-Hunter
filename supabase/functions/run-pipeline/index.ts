@@ -1600,31 +1600,73 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       })
     );
 
-    // Run Twitter/X searches in parallel — use SEMANTIC keywords
+    // Run Twitter/X searches in parallel — use MULTIPLE semantic queries for better coverage
+    // Product-search keywords (e.g. "business opportunity detection tool") get zero Twitter hits.
+    // Twitter is conversational, so we try up to 3 queries and merge results.
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      // Use semantic queries for cleaner Twitter search (primaryKeywords can contain special chars)
-      const twitterKeywords = semanticQueries.length > 0
-        ? semanticQueries[0]
-        : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
+      // Build Twitter-optimized query list: prefer broad/problem queries, try multiple
+      const twitterQueries: string[] = [];
+      if (rawData.queryStrategy) {
+        // Structured queries available: problem first (most conversational), then broad
+        const { problem = [], broad = [], niche = [] } = rawData.queryStrategy;
+        twitterQueries.push(...problem, ...broad, ...niche);
+      } else if (semanticQueries.length > 0) {
+        twitterQueries.push(...semanticQueries);
+      } else {
+        twitterQueries.push(primaryKeywords.split(/\s+/).slice(0, 5).join(" "));
+      }
+      // Dedupe and limit to 3 queries
+      const uniqueTwitterQueries = [...new Set(twitterQueries)].slice(0, 3);
+      const primaryTwitterQuery = uniqueTwitterQueries[0];
+      console.log(`[TWITTER] Using ${uniqueTwitterQueries.length} queries: ${JSON.stringify(uniqueTwitterQueries)}`);
+
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
-          const r = await twitterSearch(twitterBearerToken, twitterKeywords, 50);
-          rawData.twitterSentiment = r;
-          rawData.sources.push(...r.tweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
-          return r.tweets.length;
+          // Try multiple queries in sequence, merge results
+          const allTweets: any[] = [];
+          const seenIds = new Set<string>();
+          let totalFetched = 0;
+          for (const q of uniqueTwitterQueries) {
+            const r = await twitterSearch(twitterBearerToken, q, 50);
+            totalFetched += r.total_fetched;
+            for (const t of r.tweets) {
+              if (!seenIds.has(t.id)) {
+                seenIds.add(t.id);
+                allTweets.push(t);
+              }
+            }
+            if (allTweets.length >= 20) break; // enough tweets
+          }
+          // Re-sort merged results by engagement
+          allTweets.sort((a, b) => (b.like_count + b.retweet_count * 2) - (a.like_count + a.retweet_count * 2));
+          const finalTweets = allTweets.slice(0, 30);
+          const result = { tweets: finalTweets, total_fetched: totalFetched };
+          rawData.twitterSentiment = result;
+          rawData.sources.push(...finalTweets.map((t: any) => ({ url: `https://x.com/${t.author_username}/status/${t.id}`, type: "twitter" })));
+          console.log(`[TWITTER] Sentiment merged: ${finalTweets.length} tweets from ${uniqueTwitterQueries.length} queries (${totalFetched} total fetched)`);
+          return finalTweets.length;
         })
       );
       
       twitterPromises.push(
         trackSource("twitter_counts", async () => {
-          const r = await twitterTweetCounts(twitterBearerToken, twitterKeywords);
-          rawData.twitterCounts = r;
-          return r.total_count;
+          // Try each query until we get non-zero counts
+          for (const q of uniqueTwitterQueries) {
+            const r = await twitterTweetCounts(twitterBearerToken, q);
+            if (r.total_count > 0) {
+              rawData.twitterCounts = r;
+              console.log(`[TWITTER] Counts found ${r.total_count} tweets for query "${q}"`);
+              return r.total_count;
+            }
+          }
+          // All queries returned 0
+          rawData.twitterCounts = { counts: [], total_count: 0, volume_change_pct: 0 };
+          return 0;
         })
       );
 
-      rawData.twitterInfluencerNicheQuery = twitterKeywords;
+      rawData.twitterInfluencerNicheQuery = primaryTwitterQuery;
     }
 
     // Run Hacker News search — use SHORT semantic keywords (not full idea text)
