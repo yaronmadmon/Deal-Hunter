@@ -13,6 +13,7 @@ import { DataSourceHealth } from "@/components/admin/DataSourceHealth";
 import { EmailLogs } from "@/components/admin/EmailLogs";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
+import { AnalyticsDashboard } from "@/components/admin/AnalyticsDashboard";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +23,7 @@ import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
   ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
-  Menu,
+  Menu, BarChart3,
 } from "lucide-react";
 
 const navSections = [
@@ -30,6 +31,7 @@ const navSections = [
     label: "General",
     items: [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
+      { id: "analytics", label: "Analytics", icon: BarChart3 },
       { id: "users", label: "Users", icon: Users },
       { id: "revenue", label: "Revenue", icon: DollarSign },
     ],
@@ -71,6 +73,7 @@ const AdminPage = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "overview": return <AdminOverview />;
+      case "analytics": return <AnalyticsDashboard />;
       case "users": return <UserManagement />;
       case "revenue": return <RevenueManagement />;
       case "analyses": return <AnalysisManagement />;

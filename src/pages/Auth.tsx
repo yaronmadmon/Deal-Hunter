@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 
 const Auth = () => {
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
@@ -48,10 +49,14 @@ const Auth = () => {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) { toast.error(error.message); return; }
+        // Track login after successful sign-in
+        const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+        if (loggedInUser) trackEvent("login", loggedInUser.id);
         navigate("/dashboard");
       } else {
         const { error, needsEmailConfirmation } = await signUp(email, password);
         if (error) { toast.error(error.message); return; }
+        trackEvent("signup", null, { email });
 
         if (needsEmailConfirmation) {
           toast.success("Account created! Check your email to confirm your account.");
