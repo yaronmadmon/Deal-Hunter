@@ -750,7 +750,6 @@ export const mockReport: MockReportData = {
     arpuReasoning: "Assuming 15% conversion to $4.99/mo premium, with 85% on free tier. Student demographic is price-sensitive but willing to pay for proven value.",
     privacyPremium: "Moderate — students are less privacy-conscious than professionals, but parents may influence purchasing decisions.",
     ltvEstimate: "$42–$84 (12–24 month retention for converted users)",
-    confidence: "Medium",
   },
   buildComplexity: {
     mvpTimeline: "5–6 weeks",
