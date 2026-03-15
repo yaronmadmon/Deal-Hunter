@@ -292,14 +292,44 @@ async function githubSearch(
 }
 
 // ── Twitter/X helper ────────────────────────────────────────────────
+
+// Sanitize query for Twitter API v2 — remove operators and special chars that cause 400 errors
+function sanitizeTwitterQuery(query: string): string {
+  // Remove special Twitter operators and problematic characters
+  let clean = query
+    .replace(/[""'']/g, '"')          // normalize smart quotes
+    .replace(/["]/g, '')              // remove quotes entirely (they create phrase search issues)
+    .replace(/[()[\]{}&|!^~*?:\\\/]/g, ' ')  // remove special chars
+    .replace(/\b(OR|AND|NOT)\b/g, ' ')       // remove boolean operators
+    .replace(/-\w+/g, ' ')                   // remove negation operators
+    .replace(/\s+/g, ' ')                    // collapse whitespace
+    .trim();
+  
+  // Twitter query + operators must be under 512 chars; leave room for " lang:en -is:retweet" (20 chars)
+  if (clean.length > 400) {
+    clean = clean.substring(0, 400).replace(/\s\S*$/, ''); // cut at last word boundary
+  }
+  
+  return clean;
+}
+
 async function twitterSearch(
   bearerToken: string,
   query: string,
   maxResults = 50
 ): Promise<{ tweets: any[]; total_fetched: number }> {
   try {
+    const sanitized = sanitizeTwitterQuery(query);
+    if (!sanitized || sanitized.length < 2) {
+      console.warn("[TWITTER] Query too short after sanitization, skipping");
+      return { tweets: [], total_fetched: 0 };
+    }
+    
+    const fullQuery = `${sanitized} lang:en -is:retweet`;
+    console.log(`[TWITTER] Search query (${fullQuery.length} chars): "${fullQuery.substring(0, 100)}..."`);
+    
     const params = new URLSearchParams({
-      query: `${query} lang:en -is:retweet`,
+      query: fullQuery,
       max_results: String(Math.min(Math.max(maxResults, 10), 100)),
       'tweet.fields': 'created_at,public_metrics,author_id',
       'user.fields': 'name,username,public_metrics',
@@ -309,7 +339,8 @@ async function twitterSearch(
       headers: { Authorization: `Bearer ${bearerToken}` },
     });
     if (!res.ok) {
-      console.error("Twitter search error:", res.status);
+      const errorBody = await res.text();
+      console.error(`[TWITTER] Search error ${res.status}: ${errorBody}`);
       return { tweets: [], total_fetched: 0 };
     }
     const data = await res.json();
@@ -344,7 +375,7 @@ async function twitterSearch(
     }
     return { tweets: filtered, total_fetched: tweets.length };
   } catch (e) {
-    console.error("Twitter search error:", e);
+    console.error("[TWITTER] Search error:", e);
     return { tweets: [], total_fetched: 0 };
   }
 }
@@ -356,8 +387,14 @@ async function twitterTweetCounts(
   try {
     const now = new Date(Date.now() - 30 * 1000); // 30s buffer
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 60 * 1000); // +1min buffer
+    const sanitized = sanitizeTwitterQuery(query);
+    if (!sanitized || sanitized.length < 2) {
+      console.warn("[TWITTER] Counts query too short after sanitization, skipping");
+      return { counts: [], total_count: 0, volume_change_pct: 0 };
+    }
+    console.log(`[TWITTER] Counts query: "${sanitized.substring(0, 80)}..."`);
     const params = new URLSearchParams({
-      query,
+      query: sanitized,
       granularity: 'day',
       start_time: sevenDaysAgo.toISOString(),
       end_time: now.toISOString(),
@@ -1566,8 +1603,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // Run Twitter/X searches in parallel — use SEMANTIC keywords
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      const twitterKeywords = primaryKeywords;
-
+      // Use semantic queries for cleaner Twitter search (primaryKeywords can contain special chars)
+      const twitterKeywords = semanticQueries.length > 0
+        ? semanticQueries[0]
+        : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
           const r = await twitterSearch(twitterBearerToken, twitterKeywords, 50);
