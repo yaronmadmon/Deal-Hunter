@@ -228,6 +228,69 @@ const Index = () => {
         </div>
       </section>
 
+      {/* ─── REPORT PREVIEW ─── */}
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <div className="text-center mb-10">
+          <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
+            See a <span className="text-primary">Real Report</span>
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Here's what you'll get when you analyze an idea. Explore a full sample report — no signup required.
+          </p>
+        </div>
+
+        <div className="relative bg-card rounded-2xl border border-border/60 p-8 md:p-10 overflow-hidden group hover:border-primary/30 transition-colors">
+          {/* Decorative gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80 pointer-events-none z-10" />
+
+          <div className="flex flex-col sm:flex-row items-start gap-6 mb-6">
+            <div className="shrink-0">
+              {/* Inline mini score ring */}
+              <div className="relative w-24 h-24">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+                  <circle
+                    cx="60" cy="60" r="54" fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 54}
+                    strokeDashoffset={2 * Math.PI * 54 - (71 / 100) * 2 * Math.PI * 54}
+                    className="transition-all duration-700"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-heading text-2xl font-bold text-foreground">71</span>
+                  <span className="text-[10px] text-muted-foreground">/100</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="font-heading text-xl font-bold text-foreground mb-1">AI Note Taking App for Students</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">Moderate Signal</span>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span className="bg-secondary/50 px-2.5 py-1 rounded-md">📈 +34% interest (90d)</span>
+                <span className="bg-secondary/50 px-2.5 py-1 rounded-md">🏆 140 competitors</span>
+                <span className="bg-secondary/50 px-2.5 py-1 rounded-md">💰 $1M–$5M potential</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA overlay */}
+          <div className="relative z-20 flex flex-col sm:flex-row gap-3 justify-center pt-4">
+            <Button size="lg" onClick={() => navigate("/sample-report")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-semibold">
+              Explore Full Sample Report
+              <ArrowRight className="ml-1 w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold">
+              Or analyze your own idea
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* ─── POSITIONING ─── */}
       <section className="max-w-4xl mx-auto px-6 py-20">
         <div className="bg-card rounded-2xl border border-border/60 p-10 md:p-14 text-center relative overflow-hidden">
