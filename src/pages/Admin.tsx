@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
-  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star,
+  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
 } from "lucide-react";
 
 const navSections = [
