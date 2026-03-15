@@ -31,6 +31,7 @@ const navSections = [
     label: "General",
     items: [
       { id: "overview", label: "Overview", icon: LayoutDashboard },
+      { id: "analytics", label: "Analytics", icon: BarChart3 },
       { id: "users", label: "Users", icon: Users },
       { id: "revenue", label: "Revenue", icon: DollarSign },
     ],
