@@ -44,7 +44,7 @@ const sections = [
   { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle, iconColor: "text-teal", bgColor: "bg-teal/10" },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity, report }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
