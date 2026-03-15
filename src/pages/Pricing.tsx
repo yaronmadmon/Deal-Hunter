@@ -74,20 +74,16 @@ const tiers = [
 ];
 
 const comparisonFeatures = [
-  { label: "Monthly credits", values: ["3 lifetime", "10/mo", "Unlimited", "Unlimited"] },
-  { label: "Free reports on signup", values: ["3", "3", "3", "3"] },
-  { label: "Score breakdown", values: [true, true, true, true] },
-  { label: "Full 6-card report", values: [false, true, true, true] },
-  { label: "Startup blueprint", values: [false, true, true, true] },
-  { label: "Clean PDF export", values: [false, true, true, true] },
-  { label: "Gold Rush Live", values: [false, false, true, true] },
-  { label: "Idea tracking", values: [false, false, true, true] },
-  { label: "GitHub trending signals", values: [false, false, true, true] },
-  { label: "Priority data refresh", values: [false, false, true, true] },
-  { label: "Team seats", values: ["1", "1", "1", "3"] },
-  { label: "White label PDF", values: [false, false, false, true] },
-  { label: "Bulk analysis", values: [false, false, false, true] },
-  { label: "Priority support", values: [false, false, false, true] },
+  { label: "Monthly credits", values: ["3 lifetime", "10/mo", "Unlimited"] },
+  { label: "Free reports on signup", values: ["3", "3", "3"] },
+  { label: "Score breakdown", values: [true, true, true] },
+  { label: "Full 6-card report", values: [false, true, true] },
+  { label: "Startup blueprint", values: [false, true, true] },
+  { label: "Clean PDF export", values: [false, true, true] },
+  { label: "Gold Rush Live", values: [false, false, true] },
+  { label: "Idea tracking", values: [false, false, true] },
+  { label: "GitHub trending signals", values: [false, false, true] },
+  { label: "Priority data refresh", values: [false, false, true] },
 ];
 
 const testimonials = [
