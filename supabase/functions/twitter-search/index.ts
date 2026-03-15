@@ -56,6 +56,22 @@ async function setCache(cacheKey: string, action: string, payload: any): Promise
   }
 }
 
+// Sanitize query for Twitter API v2 — remove operators and special chars that cause 400 errors
+function sanitizeTwitterQuery(query: string): string {
+  let clean = query
+    .replace(/[""'']/g, '"')
+    .replace(/["]/g, '')
+    .replace(/[()[\]{}&|!^~*?:\\\/]/g, ' ')
+    .replace(/\b(OR|AND|NOT)\b/g, ' ')
+    .replace(/-\w+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (clean.length > 400) {
+    clean = clean.substring(0, 400).replace(/\s\S*$/, '');
+  }
+  return clean;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -79,15 +95,24 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      const cacheKey = `search:${query}:${max_results}`;
+      const sanitized = sanitizeTwitterQuery(query);
+      if (!sanitized || sanitized.length < 2) {
+        return new Response(JSON.stringify({ tweets: [], total_fetched: 0, error: 'Query too short after sanitization' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const cacheKey = `search:${sanitized}:${max_results}`;
       const cached = await getCached(cacheKey, 'search');
       if (cached) {
         return new Response(JSON.stringify({ ...cached, cached: true }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      const fullQuery = `${sanitized} lang:en -is:retweet`;
+      console.log(`[TWITTER-SEARCH] Query (${fullQuery.length} chars): "${fullQuery.substring(0, 100)}"`);
+
       const searchParams = new URLSearchParams({
-        query: `${query} lang:en -is:retweet`,
+        query: fullQuery,
         max_results: String(Math.min(Math.max(max_results, 10), 100)),
         'tweet.fields': 'created_at,public_metrics,author_id',
         'user.fields': 'name,username,public_metrics',

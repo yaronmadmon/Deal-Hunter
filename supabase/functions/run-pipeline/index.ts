@@ -1603,8 +1603,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // Run Twitter/X searches in parallel — use SEMANTIC keywords
     const twitterPromises: Promise<void>[] = [];
     if (twitterBearerToken) {
-      const twitterKeywords = primaryKeywords;
-
+      // Use semantic queries for cleaner Twitter search (primaryKeywords can contain special chars)
+      const twitterKeywords = semanticQueries.length > 0
+        ? semanticQueries[0]
+        : primaryKeywords.split(/\s+/).slice(0, 5).join(" ");
       twitterPromises.push(
         trackSource("twitter_sentiment", async () => {
           const r = await twitterSearch(twitterBearerToken, twitterKeywords, 50);
