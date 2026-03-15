@@ -9,6 +9,7 @@ import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
 import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
 import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
+import { DataSourceHealth } from "@/components/admin/DataSourceHealth";
 import { EmailLogs } from "@/components/admin/EmailLogs";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
