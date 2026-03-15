@@ -49,6 +49,9 @@ const Auth = () => {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) { toast.error(error.message); return; }
+        // Track login after successful sign-in
+        const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+        if (loggedInUser) trackEvent("login", loggedInUser.id);
         navigate("/dashboard");
       } else {
         const { error, needsEmailConfirmation } = await signUp(email, password);
