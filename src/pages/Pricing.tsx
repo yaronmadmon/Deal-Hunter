@@ -176,7 +176,7 @@ const Pricing = () => {
     }
     // Upgrade nudge: if on a lower tier
     if (subscription.subscribed) {
-      const tierOrder: SubscriptionTier[] = ["free", "starter", "pro", "agency"];
+      const tierOrder: SubscriptionTier[] = ["free", "starter", "pro"];
       const currentIdx = tierOrder.indexOf(subscription.tier);
       const thisIdx = tierOrder.indexOf(tier.key);
       if (thisIdx > currentIdx) return `Upgrade to ${tier.name}`;
