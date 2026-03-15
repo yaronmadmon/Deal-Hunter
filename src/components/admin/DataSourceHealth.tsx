@@ -184,6 +184,33 @@ export const DataSourceHealth = () => {
 
   useEffect(() => { fetchHealth(); }, []);
 
+  const runLiveHealthCheck = async () => {
+    setLiveChecking(true);
+    setLiveResults(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in");
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("health-check", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      for (const r of data.results) {
+        map[r.name] = { status: r.status, latencyMs: r.latencyMs, error: r.error };
+      }
+      setLiveResults(map);
+      toast.success(`Live check complete — ${data.results.filter((r: any) => r.status === "connected").length}/${data.results.length} healthy`);
+    } catch (err: any) {
+      console.error("Live health check failed:", err);
+      toast.error("Live health check failed");
+    } finally {
+      setLiveChecking(false);
+    }
+  };
+
   const summary = useMemo(() => {
     const connected = sources.filter(s => s.status === "connected").length;
     const degraded = sources.filter(s => s.status === "degraded").length;
@@ -195,10 +222,26 @@ export const DataSourceHealth = () => {
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-semibold text-foreground">Data Source Health</h2>
-        <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runLiveHealthCheck}
+            disabled={liveChecking}
+            className="border-primary/30 text-primary hover:bg-primary/10"
+          >
+            {liveChecking ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <Zap className="h-4 w-4 mr-1.5" />
+            )}
+            <span className="hidden sm:inline">{liveChecking ? "Pinging..." : "Live Check"}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
