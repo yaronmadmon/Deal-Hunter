@@ -49,9 +49,11 @@ export const useAuth = () => {
           // Check subscription after sign in
           setTimeout(() => checkSubscription(), 500);
 
+          const welcomeKey = `welcome_email_sent_${session.user.id}`;
           const createdAt = new Date(session.user.created_at).getTime();
           const now = Date.now();
-          if (now - createdAt < 60_000) {
+          if (now - createdAt < 60_000 && !localStorage.getItem(welcomeKey)) {
+            localStorage.setItem(welcomeKey, "true");
             trackEvent("user_signup", session.user.id, { email: session.user.email });
             supabase.functions.invoke("send-transactional-email", {
               body: {
