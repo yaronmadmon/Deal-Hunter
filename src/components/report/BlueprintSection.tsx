@@ -5,7 +5,8 @@ import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Do
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
-import type { BlueprintData } from "@/data/mockReport";
+import type { BlueprintData, MockReportData } from "@/data/mockReport";
+import { AiExpansionPrompt } from "./AiExpansionPrompt";
 
 interface BuildComplexityData {
   mvpTimeline?: string;
@@ -22,6 +23,7 @@ interface Props {
   idea?: string;
   pdfContext?: BlueprintPdfContext;
   buildComplexity?: BuildComplexityData;
+  report?: MockReportData;
 }
 
 const sections = [
@@ -42,7 +44,7 @@ const sections = [
   { key: "validationMilestones", title: "Validation Checkpoints", icon: CheckCircle, iconColor: "text-teal", bgColor: "bg-teal/10" },
 ] as const;
 
-export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity }: Props) => {
+export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea = "Startup Idea", pdfContext, buildComplexity, report }: Props) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -242,6 +244,8 @@ export const BlueprintSection = ({ blueprint: initialBlueprint, analysisId, idea
         This blueprint is generated from market signals and competitive analysis.
         It is intended to guide product development decisions.
       </p>
+
+      {report && <AiExpansionPrompt report={report} blueprint={blueprint} />}
     </div>
   );
 };
