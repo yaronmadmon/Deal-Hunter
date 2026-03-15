@@ -5,7 +5,8 @@ import { Sparkles, Package, Target, Users, DollarSign, ListChecks, Lightbulb, Do
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateBlueprintPdf, type BlueprintPdfContext } from "@/lib/generateBlueprintPdf";
-import type { BlueprintData } from "@/data/mockReport";
+import type { BlueprintData, MockReportData } from "@/data/mockReport";
+import { AiExpansionPrompt } from "./AiExpansionPrompt";
 
 interface BuildComplexityData {
   mvpTimeline?: string;
