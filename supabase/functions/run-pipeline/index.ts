@@ -1453,12 +1453,11 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       );
 
       // ── KEYWORD INTELLIGENCE: Real volume + trend data via Serper + Perplexity ──
-      serperPromises.push(
-        trackSource("serper_keyword_intel", async () => {
-          // Wait for autocomplete to finish first so we have discovered keywords
-          await Promise.all(serperPromises.filter((_, i) => i < serperPromises.length - 1));
+      // This runs after serper promises resolve (added to a separate phase below)
+      const keywordIntelPromise = async () => {
+        await Promise.all(serperPromises);
+        await trackSource("serper_keyword_intel", async () => {
           const suggestions = rawData.serperAutoComplete?.suggestions || [];
-          // Combine autocomplete suggestions with semantic queries for broader coverage
           const allKeywords = [...new Set([...suggestions.slice(0, 5), ...semanticQueries.slice(0, 3)])];
           if (allKeywords.length === 0) {
             allKeywords.push(primaryKeywords.split(/\s+/).slice(0, 4).join(" "));
@@ -1466,8 +1465,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
           const r = await fetchKeywordIntelligence(serperKey, perplexityKey || "", allKeywords);
           rawData.serperKeywordIntel = r;
           return r.keywords.length;
-        })
-      );
+        });
+      };
 
       // ── COMPETITOR DISCOVERY: Use semantic queries for targeted competitor search ──
       rawData.serperCompetitors = { allResults: [] as any[] };
