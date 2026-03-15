@@ -1373,6 +1373,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // Run Serper searches in parallel (Google Trends + Reddit fallback + Competitor Discovery)
     const serperPromises: Promise<void>[] = [];
 
+    let keywordIntelPromise: (() => Promise<void>) | null = null;
+
     if (serperKey) {
       // Use SHORT semantic keywords for Serper queries (not full idea text which can be multi-line)
       const serperKeywords = semanticQueries.length > 0
