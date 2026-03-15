@@ -274,6 +274,22 @@ const SampleReport = () => {
           </div>
         </details>
 
+        {/* Blueprint */}
+        <BlueprintSection
+          blueprint={r.blueprint}
+          analysisId="sample"
+          idea={r.idea}
+          pdfContext={{
+            overallScore: r.overallScore,
+            signalStrength: r.signalStrength,
+            sparkline: r.signalCards.find(c => c.sparkline)?.sparkline,
+            donut: r.signalCards.find(c => c.donut)?.donut,
+            scoreBreakdown: r.scoreBreakdown,
+          }}
+          buildComplexity={r.buildComplexity}
+          report={r}
+        />
+
         {/* Final CTA */}
         <div className="my-12 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-10 text-center">
           <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-3">
