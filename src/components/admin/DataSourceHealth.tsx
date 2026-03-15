@@ -190,61 +190,61 @@ export const DataSourceHealth = () => {
   }, [sources]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Data Source Health</h2>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base md:text-lg font-semibold text-foreground">Data Source Health</h2>
         <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+          <span className="hidden sm:inline">Refresh</span>
         </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="pt-5 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
+          <CardContent className="pt-4 pb-3 px-3 md:pt-5 md:pb-4 md:px-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Total Sources</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Total</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{summary.total}</p>
+            <p className="text-xl md:text-2xl font-bold text-foreground">{summary.total}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="pt-5 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
+          <CardContent className="pt-4 pb-3 px-3 md:pt-5 md:pb-4 md:px-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <Wifi className="h-4 w-4 text-green-400" />
-              <span className="text-xs text-muted-foreground">Connected</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Connected</span>
             </div>
-            <p className="text-2xl font-bold text-green-400">{summary.connected}</p>
+            <p className="text-xl md:text-2xl font-bold text-green-400">{summary.connected}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="pt-5 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
+          <CardContent className="pt-4 pb-3 px-3 md:pt-5 md:pb-4 md:px-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <AlertTriangle className="h-4 w-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">Degraded</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Degraded</span>
             </div>
-            <p className="text-2xl font-bold text-amber-400">{summary.degraded}</p>
+            <p className="text-xl md:text-2xl font-bold text-amber-400">{summary.degraded}</p>
           </CardContent>
         </Card>
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="pt-5 pb-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
+          <CardContent className="pt-4 pb-3 px-3 md:pt-5 md:pb-4 md:px-4">
+            <div className="flex items-center gap-2 mb-1.5">
               <WifiOff className="h-4 w-4 text-red-400" />
-              <span className="text-xs text-muted-foreground">Down</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Down</span>
             </div>
-            <p className="text-2xl font-bold text-red-400">{summary.down}</p>
+            <p className="text-xl md:text-2xl font-bold text-red-400">{summary.down}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Timeline info */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" />
+          <Clock className="h-3.5 w-3.5 shrink-0" />
           <span>
-            Last pipeline test:{" "}
+            Last test:{" "}
             {lastPipelineTime
               ? formatDistanceToNow(new Date(lastPipelineTime)) + " ago"
               : "Never"}
@@ -252,12 +252,10 @@ export const DataSourceHealth = () => {
         </div>
         {nextRefreshMinutes !== null && nextRefreshMinutes > 0 && (
           <div className="flex items-center gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Suggested next check: {nextRefreshMinutes} min</span>
+            <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+            <span>Next check: {nextRefreshMinutes} min</span>
           </div>
         )}
-      </div>
-
       {/* Source List */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-2">
