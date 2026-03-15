@@ -1256,6 +1256,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       serperNews: null,
       serperReddit: null,
       serperAutoComplete: null,
+      serperKeywordIntel: null,
       serperCompetitors: null,
       productHunt: null,
       github: null,
