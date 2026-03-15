@@ -82,14 +82,42 @@ export const AnalyticsDashboard = () => {
   // Compute metrics
   const pageViews = events.filter(e => e.event_name === "page_view");
   const uniqueUsers = new Set(events.map(e => e.user_id).filter(Boolean));
-  const actions = events.filter(e => e.event_name !== "page_view");
+  const actions = events.filter(e => e.event_name !== "page_view" && e.event_name !== "session_end");
   const signups = events.filter(e => e.event_name === "signup");
+  const sessionEnds = events.filter(e => e.event_name === "session_end");
+
+  // Engagement metrics from session_end events
+  const sessionDurations = sessionEnds
+    .map(e => e.metadata?.duration_seconds)
+    .filter((d): d is number => typeof d === "number" && d > 0);
+  const sessionPageCounts = sessionEnds
+    .map(e => e.metadata?.pages_viewed)
+    .filter((p): p is number => typeof p === "number" && p > 0);
+
+  const avgDuration = sessionDurations.length > 0
+    ? Math.round(sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length)
+    : 0;
+  const avgPages = sessionPageCounts.length > 0
+    ? (sessionPageCounts.reduce((a, b) => a + b, 0) / sessionPageCounts.length).toFixed(1)
+    : "0";
+  const bounceCount = sessionPageCounts.filter(p => p <= 1).length;
+  const bounceRate = sessionPageCounts.length > 0
+    ? Math.round((bounceCount / sessionPageCounts.length) * 100)
+    : 0;
+
+  const formatDuration = (secs: number) => {
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    const remaining = secs % 60;
+    if (mins < 60) return `${mins}m ${remaining}s`;
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
 
   const metrics: MetricCard[] = [
     { label: "Unique Visitors", value: uniqueUsers.size, icon: Users },
     { label: "Page Views", value: pageViews.length, icon: Eye },
-    { label: "Actions", value: actions.length, icon: MousePointerClick },
-    { label: "Signups", value: signups.length, icon: TrendingUp },
+    { label: "Avg. Duration", value: formatDuration(avgDuration), icon: Timer },
+    { label: "Bounce Rate", value: `${bounceRate}%`, icon: TrendingUp },
   ];
 
   // Top pages
