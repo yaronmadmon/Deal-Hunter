@@ -65,6 +65,8 @@ export const DataSourceHealth = () => {
   const [loading, setLoading] = useState(true);
   const [lastPipelineTime, setLastPipelineTime] = useState<string | null>(null);
   const [nextRefreshMinutes, setNextRefreshMinutes] = useState<number | null>(null);
+  const [liveChecking, setLiveChecking] = useState(false);
+  const [liveResults, setLiveResults] = useState<Record<string, { status: "connected" | "degraded" | "down"; latencyMs: number; error?: string }> | null>(null);
 
   const fetchHealth = async () => {
     setLoading(true);
