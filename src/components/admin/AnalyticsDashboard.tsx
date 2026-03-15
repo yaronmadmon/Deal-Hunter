@@ -32,6 +32,7 @@ const EVENT_LABELS: Record<string, string> = {
   credit_purchase: "Credit Purchase",
   blueprint_generated: "Blueprint Generated",
   report_downloaded: "Report Downloaded",
+  session_end: "Session End",
 };
 
 const EVENT_COLORS: Record<string, string> = {
