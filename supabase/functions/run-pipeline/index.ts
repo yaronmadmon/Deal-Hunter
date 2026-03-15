@@ -1601,6 +1601,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
 
     const fetchStart = Date.now();
     await Promise.all([...perplexityPromises, ...firecrawlPromises, ...serperPromises, ...productHuntPromises, ...githubPromises, ...twitterPromises, ...hnPromises]);
+    // Run keyword intelligence after serper autocomplete has completed
+    if (serperKey) {
+      await keywordIntelPromise();
+    }
     const totalFetchDurationMs = Date.now() - fetchStart;
 
     // ── Post-fetch: Merge and deduplicate Reddit results from multiple queries ──
