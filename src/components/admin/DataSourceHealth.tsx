@@ -255,6 +255,7 @@ export const DataSourceHealth = () => {
             <RefreshCw className="h-3.5 w-3.5 shrink-0" />
             <span>Next check: {nextRefreshMinutes} min</span>
           </div>
+        )}
       </div>
 
       {/* Source List */}
