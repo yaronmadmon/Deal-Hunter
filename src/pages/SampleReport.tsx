@@ -25,6 +25,7 @@ import { ReviewIntelligence } from "@/components/report/ReviewIntelligence";
 import { EvidenceStrength } from "@/components/report/EvidenceStrength";
 import { FounderInsight } from "@/components/report/FounderInsight";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BlueprintSection } from "@/components/report/BlueprintSection";
 import { mockReport } from "@/data/mockReport";
 import { ReportNavigator } from "@/components/report/ReportNavigator";
 import { ReportLayerHeader } from "@/components/report/ReportLayerHeader";
