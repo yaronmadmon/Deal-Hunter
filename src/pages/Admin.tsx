@@ -9,6 +9,7 @@ import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
 import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
 import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
+import { DataSourceHealth } from "@/components/admin/DataSourceHealth";
 import { EmailLogs } from "@/components/admin/EmailLogs";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
-  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star,
+  ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
 } from "lucide-react";
 
 const navSections = [
@@ -52,6 +53,7 @@ const navSections = [
     items: [
       { id: "live-feed", label: "Live Feed", icon: Flame },
       { id: "pipeline", label: "Pipeline", icon: Activity },
+      { id: "data-health", label: "Data Sources", icon: HeartPulse },
     ],
   },
 ];
@@ -75,6 +77,7 @@ const AdminPage = () => {
       case "reviews": return <ReviewsManagement />;
       case "live-feed": return <LiveFeedControl />;
       case "pipeline": return <PipelineMetricsPanel />;
+      case "data-health": return <DataSourceHealth />;
       default: return <AdminOverview />;
     }
   };
