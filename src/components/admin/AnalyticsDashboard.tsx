@@ -379,6 +379,91 @@ export const AnalyticsDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Engagement */}
+        <TabsContent value="engagement">
+          <div className="space-y-4">
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <Timer className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{formatDuration(avgDuration)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Avg. Session</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{avgPages}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Pages / Session</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{bounceRate}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">Bounce Rate</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50">
+                <CardContent className="p-4">
+                  <Activity className="h-4 w-4 text-muted-foreground mb-2" />
+                  <div className="text-2xl font-bold text-foreground">{sessionEnds.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Total Sessions</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Session details table */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Timer className="h-4 w-4 text-primary" />
+                  Recent Sessions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium">User</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">Duration</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">Pages</th>
+                        <th className="px-4 py-2 text-xs text-muted-foreground font-medium text-right">When</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {sessionEnds.slice(0, 20).map(e => (
+                        <tr key={e.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2.5 text-foreground font-medium truncate max-w-[180px]">
+                            {e.user_id ? (userEmails[e.user_id] || e.user_id.slice(0, 12)) : "anon"}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-bold">
+                            {formatDuration(e.metadata?.duration_seconds || 0)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground">
+                            {e.metadata?.pages_viewed || 0}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-muted-foreground text-xs">
+                            {formatTime(e.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {sessionEnds.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground">No session data yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Session data is recorded when users leave or close the app</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
