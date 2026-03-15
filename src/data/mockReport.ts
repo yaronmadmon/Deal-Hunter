@@ -243,6 +243,7 @@ export interface KeywordDemandData {
     volume: string;
     difficulty: string;
     trend: string;
+    cpc?: string;
   }[];
   confidence?: "High" | "Medium" | "Low";
   source?: string;
