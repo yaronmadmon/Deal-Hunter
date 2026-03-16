@@ -212,12 +212,27 @@ export const DataSourceHealth = () => {
     }
   };
 
+  // Merge live results into sources for display
+  const displaySources = useMemo(() => {
+    if (!liveResults) return sources;
+    return sources.map(src => {
+      const live = liveResults[src.name];
+      if (!live) return src;
+      return {
+        ...src,
+        status: live.status,
+        statusLabel: live.status === "connected" ? "OK" : live.status === "degraded" ? "Degraded" : "Down",
+        lastError: live.error,
+      };
+    });
+  }, [sources, liveResults]);
+
   const summary = useMemo(() => {
-    const connected = sources.filter(s => s.status === "connected").length;
-    const degraded = sources.filter(s => s.status === "degraded").length;
-    const down = sources.filter(s => s.status === "down").length;
-    return { connected, degraded, down, total: sources.length };
-  }, [sources]);
+    const connected = displaySources.filter(s => s.status === "connected").length;
+    const degraded = displaySources.filter(s => s.status === "degraded").length;
+    const down = displaySources.filter(s => s.status === "down").length;
+    return { connected, degraded, down, total: displaySources.length };
+  }, [displaySources]);
 
   return (
     <div className="space-y-4 md:space-y-6">
