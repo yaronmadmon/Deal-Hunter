@@ -180,54 +180,6 @@ const Index = () => {
         </p>
       </section>
 
-      {/* ─── HOW IT WORKS ─── */}
-      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-20">
-        <h2 className="font-heading text-3xl md:text-4xl font-bold text-center text-foreground mb-4">
-          How <span className="text-primary">Gold Rush</span> Works
-        </h2>
-        <p className="text-center text-muted-foreground mb-14 max-w-xl mx-auto">
-          From idea to actionable market intelligence in four simple steps.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {[
-            {
-              step: "01", icon: Lightbulb, title: "Enter Your Idea",
-              desc: "Describe your startup idea in one sentence.",
-              example: '"AI tool that summarizes lectures for students."',
-            },
-            {
-              step: "02", icon: Search, title: "Market Analysis",
-              desc: "Gold Rush scans multiple sources including search trends, app store competitors, user reviews, online discussions, and startup activity.",
-            },
-            {
-              step: "03", icon: BarChart3, title: "Market Intelligence Report",
-              desc: "In under a minute you receive a structured report including market signal score, competitor analysis, sentiment insights, growth signals, and opportunity gaps.",
-            },
-            {
-              step: "04", icon: Map, title: "Startup Blueprint",
-              desc: "Generate a structured startup blueprint including product positioning, feature suggestions, target users, monetization ideas, and MVP roadmap.",
-            },
-          ].map((item) => (
-            <div key={item.step} className="bg-card rounded-xl border border-border/60 p-8 relative overflow-hidden group hover:border-primary/30 transition-colors">
-              <span className="absolute top-4 right-6 font-heading text-5xl font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
-                {item.step}
-              </span>
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <item.icon className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-heading text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              {item.example && (
-                <p className="mt-3 text-xs text-primary/80 italic border-l-2 border-primary/30 pl-3">
-                  {item.example}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* ─── REPORT PREVIEW ─── */}
       <section className="max-w-5xl mx-auto px-6 py-20">
         <div className="text-center mb-10">
@@ -288,6 +240,54 @@ const Index = () => {
               Or analyze your own idea
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* ─── HOW IT WORKS ─── */}
+      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-20">
+        <h2 className="font-heading text-3xl md:text-4xl font-bold text-center text-foreground mb-4">
+          How <span className="text-primary">Gold Rush</span> Works
+        </h2>
+        <p className="text-center text-muted-foreground mb-14 max-w-xl mx-auto">
+          From idea to actionable market intelligence in four simple steps.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {[
+            {
+              step: "01", icon: Lightbulb, title: "Enter Your Idea",
+              desc: "Describe your startup idea in one sentence.",
+              example: '"AI tool that summarizes lectures for students."',
+            },
+            {
+              step: "02", icon: Search, title: "Market Analysis",
+              desc: "Gold Rush scans multiple sources including search trends, app store competitors, user reviews, online discussions, and startup activity.",
+            },
+            {
+              step: "03", icon: BarChart3, title: "Market Intelligence Report",
+              desc: "In under a minute you receive a structured report including market signal score, competitor analysis, sentiment insights, growth signals, and opportunity gaps.",
+            },
+            {
+              step: "04", icon: Map, title: "Startup Blueprint",
+              desc: "Generate a structured startup blueprint including product positioning, feature suggestions, target users, monetization ideas, and MVP roadmap.",
+            },
+          ].map((item) => (
+            <div key={item.step} className="bg-card rounded-xl border border-border/60 p-8 relative overflow-hidden group hover:border-primary/30 transition-colors">
+              <span className="absolute top-4 right-6 font-heading text-5xl font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
+                {item.step}
+              </span>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <item.icon className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-heading text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              {item.example && (
+                <p className="mt-3 text-xs text-primary/80 italic border-l-2 border-primary/30 pl-3">
+                  {item.example}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
