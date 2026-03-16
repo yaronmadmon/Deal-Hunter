@@ -60,6 +60,8 @@ function getStatusBadgeVariant(status: "connected" | "degraded" | "down") {
   }
 }
 
+const ALL_SOURCES = Object.keys(SOURCE_DISPLAY);
+
 export const DataSourceHealth = () => {
   const [sources, setSources] = useState<SourceHealth[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,12 +94,9 @@ export const DataSourceHealth = () => {
 
       if (runs.length > 0) {
         setLastPipelineTime(runs[0].created_at);
-
-        // Calculate next refresh (cron runs every 4 hours for live feed, but pipeline is on-demand)
         const lastTime = new Date(runs[0].created_at).getTime();
         const now = Date.now();
         const minutesAgo = Math.round((now - lastTime) / 60000);
-        // Show a suggested "next check" based on 4-hour intervals
         const nextIn = Math.max(0, 240 - minutesAgo);
         setNextRefreshMinutes(nextIn);
       }
@@ -123,12 +122,11 @@ export const DataSourceHealth = () => {
         }
       }
 
-      const healthList: SourceHealth[] = Object.entries(sourceMap).map(([name, data]) => {
+      const healthFromPipeline: SourceHealth[] = Object.entries(sourceMap).map(([name, data]) => {
         const failRate = Math.round((data.failures / data.durations.length) * 100);
         const avgDuration = Math.round(data.durations.reduce((s, v) => s + v, 0) / data.durations.length);
         const avgSignals = Math.round((data.signals.reduce((s, v) => s + v, 0) / data.signals.length) * 10) / 10;
 
-        // Most recent run's status
         const mostRecentRunSources = runs[0]?.metrics?.sources;
         const latestStatus = mostRecentRunSources?.[name]?.status;
         const latestError = mostRecentRunSources?.[name]?.error;
@@ -137,43 +135,41 @@ export const DataSourceHealth = () => {
         let statusLabel: string;
 
         if (latestStatus === "error") {
-          // Check if it's been failing consistently
-          if (failRate >= 80) {
-            status = "down";
-            statusLabel = "Down";
-          } else {
-            status = "degraded";
-            statusLabel = "Intermittent";
-          }
+          if (failRate >= 80) { status = "down"; statusLabel = "Down"; }
+          else { status = "degraded"; statusLabel = "Intermittent"; }
         } else if (failRate > 30) {
-          status = "degraded";
-          statusLabel = "Degraded";
+          status = "degraded"; statusLabel = "Degraded";
         } else if (latestStatus === "ok" && avgSignals < 1) {
-          status = "degraded";
-          statusLabel = "Low signals";
+          status = "degraded"; statusLabel = "Low signals";
         } else {
-          status = "connected";
-          statusLabel = "Connected";
+          status = "connected"; statusLabel = "Connected";
         }
 
-        return {
-          name,
-          displayName: getDisplayName(name),
-          status,
-          statusLabel,
-          lastError: latestError,
-          avgDurationMs: avgDuration,
-          avgSignals,
-          failRate,
-          lastSeen: data.lastSeen,
-        };
+        return { name, displayName: getDisplayName(name), status, statusLabel, lastError: latestError, avgDurationMs: avgDuration, avgSignals, failRate, lastSeen: data.lastSeen };
       });
 
-      // Sort: down first, then degraded, then connected
-      const order = { down: 0, degraded: 1, connected: 2 };
-      healthList.sort((a, b) => order[a.status] - order[b.status]);
+      // Ensure ALL known sources appear, even without pipeline data
+      const knownNames = new Set(healthFromPipeline.map(s => s.name));
+      const fullList = [...healthFromPipeline];
+      for (const key of ALL_SOURCES) {
+        if (!knownNames.has(key)) {
+          fullList.push({
+            name: key,
+            displayName: getDisplayName(key),
+            status: "degraded",
+            statusLabel: "Not tested",
+            avgDurationMs: 0,
+            avgSignals: 0,
+            failRate: 0,
+            lastSeen: null,
+          });
+        }
+      }
 
-      setSources(healthList);
+      const order = { down: 0, degraded: 1, connected: 2 };
+      fullList.sort((a, b) => order[a.status] - order[b.status]);
+
+      setSources(fullList);
     } catch (err) {
       console.error("Failed to fetch data source health:", err);
       toast.error("Failed to load data source health");
@@ -182,7 +178,12 @@ export const DataSourceHealth = () => {
     }
   };
 
-  useEffect(() => { fetchHealth(); }, []);
+  useEffect(() => {
+    fetchHealth();
+    // Auto-run live check on mount
+    const timer = setTimeout(() => runLiveHealthCheck(), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const runLiveHealthCheck = async () => {
     setLiveChecking(true);
