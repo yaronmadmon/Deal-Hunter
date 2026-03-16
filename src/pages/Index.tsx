@@ -134,7 +134,7 @@ const Index = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-semibold text-base px-8">
-              Validate Your Idea in Under 60 Seconds
+              Validate Your Idea in Minutes
               <ArrowRight className="ml-1 w-4 h-4" />
             </Button>
             <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold text-base px-8">
