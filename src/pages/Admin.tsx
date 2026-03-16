@@ -15,7 +15,7 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ReviewsManagement } from "@/components/admin/ReviewsManagement";
 import { AnalyticsDashboard } from "@/components/admin/AnalyticsDashboard";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
