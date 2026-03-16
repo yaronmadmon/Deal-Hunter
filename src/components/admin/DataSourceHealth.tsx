@@ -198,9 +198,24 @@ export const DataSourceHealth = () => {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (error) throw error;
+      // Map health-check names to frontend source names
+      const HEALTH_TO_SOURCES: Record<string, string[]> = {
+        serper: ["serper_search", "serper_news", "serper_producthunt"],
+        twitter: ["twitter_search", "twitter_counts", "twitter_influencers"],
+        producthunt: ["producthunt"],
+        perplexity: ["perplexity"],
+        firecrawl: ["firecrawl"],
+        github: ["github"],
+        hackernews: ["hackernews"],
+        keywords_everywhere: ["keywords_everywhere"],
+      };
       const map: Record<string, any> = {};
       for (const r of data.results) {
-        map[r.name] = { status: r.status, latencyMs: r.latencyMs, error: r.error };
+        const result = { status: r.status, latencyMs: r.latencyMs, error: r.error };
+        const targets = HEALTH_TO_SOURCES[r.name] || [r.name];
+        for (const t of targets) {
+          map[t] = result;
+        }
       }
       setLiveResults(map);
       toast.success(`Live check complete — ${data.results.filter((r: any) => r.status === "connected").length}/${data.results.length} healthy`);
