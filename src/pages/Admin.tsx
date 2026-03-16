@@ -231,7 +231,10 @@ const AdminPage = () => {
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-64 p-0 flex flex-col">
+                  <SheetContent side="left" className="w-64 p-0 flex flex-col" aria-describedby={undefined}>
+                    <div className="sr-only">
+                      <h2 id="admin-nav-title">Admin Navigation</h2>
+                    </div>
                     {navContent}
                   </SheetContent>
                 </Sheet>
