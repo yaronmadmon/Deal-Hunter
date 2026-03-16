@@ -319,56 +319,22 @@ export const DataSourceHealth = () => {
         )}
       </div>
 
-      {/* Live Check Results */}
-      {liveResults && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Live Health Check Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-border/30">
-              {Object.entries(liveResults).map(([name, result]) => (
-                <div key={name} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm leading-none">{getStatusEmoji(result.status)}</span>
-                    <div className="min-w-0">
-                      <p className="text-xs md:text-sm font-medium text-foreground truncate">{getDisplayName(name)}</p>
-                      {result.error && (
-                        <p className="text-[10px] md:text-xs text-destructive truncate mt-0.5 max-w-[200px] md:max-w-[300px]">{result.error}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-muted-foreground">{result.latencyMs}ms</span>
-                    <Badge variant={getStatusBadgeVariant(result.status)} className="text-[10px] md:text-xs min-w-[60px] justify-center">
-                      {result.status === "connected" ? "OK" : result.status === "degraded" ? "Degraded" : "Down"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Source List */}
+      {/* Source List — always visible */}
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Source Status (based on last {Math.min(10, sources.length > 0 ? 10 : 0)} pipeline runs)
+            {liveResults ? "Live Status" : liveChecking ? "Checking APIs..." : "API Status"}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {sources.length === 0 && !loading && (
-            <p className="text-muted-foreground text-center py-8">
-              No pipeline data yet. Run an analysis to populate health data.
-            </p>
+          {liveChecking && !liveResults && (
+            <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Pinging all APIs...
+            </div>
           )}
           <div className="divide-y divide-border/30">
-            {sources.map((src) => (
+            {displaySources.map((src) => (
               <div key={src.name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0 gap-2">
                 <div className="flex items-center gap-2 md:gap-3 min-w-0">
                   <span className="text-sm md:text-base leading-none">{getStatusEmoji(src.status)}</span>
@@ -379,18 +345,9 @@ export const DataSourceHealth = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-xs text-muted-foreground">{src.avgDurationMs}ms avg</p>
-                    <p className="text-xs text-muted-foreground">{src.avgSignals} signals</p>
-                  </div>
-                  {src.failRate > 0 && (
-                    <span className="text-[10px] md:text-xs text-muted-foreground hidden sm:inline">{src.failRate}% fail</span>
-                  )}
-                  <Badge variant={getStatusBadgeVariant(src.status)} className="text-[10px] md:text-xs min-w-[60px] md:min-w-[80px] justify-center">
-                    {src.statusLabel}
-                  </Badge>
-                </div>
+                <Badge variant={getStatusBadgeVariant(src.status)} className="text-[10px] md:text-xs min-w-[60px] md:min-w-[80px] justify-center">
+                  {src.statusLabel}
+                </Badge>
               </div>
             ))}
           </div>
