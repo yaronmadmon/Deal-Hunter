@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight, Search, BarChart3, FileText, Lightbulb, Map, Pickaxe,
   TrendingUp, Users, Target, ShieldCheck, Layers, Rocket, Gem, Compass,
-  Menu, X
+  Menu, X, Zap, Clock, AlertTriangle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -47,8 +47,8 @@ const Index = () => {
               Log In
             </Button>
             <Button size="sm" onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
-              <Pickaxe className="w-3.5 h-3.5 mr-1" />
-              Start Digging
+              <Zap className="w-3.5 h-3.5 mr-1" />
+              Analyze My Idea
             </Button>
           </div>
 
@@ -98,72 +98,82 @@ const Index = () => {
             Log In
           </Button>
           <Button size="sm" onClick={() => { navigate("/auth"); setMobileMenuOpen(false); }} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
-            <Pickaxe className="w-3.5 h-3.5 mr-1" />
-            Start Digging
+            <Zap className="w-3.5 h-3.5 mr-1" />
+            Analyze My Idea
           </Button>
         </div>
       </div>
 
       {/* ─── HERO ─── */}
-      <section className="relative max-w-5xl mx-auto px-6 pt-24 pb-20 text-center overflow-hidden">
+      <section className="relative max-w-5xl mx-auto px-6 pt-24 pb-16 text-center overflow-hidden">
         {/* Decorative gold glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-sm font-medium mb-8">
             <Gem className="w-3.5 h-3.5" />
-            Market Intelligence for Builders
+            Trusted by indie devs & founders
           </div>
 
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-4">
-            The Gold Rush Is Back.
+          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-[1.1] mb-6">
+            Stop Building Apps
             <br />
-            <span className="text-primary">This Time, the Gold Is Startup Ideas.</span>
+            <span className="text-primary">Nobody Wants.</span>
           </h1>
 
-          <p className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-foreground/80 mb-6">
-            Validate Your App Idea Before You Build It.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            Know if your idea has real demand — before you write a single line of code.
+            Gold Rush scans real market signals and tells you if it's worth your time.
           </p>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
-            Don't miss your opportunity. Grab your shovel and start digging for the next big app.
-          </p>
-          <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Gold Rush analyzes real market signals — trends, competitors, reviews, and user demand — to help you discover whether your startup idea is worth pursuing.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Button size="lg" onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-semibold text-base px-8">
-              Validate Your Idea in Minutes
+              Analyze My Idea — Free
               <ArrowRight className="ml-1 w-4 h-4" />
             </Button>
-            <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold text-base px-8">
-              <Pickaxe className="mr-1 w-4 h-4" />
-              Start Digging
+            <Button variant="outline" size="lg" onClick={() => navigate("/sample-report")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold text-base px-8">
+              See a Sample Report
             </Button>
+          </div>
+
+          {/* Social proof stats */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-primary" />
+              7 real data sources
+            </span>
+            <span className="hidden sm:inline text-border">•</span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              Results in minutes
+            </span>
+            <span className="hidden sm:inline text-border">•</span>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+              No fluff, just data
+            </span>
           </div>
         </div>
       </section>
 
-      {/* ─── SUPPORTING DESCRIPTION ─── */}
+      {/* ─── PAIN POINTS ─── */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-14">
           <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Turn Startup Ideas Into <span className="text-primary">Market Intelligence</span>
+            What You Get in <span className="text-primary">Every Report</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-base leading-relaxed">
-            Gold Rush scans real data sources across the internet to transform raw startup ideas into structured market intelligence reports.
-            Instead of guessing whether an idea is good, you get a clear signal-driven breakdown showing where real opportunity exists.
+            We answer the questions you'd spend weeks researching on your own.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {[
-            { icon: TrendingUp, title: "Market Demand", desc: "Real search and trend signals showing genuine user interest" },
-            { icon: Users, title: "Competitor Saturation", desc: "How crowded the space is and where gaps exist" },
-            { icon: Target, title: "User Pain Points", desc: "What real users are complaining about in this space" },
-            { icon: Rocket, title: "Growth Signals", desc: "Indicators that the market is expanding right now" },
-            { icon: Compass, title: "Opportunity Gaps", desc: "Underserved niches waiting to be claimed" },
+            { icon: TrendingUp, title: "Is Anyone Searching for This?", desc: "Real search volume and trend data — not guesses" },
+            { icon: Users, title: "How Crowded Is It?", desc: "See how many competitors exist and where the gaps are" },
+            { icon: Target, title: "What Frustrates Users?", desc: "Pain points pulled from real reviews and discussions" },
+            { icon: Rocket, title: "Is This Market Growing?", desc: "Signals showing if the space is expanding right now" },
+            { icon: Compass, title: "Where's the Opportunity?", desc: "Underserved niches other builders haven't found yet" },
           ].map((item) => (
             <div key={item.title} className="bg-card rounded-xl border border-border/60 p-6 text-center hover:border-primary/30 transition-colors group">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
@@ -174,20 +184,16 @@ const Index = () => {
             </div>
           ))}
         </div>
-
-        <p className="text-center text-primary font-semibold mt-8 text-sm tracking-wide">
-          No guessing. Just real signals.
-        </p>
       </section>
 
       {/* ─── REPORT PREVIEW ─── */}
       <section className="max-w-5xl mx-auto px-6 py-20">
         <div className="text-center mb-10">
           <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-3">
-            See a <span className="text-primary">Real Report</span>
+            Don't Take Our Word for It — <span className="text-primary">See a Real Report</span>
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Here's what you'll get when you analyze an idea. Explore a full sample report — no signup required.
+            This is exactly what you'll get. No signup needed — explore a full report right now.
           </p>
         </div>
 
@@ -233,11 +239,11 @@ const Index = () => {
           {/* CTA overlay */}
           <div className="relative z-20 flex flex-col sm:flex-row gap-3 justify-center pt-4">
             <Button size="lg" onClick={() => navigate("/sample-report")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-semibold">
-              Explore Full Sample Report
+              Explore Full Report
               <ArrowRight className="ml-1 w-4 h-4" />
             </Button>
             <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold">
-              Or analyze your own idea
+              Analyze your own idea
             </Button>
           </div>
         </div>
@@ -246,30 +252,30 @@ const Index = () => {
       {/* ─── HOW IT WORKS ─── */}
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-20">
         <h2 className="font-heading text-3xl md:text-4xl font-bold text-center text-foreground mb-4">
-          How <span className="text-primary">Gold Rush</span> Works
+          How It Works — <span className="text-primary">4 Steps</span>
         </h2>
         <p className="text-center text-muted-foreground mb-14 max-w-xl mx-auto">
-          From idea to actionable market intelligence in four simple steps.
+          Type your idea. Get real market data. Make a smarter decision.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {[
             {
-              step: "01", icon: Lightbulb, title: "Enter Your Idea",
-              desc: "Describe your startup idea in one sentence.",
-              example: '"AI tool that summarizes lectures for students."',
+              step: "01", icon: Lightbulb, title: "Describe Your Idea",
+              desc: "One sentence is all we need. No business plan required.",
+              example: '"AI tool that summarizes lectures for students"',
             },
             {
-              step: "02", icon: Search, title: "Market Analysis",
-              desc: "Gold Rush scans multiple sources including search trends, app store competitors, user reviews, online discussions, and startup activity.",
+              step: "02", icon: Search, title: "We Scan the Market",
+              desc: "Gold Rush pulls live data from search trends, app stores, reviews, forums, and startup databases.",
             },
             {
-              step: "03", icon: BarChart3, title: "Market Intelligence Report",
-              desc: "In under a minute you receive a structured report including market signal score, competitor analysis, sentiment insights, growth signals, and opportunity gaps.",
+              step: "03", icon: BarChart3, title: "Get Your Verdict",
+              desc: "A clear GO, PIVOT, or NO-GO score backed by real data — not AI opinions. Plus competitor maps, sentiment analysis, and opportunity gaps.",
             },
             {
-              step: "04", icon: Map, title: "Startup Blueprint",
-              desc: "Generate a structured startup blueprint including product positioning, feature suggestions, target users, monetization ideas, and MVP roadmap.",
+              step: "04", icon: Map, title: "Build With a Blueprint",
+              desc: "Get a step-by-step startup blueprint: positioning, features, target users, monetization, and an MVP roadmap to launch faster.",
             },
           ].map((item) => (
             <div key={item.step} className="bg-card rounded-xl border border-border/60 p-8 relative overflow-hidden group hover:border-primary/30 transition-colors">
@@ -291,40 +297,40 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ─── POSITIONING ─── */}
+      {/* ─── WHY TRUST THIS ─── */}
       <section className="max-w-4xl mx-auto px-6 py-20">
         <div className="bg-card rounded-2xl border border-border/60 p-10 md:p-14 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
           <div className="relative z-10">
             <ShieldCheck className="w-10 h-10 text-primary mx-auto mb-6" />
             <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-4">
-              Not Guesswork. <span className="text-primary">Real Market Signals.</span>
+              Built on Data. <span className="text-primary">Not AI Hype.</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed mb-2">
-              Gold Rush does not predict startup success.
+            <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed mb-4">
+              Most "idea validators" just ask ChatGPT and wrap the answer in a pretty template. Gold Rush is different.
             </p>
             <p className="text-muted-foreground max-w-xl mx-auto leading-relaxed">
-              Instead, it analyzes real signals from across the internet to help founders make smarter, more informed decisions before they build.
+              We pull real signals from 7+ data sources, cross-validate every claim, and flag anything we're not confident about. You get transparent scoring, not hype.
             </p>
             <p className="text-primary font-semibold mt-6 text-sm">
-              Think of it as market intelligence for builders.
+              If the data says your idea is weak, we'll tell you. That's the point.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ─── THEME SECTION ─── */}
+      {/* ─── THE COST OF NOT KNOWING ─── */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <Pickaxe className="w-10 h-10 text-primary mx-auto mb-6" />
+        <AlertTriangle className="w-10 h-10 text-primary mx-auto mb-6" />
         <h2 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-6">
-          Every Gold Rush Needs the <span className="text-primary">Right Tools</span>
+          The Cost of <span className="text-primary">Building Blind</span>
         </h2>
         <div className="max-w-xl mx-auto space-y-4 text-muted-foreground leading-relaxed">
-          <p>In the old days, people rushed west with a shovel and a dream.</p>
-          <p>Today, founders rush into building apps.</p>
-          <p className="text-foreground font-medium">But most people start digging in the wrong place.</p>
+          <p>Most indie devs spend 3–6 months building something before checking if anyone wants it.</p>
+          <p>That's hundreds of hours of code, design, and marketing — gone.</p>
+          <p className="text-foreground font-medium">What if you could check demand before writing line one?</p>
           <p className="text-primary font-semibold">
-            Gold Rush helps you dig where the real opportunity is.
+            That's what Gold Rush does. In minutes, not months.
           </p>
         </div>
       </section>
@@ -335,18 +341,16 @@ const Index = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
             <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Ready to <span className="text-primary">Start Digging?</span>
+              Don't Waste 6 Months on the <span className="text-primary">Wrong Idea.</span>
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto mb-8 leading-relaxed">
-              Validate your startup idea and uncover real market signals in under a minute.
+              Find out if your startup idea has real market demand — in minutes, not months.
+              Your first analysis is free.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 font-semibold text-base px-8">
-                Start the Gold Rush
+                Analyze My Idea — Free
                 <ArrowRight className="ml-1 w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="border-primary/30 text-foreground hover:bg-primary/5 font-semibold text-base px-8">
-                Analyze My Idea
               </Button>
             </div>
           </div>
