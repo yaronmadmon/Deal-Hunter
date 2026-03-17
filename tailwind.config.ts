@@ -67,6 +67,14 @@ export default {
           DEFAULT: "hsl(var(--gold))",
           foreground: "hsl(var(--gold-foreground))",
         },
+        "accent-blue": "hsl(var(--accent-blue))",
+        "accent-cyan": "hsl(var(--accent-cyan))",
+        "accent-lavender": "hsl(var(--accent-lavender))",
+        "accent-purple": "hsl(var(--accent-purple))",
+        "accent-mint": "hsl(var(--accent-mint))",
+        surface: {
+          strong: "hsl(var(--surface-strong))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -82,6 +90,13 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      backgroundImage: {
+        "headline-spectrum": "linear-gradient(90deg, hsl(var(--accent-blue)), hsl(var(--accent-lavender)))",
+        "divider-spectrum": "linear-gradient(90deg, hsl(var(--divider-start) / 0), hsl(var(--divider-start) / 0.5), hsl(var(--divider-end) / 0.5), hsl(var(--divider-end) / 0))",
+      },
+      boxShadow: {
+        accent: "0 0 0 1px hsl(var(--primary) / 0.22), 0 14px 34px -16px hsl(var(--primary) / 0.5)",
       },
       keyframes: {
         "accordion-down": {
