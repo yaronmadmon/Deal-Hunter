@@ -576,7 +576,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 12000,
         temperature: 0,
         stream: true,
