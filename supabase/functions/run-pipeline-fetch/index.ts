@@ -2651,7 +2651,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const phase2Promise = fetch(`${supabaseUrl}/functions/v1/run-pipeline-analyze`, {
+    const phase2Promise = fetch(`${phase2Url}/functions/v1/run-pipeline-analyze`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
