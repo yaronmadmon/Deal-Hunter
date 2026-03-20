@@ -298,7 +298,9 @@ You MUST:
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiMessages = [
+          {
+            role: "system",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
