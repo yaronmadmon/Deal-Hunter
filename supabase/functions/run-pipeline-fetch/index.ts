@@ -2207,8 +2207,8 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
-    // NOTE: Competitor pricing scrape moved to Phase 2 (run-pipeline-analyze)
-    // to reduce Phase 1 execution time
+
+
 
     // ══════════════════════════════════════════════════════════════════
     // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
