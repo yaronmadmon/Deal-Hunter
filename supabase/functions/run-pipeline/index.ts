@@ -377,6 +377,95 @@ async function githubSearch(
   }
 }
 
+// ── GitHub Complexity Calculator (deterministic, no extra API calls) ─
+function calculateGitHubComplexity(repos: any[]): { score: number | null; reposAnalyzed: number; signals: string[]; label: string } | null {
+  if (!repos || repos.length < 3) {
+    return null;
+  }
+
+  const top10 = repos.slice(0, 10);
+  const repoScores: number[] = [];
+  const signals: string[] = [];
+
+  // Hard language multipliers
+  const hardLanguages = ["c", "c++", "rust", "java"];
+  const easyLanguages = ["python", "javascript", "typescript"];
+
+  // Track dominant language across all repos
+  const languageCounts: Record<string, number> = {};
+
+  for (const repo of top10) {
+    let score = 0;
+    let availableMax = 0;
+
+    // Signal 1: Language count (inferred from primary language + topics)
+    const languages = new Set<string>();
+    if (repo.language) languages.add(repo.language.toLowerCase());
+    // Infer additional languages from topics
+    const langTopics = ["python", "javascript", "typescript", "rust", "go", "java", "c", "cpp", "ruby", "swift", "kotlin", "dart", "php", "scala", "elixir"];
+    for (const topic of (repo.topics || [])) {
+      if (langTopics.includes(topic.toLowerCase())) languages.add(topic.toLowerCase());
+    }
+    const langCount = languages.size;
+    if (langCount >= 5) score += 6;
+    else if (langCount >= 3) score += 4;
+    else score += 2;
+    availableMax += 6;
+
+    // Track dominant language
+    for (const lang of languages) {
+      languageCounts[lang] = (languageCounts[lang] || 0) + 1;
+    }
+
+    // Signal 2: Dependency count (inferred from topics and description)
+    const depIndicators = ["docker", "kubernetes", "redis", "postgres", "mongodb", "graphql", "grpc", "aws", "gcp", "azure",
+      "terraform", "kafka", "elasticsearch", "nginx", "rabbitmq", "celery", "webpack", "vite", "nextjs", "react",
+      "vue", "angular", "django", "flask", "express", "fastapi", "spring", "rails"];
+    let depCount = 0;
+    const repoText = `${(repo.topics || []).join(" ")} ${repo.description || ""}`.toLowerCase();
+    for (const dep of depIndicators) {
+      if (repoText.includes(dep)) depCount++;
+    }
+    if (depCount >= 6) score += 3; // maps to 31+ deps
+    else if (depCount >= 3) score += 2; // maps to 11-30 deps
+    else score += 1; // maps to 0-10 deps
+    availableMax += 3;
+
+    // Signal 3: File depth (skip — GitHub search API doesn't return tree data)
+    // We skip this and scale proportionally from the two available signals
+
+    // Scale to 0-10 proportionally based on available signals
+    const scaledScore = availableMax > 0 ? (score / availableMax) * 10 : 0;
+    repoScores.push(Math.round(scaledScore * 10) / 10);
+
+    if (depCount >= 3) signals.push(`${repo.name}: ${langCount} lang(s), ${depCount} infra deps`);
+  }
+
+  if (repoScores.length < 3) return null;
+
+  // Average across repos
+  let avgScore = repoScores.reduce((s, v) => s + v, 0) / repoScores.length;
+
+  // Language normalization
+  const dominantLang = Object.entries(languageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  if (hardLanguages.includes(dominantLang)) {
+    avgScore = Math.min(10, avgScore * 1.2);
+    signals.push(`Dominant language: ${dominantLang} (hard — 1.2x multiplier)`);
+  } else if (easyLanguages.includes(dominantLang)) {
+    avgScore = avgScore * 0.9;
+    signals.push(`Dominant language: ${dominantLang} (easy — 0.9x multiplier)`);
+  }
+
+  const finalScore = Math.round(avgScore * 10) / 10;
+
+  return {
+    score: finalScore,
+    reposAnalyzed: top10.length,
+    signals: signals.slice(0, 5),
+    label: `Based on ${top10.length} similar products in this space, build complexity is estimated at ${finalScore}/10.`,
+  };
+}
+
 // ── Twitter/X helper ────────────────────────────────────────────────
 
 // Sanitize query for Twitter API v2 — remove operators and special chars that cause 400 errors
