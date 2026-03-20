@@ -2194,7 +2194,15 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     // or hypothetical). Uses URL analysis + Serper verification.
     // Only competitors with validationScore >= 2 survive.
     // ══════════════════════════════════════════════════════════════════
-    const validatedCompetitors = await validateCompetitors(normalizedCompetitors, serperKey);
+    const validatedCompetitors = await Promise.race([
+      validateCompetitors(normalizedCompetitors, serperKey),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("validateCompetitors timed out after 8000ms")), 8000)
+      )
+    ]).catch((err: any) => {
+      console.warn("[PHASE 1] validateCompetitors timeout or error:", err.message);
+      return normalizedCompetitors.slice(0, 10);
+    }) as any[];
     rawData.validatedCompetitors = validatedCompetitors;
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
