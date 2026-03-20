@@ -83,16 +83,16 @@ Deno.serve(async (req) => {
     const ideaHash = phase1Data.ideaHash;
     const sanitizedIdea = phase1Data.sanitizedIdea;
 
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
-    console.log("[PHASE 2] ANTHROPIC_API_KEY set:", !!anthropicKey, "| length:", anthropicKey?.length ?? 0);
-    console.log("[PHASE 2] Starting Claude analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
+    console.log("[PHASE 2] LOVABLE_API_KEY set:", !!lovableApiKey);
+    console.log("[PHASE 2] Starting AI analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!anthropicKey) {
-      console.error("ANTHROPIC_API_KEY not found");
+    if (!lovableApiKey) {
+      console.error("LOVABLE_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
@@ -568,30 +568,28 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": anthropicKey!,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
+        model: "google/gemini-2.5-flash",
+        messages: aiMessages,
         max_tokens: 12000,
         temperature: 0,
         stream: true,
-        system: aiMessages[0].content,
-        messages: [{ role: "user", content: aiMessages[1].content }],
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      throw new Error(`Anthropic API error: ${aiResponse.status} - ${errorText}`);
+      throw new Error(`AI Gateway error: ${aiResponse.status} - ${errorText}`);
     }
 
     if (!aiResponse.body) {
-      throw new Error("Anthropic streaming response has no body");
+      throw new Error("AI Gateway streaming response has no body");
     }
 
     let fullContent = "";
@@ -610,14 +608,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "content_block_delta") {
-              const delta = parsed.delta?.text;
-              if (delta) fullContent += delta;
-            }
-            if (parsed.type === "message_delta") {
-              const reason = parsed.delta?.stop_reason;
-              if (reason) finishReason = reason === "end_turn" ? "stop" : reason;
-            }
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) fullContent += delta;
+            const reason = parsed.choices?.[0]?.finish_reason;
+            if (reason) finishReason = reason;
           } catch { }
         }
       }
