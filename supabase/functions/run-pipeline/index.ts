@@ -3976,12 +3976,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
             { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-weighted floors & ceilings enforced per category" },
             { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
-            { label: "Complexity Penalty", value: scoreAfterComplexity, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
-            { label: "Evidence Confidence", value: reportData.overallScore, description: evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment" },
+            { label: "Complexity Info", value: scoreAfterComplexity, description: "Build complexity is informational only — no score penalty applied" },
+            { label: "Evidence Confidence", value: reportData.overallScore, description: ecmSkipped ? "ECM skipped: Pioneer Market detected — low signal volume indicates early-stage market" : (evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment") },
           ],
           finalScore: reportData.overallScore,
-          complexityPenalty,
+          complexityPenalty: 0,
           evidenceConfidence,
+          pioneerMarketFlag,
+          ecmSkipped: ecmSkipped ? "pioneer_market" : undefined,
           viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
