@@ -83,15 +83,15 @@ Deno.serve(async (req) => {
     const ideaHash = phase1Data.ideaHash;
     const sanitizedIdea = phase1Data.sanitizedIdea;
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 
-    console.log("[PHASE 2] Starting GPT-4o analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
+    console.log("[PHASE 2] Starting Claude analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!openaiKey) {
-      console.error("OPENAI_API_KEY not found");
+    if (!anthropicKey) {
+      console.error("ANTHROPIC_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
