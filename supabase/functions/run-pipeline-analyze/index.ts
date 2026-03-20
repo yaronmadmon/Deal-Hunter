@@ -496,6 +496,8 @@ Produce the JSON report with this EXACT structure:
   }
 }
 
+Do NOT generate the following fields — they are populated programmatically from raw pipeline data: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard. Omit them entirely from your JSON output.
+
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
 - vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
