@@ -750,16 +750,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           temperature: 0.0,
           max_tokens: 12000,
           stream: true,
-          messages: [
-            {
-              role: "system",
-              content: aiResponse._systemContent || "",
-            },
-            {
-              role: "user",
-              content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
-            },
-          ],
+          messages: aiMessages,
         }),
       });
 
