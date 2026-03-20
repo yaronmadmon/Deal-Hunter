@@ -479,24 +479,7 @@ Produce the JSON report with this EXACT structure:
   ],
   "opportunity": {"featureGaps": ["specific gaps"], "underservedUsers": ["who and why"], "positioning": "string", "builderAngle": "one sentence on positioning", "noOpportunityFound": false},
   "revenueBenchmark": {"summary": "string", "range": "string", "basis": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
-  "proofDashboard": {
-    "searchDemand": {"keyword": "keyword", "monthlySearches": "volume", "trend": "Rising / Stable / Declining", "confidence": "High/Medium/Low", "source": "source", "relatedKeywords": ["5 terms"]},
-    "developerActivity": {"repoCount": "count", "totalStars": "count", "recentCommits": "assessment", "trend": "Increasing/Stable/Declining", "confidence": "High/Medium/Low"},
-    "socialActivity": {"twitterMentions": "count", "redditThreads": "count", "sentimentScore": "Positive/Mixed/Negative", "hnPhLaunches": "count", "confidence": "High/Medium/Low"},
-    "appStoreSignals": {"relatedApps": "count", "avgRating": "rating", "downloadEstimate": "estimate", "marketGap": "gap description", "confidence": "High/Medium/Low"}
-  },
-  "keywordDemand": {"keywords": [{"keyword": "term", "volume": "vol", "difficulty": "Low/Medium/High", "trend": "Rising/Stable/Declining"}], "confidence": "High/Medium/Low", "source": "source"},
-  "appStoreIntelligence": {"apps": [{"name": "name", "platform": "iOS/Android/Both", "rating": "rating", "reviews": "count", "downloads": "estimate", "url": "url or null"}], "insight": "max 20 words", "confidence": "High/Medium/Low", "source": "source"},
   "recommendedStrategy": {"positioning": "specific", "suggestedPricing": "with reasoning", "differentiators": ["4-6 items"], "primaryTarget": "ONE segment and why", "channels": ["3-5 real channels"], "confidence": "Medium"},
-  "nicheAnalysis": {"samEstimate": "dollar amount", "samPercentage": "X-Y%", "samReasoning": "why this percentage", "competitorClarity": "what exists vs not", "directCompetitors": 0, "competitorDetail": "specifics", "xSignalInterpretation": "interpret volume", "xVolumeContext": "context vs similar niches", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
-  "unitEconomics": {"churnBenchmarks": [{"name": "name", "churnRate": "X%/mo", "source": "source"}], "churnImplication": "what it means", "realisticArpu": "$X/mo", "arpuReasoning": "rationale", "privacyPremium": "can you charge more", "ltvEstimate": "$X", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
-  "buildComplexity": {"mvpTimeline": "X-Y weeks", "mvpScope": ["4-5 features"], "techChallenges": ["3-4 challenges"], "estimatedCost": "$X-Y", "voiceApiCosts": "pricing or N/A if not relevant", "onDeviceNote": "feasibility or N/A if not relevant", "complexityScore": 1-10, "vibeCoderFeasibility": "Easy" or "Moderate" or "Hard" or "Do Not Attempt", "complexityFactors": ["list of factors that increase complexity such as: third-party API dependencies, real-time features, hardware requirements, AI model training, two-sided marketplace dynamics, regulatory requirements, native mobile features"], "buildEstimateComparison": {"traditional": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Full-stack developer, DevOps engineer, UI/UX designer"]}, "aiAssisted": {"timeRange": "X-Y weeks", "costRange": "$X-$Y", "skillsRequired": ["2-4 skills needed e.g. Prompt engineering, API integration, Basic frontend"]}}, "dataSource": "ai_estimated", "sourceUrls": []},
-  "reviewIntelligence": {"complaintClusters": [{"theme": "recurring complaint theme", "complaints": ["specific complaints in this cluster"], "frequency": number, "severity": "High" or "Medium" or "Low", "opportunityLevel": "High Opportunity" or "Moderate Opportunity" or "Already Solved", "exploitableGap": "why this is or isn't exploitable"}], "topAttackAngles": [{"angle": "specific attack angle", "complaint": "the complaint it exploits", "competitorWeakness": "which competitor is weakest here"}], "matrixData": [{"theme": "complaint/praise theme", "frequency": number, "intensity": number, "quadrant": "Critical Pain" or "Minor Annoyance" or "Loved Feature" or "Hidden Gem"}], "differentiationStatements": ["3 specific positioning statements the founder can use"], "totalReviewsAnalyzed": number, "confidence": "High" or "Medium" or "Low"},
-  "scoreBreakdown": [{"label": "Trend Momentum", "value": 0-25, "weight": "25%"}, {"label": "Market Saturation", "value": 0-20, "weight": "20%"}, {"label": "Sentiment", "value": 0-20, "weight": "20%"}, {"label": "Growth", "value": 0-15, "weight": "15%"}, {"label": "Opportunity", "value": 0-20, "weight": "20%"}],
-  "keyStats": [{"value": "number", "label": "description", "change": "+X% or null", "sentiment": "positive/negative/neutral"}] — MUST return EXACTLY 4 items. Use these categories: (1) Signal Score, (2) Data Points collected, (3) Revenue estimate or market size, (4) Competition count or growth metric. Never return fewer than 4.,
-  "userQuotes": [{"text": "REAL quote", "source": "subreddit or review", "sourceUrl": "URL or null", "upvotes": "count or null", "platform": "reddit/app_store/twitter/other"}],
-  "githubRepos": [{"name": "owner/repo", "description": "desc", "stars": number, "forks": number, "openIssues": number, "language": "lang", "url": "url", "updatedAt": "ISO date", "pushedAt": "ISO date", "topics": ["topics"]}],
-  "methodology": {"totalSources": 0, "perplexityQueries": 4, "firecrawlScrapes": 0, "serperSearches": 0, "productHuntQueries": 0, "githubSearches": 0, "twitterSearches": 0, "dataPoints": 0, "analysisDate": "YYYY-MM-DD", "confidenceNote": "overall data quality note"},
   "blueprint": {"productConcept": "string", "strategicPositioning": "string", "coreFeatures": ["5-7 items"], "targetUsers": ["3-4 items"], "monetization": ["2-3 items"], "mvpPlan": ["5-6 items"]},
   "marketExploitMap": {"competitorWeaknesses": ["4-6 concrete weaknesses"], "competitorStrengths": ["3-5 honest strengths"], "topComplaints": [{"complaint": "specific", "frequency": "High/Medium/Low"}], "topPraise": [{"praise": "specific", "frequency": "High/Medium/Low"}], "whereToWin": ["4-6 opportunities"], "attackAngle": "1-2 sentence positioning", "confidence": "High/Medium/Low"},
   "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "name", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong/Medium/Weak/No", "Pricing": "Strong/Medium/Weak/No", "FILL ALL features with realistic assessments based on the idea's strengths": ""}}], "confidence": "Medium"},
@@ -512,6 +495,8 @@ Produce the JSON report with this EXACT structure:
     "confidence": "High/Medium/Low"
   }
 }
+
+Do NOT generate the following fields — they are populated programmatically from raw pipeline data: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard. Omit them entirely from your JSON output.
 
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
@@ -577,7 +562,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: aiMessages,
-        max_tokens: 12000,
+        max_tokens: 6000,
         temperature: 0,
         stream: true,
       }),
@@ -1837,7 +1822,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // ── Populate Competitor Snapshot card from validated competitors if AI returned empty ──
+        // ── Populate userQuotes from rawData if AI didn't return them ──
+        if (!reportData.userQuotes || !Array.isArray(reportData.userQuotes) || reportData.userQuotes.length === 0) {
+          const tweets = (rawData.twitterSentiment?.tweets || []).slice(0, 3).map(
+            (t: any) => ({ text: t.text || t.content || "", source: "Twitter", sourceUrl: t.url || t.tweetUrl || null, upvotes: null, platform: "twitter" })
+          );
+          const redditPosts = (rawData.firecrawlReddit?.results || rawData.serperReddit?.organic || []).slice(0, 3).map(
+            (r: any) => ({ text: r.title || r.snippet || r.text || "", source: "Reddit", sourceUrl: r.url || r.link || null, upvotes: r.upvotes || null, platform: "reddit" })
+          );
+          reportData.userQuotes = [...tweets, ...redditPosts].slice(0, 5);
+          if (reportData.userQuotes.length > 0) {
+            console.log(`[FIELD POPULATION] userQuotes: populated ${reportData.userQuotes.length} quotes from rawData`);
+          }
+        }
+
         const compSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
         if (compSnapshotCard && (!compSnapshotCard.competitors || compSnapshotCard.competitors.length === 0)) {
           const validated = rawData.validatedCompetitors || [];
