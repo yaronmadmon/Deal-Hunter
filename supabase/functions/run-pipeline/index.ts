@@ -3940,9 +3940,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Clamp confidence to [0.6, 1.0]
         evidenceConfidence = Math.max(0.6, Math.min(1.0, Math.round(evidenceConfidence * 100) / 100));
 
-        // Apply confidence multiplier to final score
+        // Apply confidence multiplier to final score (SKIP if Pioneer Market detected)
         const scoreBeforeConfidence = reportData.overallScore || 0;
-        if (evidenceConfidence < 1.0) {
+        if (ecmSkipped) {
+          console.warn(`[EVIDENCE CONFIDENCE] SKIPPED — Pioneer Market detected. Score stays at ${scoreBeforeConfidence}`);
+          evidenceConfidence = 1.0; // Reset to 1.0 so journey log is accurate
+        } else if (evidenceConfidence < 1.0) {
           reportData.overallScore = Math.round(scoreBeforeConfidence * evidenceConfidence);
           console.warn(`[EVIDENCE CONFIDENCE] Score adjusted: ${scoreBeforeConfidence} × ${evidenceConfidence} = ${reportData.overallScore} | Reasons: ${confidenceReasons.join(", ")}`);
           applyVerdictToReport(reportData);
@@ -3953,10 +3956,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Expose in report
         reportData.evidenceConfidence = {
           value: evidenceConfidence,
-          reasons: confidenceReasons,
+          reasons: ecmSkipped ? ["ECM skipped: Pioneer Market detected"] : confidenceReasons,
           dataTierDistribution: { verified: tierVerified, reported: tierReported, estimated: tierEstimated, total: tierTotal },
           uniqueSourceTypes: [...uniqueSourceTypes],
           manipulationWarnings,
+          ecmSkipped: ecmSkipped ? "pioneer_market" : undefined,
         };
         reportData.signalIntegrityFlag = signalIntegrityFlag;
 
