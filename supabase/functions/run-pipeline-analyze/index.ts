@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
 
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
 
+    console.log("[PHASE 2] ANTHROPIC_API_KEY set:", !!anthropicKey, "| length:", anthropicKey?.length ?? 0);
     console.log("[PHASE 2] Starting Claude analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
