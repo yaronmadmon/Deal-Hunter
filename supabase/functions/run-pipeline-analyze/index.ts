@@ -568,30 +568,28 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": anthropicKey!,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
+        model: "google/gemini-2.5-flash",
+        messages: aiMessages,
         max_tokens: 12000,
         temperature: 0,
         stream: true,
-        system: aiMessages[0].content,
-        messages: [{ role: "user", content: aiMessages[1].content }],
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      throw new Error(`Anthropic API error: ${aiResponse.status} - ${errorText}`);
+      throw new Error(`AI Gateway error: ${aiResponse.status} - ${errorText}`);
     }
 
     if (!aiResponse.body) {
-      throw new Error("Anthropic streaming response has no body");
+      throw new Error("AI Gateway streaming response has no body");
     }
 
     let fullContent = "";
@@ -610,14 +608,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "content_block_delta") {
-              const delta = parsed.delta?.text;
-              if (delta) fullContent += delta;
-            }
-            if (parsed.type === "message_delta") {
-              const reason = parsed.delta?.stop_reason;
-              if (reason) finishReason = reason === "end_turn" ? "stop" : reason;
-            }
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) fullContent += delta;
+            const reason = parsed.choices?.[0]?.finish_reason;
+            if (reason) finishReason = reason;
           } catch { }
         }
       }
