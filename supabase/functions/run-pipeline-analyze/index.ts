@@ -84,6 +84,110 @@ Deno.serve(async (req) => {
     const sanitizedIdea = phase1Data.sanitizedIdea;
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+
+    // ══════════════════════════════════════════════════════════════════
+    // COMPETITOR PRICING SCRAPING VIA FIRECRAWL (moved from Phase 1)
+    // For the top 3 validated competitors with URLs, scrape their
+    // pricing pages using Firecrawl to get Tier 1 revenue data.
+    // ══════════════════════════════════════════════════════════════════
+    if (firecrawlKey && rawData.validatedCompetitors?.length > 0) {
+      const topCompsWithUrls = rawData.validatedCompetitors
+        .filter((c: any) => c.url && !c.url.includes("reddit.com") && !c.url.includes("news.ycombinator"))
+        .slice(0, 3);
+
+      if (topCompsWithUrls.length > 0) {
+        console.log(`[PHASE 2 PRICING SCRAPE] Attempting to scrape pricing for ${topCompsWithUrls.length} competitors`);
+        rawData.competitorPricing = [];
+
+        const pricingPromises = topCompsWithUrls.map(async (comp: any) => {
+          try {
+            let pricingUrl = "";
+            try {
+              const baseUrl = new URL(comp.url);
+              if (baseUrl.hostname.includes("apps.apple.com") || baseUrl.hostname.includes("play.google.com") || baseUrl.hostname.includes("producthunt.com") || baseUrl.hostname.includes("github.com")) {
+                // Use Firecrawl search to find the pricing page
+                const searchRes = await fetch("https://api.firecrawl.dev/v1/search", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ query: `"${comp.name}" pricing plans`, limit: 3, scrapeOptions: { formats: ["markdown"] } }),
+                });
+                const searchData = await searchRes.json();
+                const pricingResult = (searchData.data || []).find((r: any) =>
+                  (r.url || "").toLowerCase().includes("pricing") ||
+                  (r.title || "").toLowerCase().includes("pricing")
+                );
+                if (pricingResult) pricingUrl = pricingResult.url;
+              } else {
+                pricingUrl = `${baseUrl.origin}/pricing`;
+              }
+            } catch {
+              return null;
+            }
+
+            if (!pricingUrl) return null;
+
+            console.log(`[PHASE 2 PRICING SCRAPE] Scraping pricing for "${comp.name}" from: ${pricingUrl}`);
+            const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ url: pricingUrl, formats: ["markdown"], onlyMainContent: true }),
+            });
+            const scrapeData = await scrapeRes.json();
+            const md = scrapeData.data?.markdown || scrapeData.markdown || "";
+
+            if (md && md.length > 50) {
+              const priceMatches = md.match(/\$[\d,.]+(?:\s*\/\s*(?:mo|month|yr|year|user|seat))?/gi) || [];
+              const planMatches = md.match(/(?:free|starter|basic|pro|premium|enterprise|business|team|personal|hobby)\s*(?:plan|tier)?/gi) || [];
+
+              const pricingData = {
+                competitorName: comp.name,
+                url: pricingUrl,
+                rawPrices: [...new Set(priceMatches)].slice(0, 8),
+                planNames: [...new Set(planMatches)].slice(0, 6),
+                markdownSnippet: md.slice(0, 1500),
+                scrapedAt: new Date().toISOString(),
+              };
+
+              rawData.competitorPricing.push(pricingData);
+              console.log(`[PHASE 2 PRICING SCRAPE] "${comp.name}": Found ${priceMatches.length} prices, ${planMatches.length} plan names`);
+              return pricingData;
+            }
+            return null;
+          } catch (e) {
+            console.warn(`[PHASE 2 PRICING SCRAPE] Failed for "${comp.name}":`, e);
+            return null;
+          }
+        });
+
+        await Promise.all(pricingPromises);
+        const scrapedCount = rawData.competitorPricing.filter(Boolean).length;
+        console.log(`[PHASE 2 PRICING SCRAPE] Successfully scraped pricing for ${scrapedCount}/${topCompsWithUrls.length} competitors`);
+
+        // Add pricing data to evidence block if we got results
+        if (scrapedCount > 0 && evidenceBlock?.pricingSignals) {
+          for (const pd of rawData.competitorPricing) {
+            if (pd && pd.rawPrices?.length > 0) {
+              evidenceBlock.pricingSignals.push({
+                signal: `${pd.competitorName} Pricing (scraped)`,
+                value: `Plans: ${pd.planNames.join(", ") || "N/A"} | Prices: ${pd.rawPrices.join(", ")}`,
+                source: "Firecrawl Pricing Scrape",
+                sourceUrl: pd.url || null,
+                tier: "verified",
+              });
+            }
+          }
+        }
+
+        if (pipelineMetrics) {
+          pipelineMetrics["firecrawl_pricing"] = {
+            status: scrapedCount > 0 ? "ok" : "empty",
+            durationMs: 0,
+            signalCount: scrapedCount,
+          };
+        }
+      }
+    }
 
     console.log("[PHASE 2] Starting GPT-4o analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
