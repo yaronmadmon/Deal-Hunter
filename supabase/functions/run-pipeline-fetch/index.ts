@@ -2648,7 +2648,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[PHASE 1 COMPLETE] Saved intermediate data. Firing Phase 2 for analysis ${analysisId}`);
 
     // Fire Phase 2 (run-pipeline-analyze) in the background
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const phase2Url = supabaseUrl;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const phase2Promise = fetch(`${phase2Url}/functions/v1/run-pipeline-analyze`, {
