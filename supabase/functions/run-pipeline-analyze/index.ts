@@ -679,7 +679,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ],
         temperature: 0.0,
-        max_tokens: 16000,
+        max_tokens: 8000,
         stream: true,
       }),
     });
