@@ -3086,14 +3086,50 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         ],
         temperature: 0.0,
         max_tokens: 16000,
+        stream: true,
       }),
     });
 
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
+    }
+
+    if (!aiResponse.body) {
+      throw new Error("OpenAI streaming response has no body");
+    }
+
+    let fullContent = "";
+    const reader = aiResponse.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter(line => line.trim() !== "");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) fullContent += delta;
+          } catch {
+            // Skip malformed chunks
+          }
+        }
+      }
+    }
+
+    const content = fullContent;
+
     let reportData = null;
 
-    if (aiResponse.ok) {
-      const aiResult = await aiResponse.json();
-      const content = aiResult.choices?.[0]?.message?.content || "";
+    if (content) {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         // Sanitize: remove trailing commas before } or ]
