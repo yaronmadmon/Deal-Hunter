@@ -2135,6 +2135,17 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[EVIDENCE SUMMARY] Breakdown: ${JSON.stringify(evidenceSummary)}`);
     rawData.evidenceSummary = evidenceSummary;
 
+    // ══════════════════════════════════════════════════════════════════
+    // GITHUB COMPLEXITY CALCULATION (deterministic, no extra API calls)
+    // ══════════════════════════════════════════════════════════════════
+    const githubComplexityResult = calculateGitHubComplexity(rawData.github?.repos || []);
+    rawData.githubComplexity = githubComplexityResult;
+    if (githubComplexityResult) {
+      console.log(`[GITHUB COMPLEXITY] Score: ${githubComplexityResult.score}/10 | Repos analyzed: ${githubComplexityResult.reposAnalyzed} | Signals: ${githubComplexityResult.signals.join("; ")}`);
+    } else {
+      console.log(`[GITHUB COMPLEXITY] Insufficient GitHub data to estimate complexity (need >= 3 repos)`);
+    }
+
     // Deduplicate competitor search results
     if (rawData.serperCompetitors?.allResults?.length > 0) {
       const seen = new Set<string>();
