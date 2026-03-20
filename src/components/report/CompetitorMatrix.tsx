@@ -1,14 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Check, X, Minus } from "lucide-react";
+import { BarChart3, Check, X, Minus, AlertTriangle } from "lucide-react";
 import type { CompetitorMatrixData } from "@/data/mockReport";
 import { ConfidenceLabel } from "./ConfidenceLabel";
 
 interface Props {
-  data: CompetitorMatrixData;
+  data: CompetitorMatrixData & { _fallback?: boolean; _fallbackWarning?: string };
 }
 
-const CellValue = ({ value }: { value: string }) => {
+const CellValue = ({ value }: { value: string | null }) => {
+  if (value === null || value === undefined) return <span className="text-[13px] text-muted-foreground">—</span>;
   const lower = value.toLowerCase();
   if (lower === "yes" || lower === "strong") return (
     <div className="flex items-center justify-center gap-1">
@@ -32,6 +33,26 @@ const CellValue = ({ value }: { value: string }) => {
 };
 
 export const CompetitorMatrix = ({ data }: Props) => {
+  // Show warning banner for fallback data instead of fake scores
+  if (data._fallback) {
+    return (
+      <div className="bg-card border rounded-2xl p-8 mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 text-accent" />
+          </div>
+          <h2 className="font-heading text-xl font-bold text-foreground">Competitor Comparison Matrix</h2>
+        </div>
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            Competitor comparison unavailable. Not enough data was collected to benchmark this idea against competitors.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!data.features || data.features.length === 0 || !data.competitors || data.competitors.length === 0) return null;
 
   return (
@@ -69,7 +90,7 @@ export const CompetitorMatrix = ({ data }: Props) => {
                 <TableCell className="py-2.5 text-sm font-medium text-foreground">{feature}</TableCell>
                 {data.competitors.map((comp) => (
                   <TableCell key={`${feature}-${comp.name}`} className={`py-2.5 text-center ${comp.isYou ? 'bg-primary/5' : ''}`}>
-                    <CellValue value={comp.scores[feature] || "—"} />
+                    <CellValue value={comp.scores[feature] || null} />
                   </TableCell>
                 ))}
               </TableRow>
