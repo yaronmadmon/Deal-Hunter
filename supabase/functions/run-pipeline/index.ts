@@ -3616,36 +3616,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         const scoreAfterDataQuality = reportData.overallScore || 0;
 
         // ══════════════════════════════════════════════════════════════
-        // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
-        // Subtracts 0-15 points based on build complexity score.
+        // BUILD COMPLEXITY — INFORMATIONAL ONLY (no score penalty)
+        // Labels are still computed for the report display.
         // ══════════════════════════════════════════════════════════════
-        const scoreBeforeComplexity = reportData.overallScore || 0;
-        let complexityPenalty = 0;
+        const complexityPenalty = 0;
         if (reportData.buildComplexity) {
           const cs = Number(reportData.buildComplexity.complexityScore) || 0;
-          // Granular linear scale: 1-3 = 0, 4+ = -(cs - 3) * 2, capped at -15
-          // Examples: 4=-2, 5=-4, 6=-6, 7=-8, 8=-10, 9=-12, 10=-14 (capped at -15)
-          if (cs > 3) {
-            complexityPenalty = Math.max(-15, -((cs - 3) * 2));
-          }
           
-          // Enforce vibeCoderFeasibility label
+          // Enforce vibeCoderFeasibility label (informational only)
           if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";
           else if (cs >= 7) reportData.buildComplexity.vibeCoderFeasibility = "Hard";
           else if (cs >= 4) reportData.buildComplexity.vibeCoderFeasibility = "Moderate";
           else reportData.buildComplexity.vibeCoderFeasibility = "Easy";
 
-          if (complexityPenalty !== 0) {
-            reportData.overallScore = Math.max(0, (reportData.overallScore || 0) + complexityPenalty);
-            console.warn(`[COMPLEXITY PENALTY] Score adjusted: ${scoreBeforeComplexity} -> ${reportData.overallScore} (complexity: ${cs}/10, penalty: ${complexityPenalty})`);
-          }
-
-          // Store penalty in report for UI
-          reportData.buildComplexity.scorePenalty = complexityPenalty;
+          // No penalty applied — complexity is advisory only
+          reportData.buildComplexity.scorePenalty = 0;
         }
-
-        // Apply verdict AFTER complexity penalty
-        applyVerdictToReport(reportData);
 
         const scoreAfterComplexity = reportData.overallScore || 0;
 
