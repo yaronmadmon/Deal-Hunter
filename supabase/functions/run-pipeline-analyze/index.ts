@@ -560,7 +560,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: aiMessages,
         max_tokens: 10000,
         temperature: 0,
