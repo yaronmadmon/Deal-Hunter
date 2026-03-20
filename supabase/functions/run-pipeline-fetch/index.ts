@@ -2686,9 +2686,9 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.error("Pipeline fetch error:", errorMessage);
     try {
       if (capturedAnalysisId) {
-        const errSupabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const catchUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, serviceKey);
+        const supabase = createClient(catchUrl, serviceKey);
         await supabase.from("analyses").update({
           status: "failed",
           report_data: {
