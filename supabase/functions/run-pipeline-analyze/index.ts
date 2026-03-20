@@ -346,7 +346,7 @@ SECTION 1: DATA TRUST RULES (READ FIRST)
 Every metric in the report MUST follow this trust hierarchy.
 
 TIER 1 — HARD DATA (label as "verified")
-Sources: Firecrawl App Store scrapes, GitHub API, Product Hunt GraphQL, Serper Google search results
+Sources: GitHub API, Product Hunt GraphQL, Serper Google search results
 Rules:
 - Use exact numbers whenever possible
 - Do not aggressively round numbers
