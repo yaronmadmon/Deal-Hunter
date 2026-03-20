@@ -560,7 +560,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: aiMessages,
-        max_tokens: 12000,
+        max_tokens: 6000,
         temperature: 0,
         stream: true,
       }),
