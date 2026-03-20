@@ -83,16 +83,16 @@ Deno.serve(async (req) => {
     const ideaHash = phase1Data.ideaHash;
     const sanitizedIdea = phase1Data.sanitizedIdea;
 
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-    console.log("[PHASE 2] LOVABLE_API_KEY set:", !!lovableApiKey);
+    console.log("[PHASE 2] OPENAI_API_KEY set:", !!openaiApiKey);
     console.log("[PHASE 2] Starting AI analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!lovableApiKey) {
-      console.error("LOVABLE_API_KEY not found");
+    if (!openaiApiKey) {
+      console.error("OPENAI_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
@@ -553,14 +553,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o",
         messages: aiMessages,
         max_tokens: 6000,
         temperature: 0,
