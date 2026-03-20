@@ -567,28 +567,30 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
+        "x-api-key": anthropicKey!,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        messages: aiMessages,
-        temperature: 0.0,
-        max_tokens: 8000,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 12000,
+        temperature: 0,
         stream: true,
+        system: aiMessages[0].content,
+        messages: [{ role: "user", content: aiMessages[1].content }],
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      throw new Error(`OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      throw new Error(`Anthropic API error: ${aiResponse.status} - ${errorText}`);
     }
 
     if (!aiResponse.body) {
-      throw new Error("OpenAI streaming response has no body");
+      throw new Error("Anthropic streaming response has no body");
     }
 
     let fullContent = "";
@@ -599,75 +601,29 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       const chunk = decoder.decode(value, { stream: true });
       const lines = chunk.split("\n").filter(line => line.trim() !== "");
-
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           const data = line.slice(6).trim();
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) fullContent += delta;
-            const reason = parsed.choices?.[0]?.finish_reason;
-            if (reason) finishReason = reason;
-          } catch {
-            // Skip malformed chunks
-          }
+            if (parsed.type === "content_block_delta") {
+              const delta = parsed.delta?.text;
+              if (delta) fullContent += delta;
+            }
+            if (parsed.type === "message_delta") {
+              const reason = parsed.delta?.stop_reason;
+              if (reason) finishReason = reason === "end_turn" ? "stop" : reason;
+            }
+          } catch { }
         }
       }
     }
 
     if (finishReason === "length") {
-      console.warn("[PHASE 2] GPT-4o hit token limit at 8000. Retrying with 12000 tokens.");
-      fullContent = "";
-      finishReason = "stop";
-
-      const retryResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          temperature: 0.0,
-          max_tokens: 12000,
-          stream: true,
-          messages: aiMessages,
-        }),
-      });
-
-      if (retryResponse.body) {
-        const retryReader = retryResponse.body.getReader();
-        while (true) {
-          const { done, value } = await retryReader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n").filter(line => line.trim() !== "");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6).trim();
-              if (data === "[DONE]") break;
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) fullContent += delta;
-                const reason = parsed.choices?.[0]?.finish_reason;
-                if (reason) finishReason = reason;
-              } catch { }
-            }
-          }
-        }
-      }
-
-      if (finishReason === "length") {
-        console.warn("[PHASE 2] WARNING: Response truncated even at 12000 tokens — JSON recovery will attempt parsing.");
-      } else {
-        console.log("[PHASE 2] Retry succeeded with 12000 tokens.");
-      }
+      console.warn("[PHASE 2] WARNING: Response hit token limit — JSON recovery will attempt parsing.");
     }
 
     const content = fullContent;
