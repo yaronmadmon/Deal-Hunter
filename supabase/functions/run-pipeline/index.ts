@@ -4522,6 +4522,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       });
     }
 
+    // ── Inject GitHub complexity + Pioneer Market into report ──
+    if (reportData) {
+      if (rawData.githubComplexity) {
+        reportData.githubComplexityScore = rawData.githubComplexity;
+      } else {
+        reportData.githubComplexityScore = { score: null, reposAnalyzed: 0, signals: [], label: "Insufficient GitHub data to estimate complexity." };
+      }
+      if (pioneerMarketFlag) {
+        reportData.pioneerMarketBanner = "Pioneer Market Detected — Low signal volume may indicate an early-stage or untapped market rather than lack of demand. Treat this score with higher uncertainty but higher upside potential.";
+      }
+    }
+
     // ── Inject pipeline metrics into report for debugging ──
     if (reportData) {
       reportData.pipelineMetrics = {
