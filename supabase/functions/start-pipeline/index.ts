@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pipelinePromise = fetch(`${supabaseUrl}/functions/v1/run-pipeline`, {
+    const pipelinePromise = fetch(`${supabaseUrl}/functions/v1/run-pipeline-fetch`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -3,6 +3,12 @@ project_id = "erryuxbqbcvbyzjeseon"
 [functions.run-pipeline]
 verify_jwt = false
 
+[functions.run-pipeline-fetch]
+verify_jwt = false
+
+[functions.run-pipeline-analyze]
+verify_jwt = false
+
 [functions.generate-blueprint]
 verify_jwt = false
 
