@@ -1822,7 +1822,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
-        // ── Populate Competitor Snapshot card from validated competitors if AI returned empty ──
+        // ── Populate userQuotes from rawData if AI didn't return them ──
+        if (!reportData.userQuotes || !Array.isArray(reportData.userQuotes) || reportData.userQuotes.length === 0) {
+          const tweets = (rawData.twitterSentiment?.tweets || []).slice(0, 3).map(
+            (t: any) => ({ text: t.text || t.content || "", source: "Twitter", sourceUrl: t.url || t.tweetUrl || null, upvotes: null, platform: "twitter" })
+          );
+          const redditPosts = (rawData.firecrawlReddit?.results || rawData.serperReddit?.organic || []).slice(0, 3).map(
+            (r: any) => ({ text: r.title || r.snippet || r.text || "", source: "Reddit", sourceUrl: r.url || r.link || null, upvotes: r.upvotes || null, platform: "reddit" })
+          );
+          reportData.userQuotes = [...tweets, ...redditPosts].slice(0, 5);
+          if (reportData.userQuotes.length > 0) {
+            console.log(`[FIELD POPULATION] userQuotes: populated ${reportData.userQuotes.length} quotes from rawData`);
+          }
+        }
+
         const compSnapshotCard = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot");
         if (compSnapshotCard && (!compSnapshotCard.competitors || compSnapshotCard.competitors.length === 0)) {
           const validated = rawData.validatedCompetitors || [];
