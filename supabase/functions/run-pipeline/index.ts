@@ -1316,6 +1316,51 @@ Deno.serve(async (req) => {
     const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
     console.log(`[INPUT SANITIZATION] Original: "${idea.slice(0, 100)}" → Sanitized: "${sanitizedIdea.slice(0, 100)}"`);
 
+    // ══════════════════════════════════════════════════════════════════
+    // 24-HOUR REPORT CACHE CHECK (must run BEFORE any external API call)
+    // Uses SHA-256 hash of the sanitized idea to find matching reports.
+    // ══════════════════════════════════════════════════════════════════
+    const ideaHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sanitizedIdea.toLowerCase().trim()));
+    const ideaHash = Array.from(new Uint8Array(ideaHashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+    console.log(`[CACHE] SHA-256 hash: ${ideaHash}`);
+
+    {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: cachedAnalysis } = await supabase
+        .from("analyses")
+        .select("id, report_data, overall_score, signal_strength, created_at")
+        .eq("idea_hash", ideaHash)
+        .eq("status", "complete")
+        .gte("created_at", twentyFourHoursAgo)
+        .neq("id", analysisId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedAnalysis?.report_data) {
+        console.log(`[CACHE HIT] Found cached report ${cachedAnalysis.id} from ${cachedAnalysis.created_at}`);
+        const cachedReportData = typeof cachedAnalysis.report_data === "object" ? cachedAnalysis.report_data : {};
+        (cachedReportData as any).cached = true;
+        (cachedReportData as any).cachedAt = cachedAnalysis.created_at;
+        (cachedReportData as any).cachedFromAnalysisId = cachedAnalysis.id;
+
+        await supabase.from("analyses").update({
+          status: "complete",
+          overall_score: cachedAnalysis.overall_score,
+          signal_strength: cachedAnalysis.signal_strength,
+          report_data: cachedReportData,
+          idea_hash: ideaHash,
+          updated_at: new Date().toISOString(),
+        }).eq("id", analysisId);
+
+        // Do NOT deduct a credit for cached results
+        return new Response(JSON.stringify({ success: true, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log(`[CACHE MISS] No cached report found for hash ${ideaHash.slice(0, 16)}...`);
+    }
+
     // ── Get user_id from analysis record ──
     const { data: analysisRecord } = await supabase.from("analyses").select("user_id").eq("id", analysisId).single();
     const pipelineUserId = analysisRecord?.user_id;
