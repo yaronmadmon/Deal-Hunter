@@ -285,6 +285,37 @@ const Report = () => {
           <p className="text-xs text-muted-foreground mt-2 italic">Gold Rush provides market signals and competitive intelligence. It does not predict success.</p>
         </div>
 
+        {/* Cached Report Banner */}
+        {(r as any).cached && (
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 mb-4">
+            <span className="text-lg">📦</span>
+            <div className="text-sm text-muted-foreground">
+              <p>Cached result from {(r as any).cachedAt ? new Date((r as any).cachedAt).toLocaleString() : "earlier"}. Run a fresh analysis to get updated market data.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Pioneer Market Banner */}
+        {(r as any).pioneerMarketFlag && (
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
+            <span className="text-lg">🚩</span>
+            <div className="text-sm text-muted-foreground">
+              <p>{(r as any).pioneerMarketBanner || "Pioneer Market Detected — Low signal volume may indicate an early-stage or untapped market rather than lack of demand. Treat this score with higher uncertainty but higher upside potential."}</p>
+            </div>
+          </div>
+        )}
+
+        {/* GitHub Complexity Score */}
+        {(r as any).githubComplexityScore?.score !== null && (r as any).githubComplexityScore?.score !== undefined && (
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-secondary/50 border mb-4">
+            <span className="text-lg">🔧</span>
+            <div className="text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">GitHub Build Complexity: <span className="font-mono">{(r as any).githubComplexityScore.score}/10</span></p>
+              <p>{(r as any).githubComplexityScore.label}</p>
+            </div>
+          </div>
+        )}
+
         {/* Key Stats */}
         <KeyStatsBar stats={r.keyStats || [
           { value: `${r.overallScore}/100`, label: "Market Signal Score", sentiment: r.overallScore >= 70 ? "positive" : r.overallScore >= 40 ? "neutral" : "negative" as any },

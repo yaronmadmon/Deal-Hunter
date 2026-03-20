@@ -377,6 +377,95 @@ async function githubSearch(
   }
 }
 
+// ── GitHub Complexity Calculator (deterministic, no extra API calls) ─
+function calculateGitHubComplexity(repos: any[]): { score: number | null; reposAnalyzed: number; signals: string[]; label: string } | null {
+  if (!repos || repos.length < 3) {
+    return null;
+  }
+
+  const top10 = repos.slice(0, 10);
+  const repoScores: number[] = [];
+  const signals: string[] = [];
+
+  // Hard language multipliers
+  const hardLanguages = ["c", "c++", "rust", "java"];
+  const easyLanguages = ["python", "javascript", "typescript"];
+
+  // Track dominant language across all repos
+  const languageCounts: Record<string, number> = {};
+
+  for (const repo of top10) {
+    let score = 0;
+    let availableMax = 0;
+
+    // Signal 1: Language count (inferred from primary language + topics)
+    const languages = new Set<string>();
+    if (repo.language) languages.add(repo.language.toLowerCase());
+    // Infer additional languages from topics
+    const langTopics = ["python", "javascript", "typescript", "rust", "go", "java", "c", "cpp", "ruby", "swift", "kotlin", "dart", "php", "scala", "elixir"];
+    for (const topic of (repo.topics || [])) {
+      if (langTopics.includes(topic.toLowerCase())) languages.add(topic.toLowerCase());
+    }
+    const langCount = languages.size;
+    if (langCount >= 5) score += 6;
+    else if (langCount >= 3) score += 4;
+    else score += 2;
+    availableMax += 6;
+
+    // Track dominant language
+    for (const lang of languages) {
+      languageCounts[lang] = (languageCounts[lang] || 0) + 1;
+    }
+
+    // Signal 2: Dependency count (inferred from topics and description)
+    const depIndicators = ["docker", "kubernetes", "redis", "postgres", "mongodb", "graphql", "grpc", "aws", "gcp", "azure",
+      "terraform", "kafka", "elasticsearch", "nginx", "rabbitmq", "celery", "webpack", "vite", "nextjs", "react",
+      "vue", "angular", "django", "flask", "express", "fastapi", "spring", "rails"];
+    let depCount = 0;
+    const repoText = `${(repo.topics || []).join(" ")} ${repo.description || ""}`.toLowerCase();
+    for (const dep of depIndicators) {
+      if (repoText.includes(dep)) depCount++;
+    }
+    if (depCount >= 6) score += 3; // maps to 31+ deps
+    else if (depCount >= 3) score += 2; // maps to 11-30 deps
+    else score += 1; // maps to 0-10 deps
+    availableMax += 3;
+
+    // Signal 3: File depth (skip — GitHub search API doesn't return tree data)
+    // We skip this and scale proportionally from the two available signals
+
+    // Scale to 0-10 proportionally based on available signals
+    const scaledScore = availableMax > 0 ? (score / availableMax) * 10 : 0;
+    repoScores.push(Math.round(scaledScore * 10) / 10);
+
+    if (depCount >= 3) signals.push(`${repo.name}: ${langCount} lang(s), ${depCount} infra deps`);
+  }
+
+  if (repoScores.length < 3) return null;
+
+  // Average across repos
+  let avgScore = repoScores.reduce((s, v) => s + v, 0) / repoScores.length;
+
+  // Language normalization
+  const dominantLang = Object.entries(languageCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  if (hardLanguages.includes(dominantLang)) {
+    avgScore = Math.min(10, avgScore * 1.2);
+    signals.push(`Dominant language: ${dominantLang} (hard — 1.2x multiplier)`);
+  } else if (easyLanguages.includes(dominantLang)) {
+    avgScore = avgScore * 0.9;
+    signals.push(`Dominant language: ${dominantLang} (easy — 0.9x multiplier)`);
+  }
+
+  const finalScore = Math.round(avgScore * 10) / 10;
+
+  return {
+    score: finalScore,
+    reposAnalyzed: top10.length,
+    signals: signals.slice(0, 5),
+    label: `Based on ${top10.length} similar products in this space, build complexity is estimated at ${finalScore}/10.`,
+  };
+}
+
 // ── Twitter/X helper ────────────────────────────────────────────────
 
 // Sanitize query for Twitter API v2 — remove operators and special chars that cause 400 errors
@@ -1227,6 +1316,51 @@ Deno.serve(async (req) => {
     const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
     console.log(`[INPUT SANITIZATION] Original: "${idea.slice(0, 100)}" → Sanitized: "${sanitizedIdea.slice(0, 100)}"`);
 
+    // ══════════════════════════════════════════════════════════════════
+    // 24-HOUR REPORT CACHE CHECK (must run BEFORE any external API call)
+    // Uses SHA-256 hash of the sanitized idea to find matching reports.
+    // ══════════════════════════════════════════════════════════════════
+    const ideaHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sanitizedIdea.toLowerCase().trim()));
+    const ideaHash = Array.from(new Uint8Array(ideaHashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+    console.log(`[CACHE] SHA-256 hash: ${ideaHash}`);
+
+    {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: cachedAnalysis } = await supabase
+        .from("analyses")
+        .select("id, report_data, overall_score, signal_strength, created_at")
+        .eq("idea_hash", ideaHash)
+        .eq("status", "complete")
+        .gte("created_at", twentyFourHoursAgo)
+        .neq("id", analysisId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedAnalysis?.report_data) {
+        console.log(`[CACHE HIT] Found cached report ${cachedAnalysis.id} from ${cachedAnalysis.created_at}`);
+        const cachedReportData = typeof cachedAnalysis.report_data === "object" ? cachedAnalysis.report_data : {};
+        (cachedReportData as any).cached = true;
+        (cachedReportData as any).cachedAt = cachedAnalysis.created_at;
+        (cachedReportData as any).cachedFromAnalysisId = cachedAnalysis.id;
+
+        await supabase.from("analyses").update({
+          status: "complete",
+          overall_score: cachedAnalysis.overall_score,
+          signal_strength: cachedAnalysis.signal_strength,
+          report_data: cachedReportData,
+          idea_hash: ideaHash,
+          updated_at: new Date().toISOString(),
+        }).eq("id", analysisId);
+
+        // Do NOT deduct a credit for cached results
+        return new Response(JSON.stringify({ success: true, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log(`[CACHE MISS] No cached report found for hash ${ideaHash.slice(0, 16)}...`);
+    }
+
     // ── Get user_id from analysis record ──
     const { data: analysisRecord } = await supabase.from("analyses").select("user_id").eq("id", analysisId).single();
     const pipelineUserId = analysisRecord?.user_id;
@@ -2000,6 +2134,17 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[EVIDENCE SUMMARY] Total fetched: ${totalBefore} | After filtering: ${totalAfter} | Dropped: ${totalBefore - totalAfter}`);
     console.log(`[EVIDENCE SUMMARY] Breakdown: ${JSON.stringify(evidenceSummary)}`);
     rawData.evidenceSummary = evidenceSummary;
+
+    // ══════════════════════════════════════════════════════════════════
+    // GITHUB COMPLEXITY CALCULATION (deterministic, no extra API calls)
+    // ══════════════════════════════════════════════════════════════════
+    const githubComplexityResult = calculateGitHubComplexity(rawData.github?.repos || []);
+    rawData.githubComplexity = githubComplexityResult;
+    if (githubComplexityResult) {
+      console.log(`[GITHUB COMPLEXITY] Score: ${githubComplexityResult.score}/10 | Repos analyzed: ${githubComplexityResult.reposAnalyzed} | Signals: ${githubComplexityResult.signals.join("; ")}`);
+    } else {
+      console.log(`[GITHUB COMPLEXITY] Insufficient GitHub data to estimate complexity (need >= 3 repos)`);
+    }
 
     // Deduplicate competitor search results
     if (rawData.serperCompetitors?.allResults?.length > 0) {
@@ -2939,7 +3084,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
         ],
-        temperature: 0.2,
+        temperature: 0.0,
         max_tokens: 16000,
       }),
     });
@@ -3616,38 +3761,60 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         const scoreAfterDataQuality = reportData.overallScore || 0;
 
         // ══════════════════════════════════════════════════════════════
-        // BUILD COMPLEXITY PENALTY (applied LAST in scoring journey)
-        // Subtracts 0-15 points based on build complexity score.
+        // BUILD COMPLEXITY — INFORMATIONAL ONLY (no score penalty)
+        // Labels are still computed for the report display.
         // ══════════════════════════════════════════════════════════════
-        const scoreBeforeComplexity = reportData.overallScore || 0;
-        let complexityPenalty = 0;
+        const complexityPenalty = 0;
         if (reportData.buildComplexity) {
           const cs = Number(reportData.buildComplexity.complexityScore) || 0;
-          // Granular linear scale: 1-3 = 0, 4+ = -(cs - 3) * 2, capped at -15
-          // Examples: 4=-2, 5=-4, 6=-6, 7=-8, 8=-10, 9=-12, 10=-14 (capped at -15)
-          if (cs > 3) {
-            complexityPenalty = Math.max(-15, -((cs - 3) * 2));
-          }
           
-          // Enforce vibeCoderFeasibility label
+          // Enforce vibeCoderFeasibility label (informational only)
           if (cs >= 9) reportData.buildComplexity.vibeCoderFeasibility = "Do Not Attempt";
           else if (cs >= 7) reportData.buildComplexity.vibeCoderFeasibility = "Hard";
           else if (cs >= 4) reportData.buildComplexity.vibeCoderFeasibility = "Moderate";
           else reportData.buildComplexity.vibeCoderFeasibility = "Easy";
 
-          if (complexityPenalty !== 0) {
-            reportData.overallScore = Math.max(0, (reportData.overallScore || 0) + complexityPenalty);
-            console.warn(`[COMPLEXITY PENALTY] Score adjusted: ${scoreBeforeComplexity} -> ${reportData.overallScore} (complexity: ${cs}/10, penalty: ${complexityPenalty})`);
-          }
-
-          // Store penalty in report for UI
-          reportData.buildComplexity.scorePenalty = complexityPenalty;
+          // No penalty applied — complexity is advisory only
+          reportData.buildComplexity.scorePenalty = 0;
         }
 
-        // Apply verdict AFTER complexity penalty
-        applyVerdictToReport(reportData);
-
         const scoreAfterComplexity = reportData.overallScore || 0;
+
+        // ══════════════════════════════════════════════════════════════
+        // PIONEER MARKET DETECTION (must run BEFORE ECM)
+        // Intercepts ECM penalty for legitimately novel ideas with
+        // low signal volume but real long-tail keyword demand.
+        // ══════════════════════════════════════════════════════════════
+        let pioneerMarketFlag = false;
+        let ecmSkipped = false;
+        {
+          const totalEvidenceItems = totalEvidence;
+          const validatedCompetitorCount = rawData.validatedCompetitors?.length ?? 0;
+          
+          // Check for long-tail keyword variants with volume > 0
+          const kwData = rawData.serperKeywordIntel?.keywords || reportData.keywordDemand?.keywords || [];
+          const hasLongTailWithVolume = kwData.some((kw: any) => {
+            const vol = String(kw.volume || "0").replace(/[^0-9]/g, "");
+            return parseInt(vol, 10) > 0;
+          });
+
+          // Check for declining trend flag
+          const hasNoDecline = !matchedDecliningTrend;
+
+          const isPioneer = totalEvidenceItems < 15 
+            && validatedCompetitorCount <= 2 
+            && hasLongTailWithVolume 
+            && hasNoDecline;
+
+          if (isPioneer) {
+            pioneerMarketFlag = true;
+            ecmSkipped = true;
+            reportData.pioneerMarketFlag = true;
+            console.warn(`[PIONEER MARKET] Detected — evidence: ${totalEvidenceItems}, competitors: ${validatedCompetitorCount}, long-tail: true, decline: false. ECM penalty will be SKIPPED.`);
+          } else {
+            console.log(`[PIONEER MARKET] Not detected — evidence: ${totalEvidenceItems}, competitors: ${validatedCompetitorCount}, long-tail: ${hasLongTailWithVolume}, decline: ${!!matchedDecliningTrend}`);
+          }
+        }
 
         // ══════════════════════════════════════════════════════════════
         // IMPROVEMENT #2 + #3 + #4: EVIDENCE CONFIDENCE SYSTEM
@@ -3773,9 +3940,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Clamp confidence to [0.6, 1.0]
         evidenceConfidence = Math.max(0.6, Math.min(1.0, Math.round(evidenceConfidence * 100) / 100));
 
-        // Apply confidence multiplier to final score
+        // Apply confidence multiplier to final score (SKIP if Pioneer Market detected)
         const scoreBeforeConfidence = reportData.overallScore || 0;
-        if (evidenceConfidence < 1.0) {
+        if (ecmSkipped) {
+          console.warn(`[EVIDENCE CONFIDENCE] SKIPPED — Pioneer Market detected. Score stays at ${scoreBeforeConfidence}`);
+          evidenceConfidence = 1.0; // Reset to 1.0 so journey log is accurate
+        } else if (evidenceConfidence < 1.0) {
           reportData.overallScore = Math.round(scoreBeforeConfidence * evidenceConfidence);
           console.warn(`[EVIDENCE CONFIDENCE] Score adjusted: ${scoreBeforeConfidence} × ${evidenceConfidence} = ${reportData.overallScore} | Reasons: ${confidenceReasons.join(", ")}`);
           applyVerdictToReport(reportData);
@@ -3786,10 +3956,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Expose in report
         reportData.evidenceConfidence = {
           value: evidenceConfidence,
-          reasons: confidenceReasons,
+          reasons: ecmSkipped ? ["ECM skipped: Pioneer Market detected"] : confidenceReasons,
           dataTierDistribution: { verified: tierVerified, reported: tierReported, estimated: tierEstimated, total: tierTotal },
           uniqueSourceTypes: [...uniqueSourceTypes],
           manipulationWarnings,
+          ecmSkipped: ecmSkipped ? "pioneer_market" : undefined,
         };
         reportData.signalIntegrityFlag = signalIntegrityFlag;
 
@@ -3805,12 +3976,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             { label: "Viability Caps", value: viabilityScore, description: viabilityScore !== aiRawScore ? `Declining trend / mashup caps applied (capped: ${[...viabilityCappedCategories].join(", ") || "none"})` : "No viability adjustments needed" },
             { label: "Signal Bounds", value: scoreAfterSignalBounds, description: "Evidence-weighted floors & ceilings enforced per category" },
             { label: "Boosts & Penalties", value: scoreAfterDataQuality, description: scoreAfterSignalBounds !== scoreAfterDataQuality ? "Low competition boost, B2B niche boost, and/or data quality penalty applied" : "No boosts or penalties applied" },
-            { label: "Complexity Penalty", value: scoreAfterComplexity, description: complexityPenalty !== 0 ? `Build complexity penalty: ${complexityPenalty} pts` : "No complexity penalty applied" },
-            { label: "Evidence Confidence", value: reportData.overallScore, description: evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment" },
+            { label: "Complexity Info", value: scoreAfterComplexity, description: "Build complexity is informational only — no score penalty applied" },
+            { label: "Evidence Confidence", value: reportData.overallScore, description: ecmSkipped ? "ECM skipped: Pioneer Market detected — low signal volume indicates early-stage market" : (evidenceConfidence < 1.0 ? `Confidence multiplier: ${evidenceConfidence} (${confidenceReasons.join("; ")})` : "Full evidence confidence — no adjustment") },
           ],
           finalScore: reportData.overallScore,
-          complexityPenalty,
+          complexityPenalty: 0,
           evidenceConfidence,
+          pioneerMarketFlag,
+          ecmSkipped: ecmSkipped ? "pioneer_market" : undefined,
           viabilityCappedCategories: [...viabilityCappedCategories],
         };
         
@@ -4262,16 +4435,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           const competitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
           const features = ["Pricing", "UX Quality", "Feature Depth", "Market Presence"];
           reportData.competitorMatrix = {
+            _fallback: true,
+            _fallbackWarning: "Insufficient competitor data — manual review required.",
             features,
             competitors: [
-              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, "Medium"])) })),
-              { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, "Strong"])) },
+              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, null])) })),
+              { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, null])) },
             ],
             confidence: "Low",
           };
         }
-        // Ensure "Your Idea" in competitorMatrix always has scores filled in
-        if (reportData.competitorMatrix?.competitors && reportData.competitorMatrix?.features) {
+        // Ensure "Your Idea" in competitorMatrix always has scores filled in (only for non-fallback matrices)
+        if (reportData.competitorMatrix?.competitors && reportData.competitorMatrix?.features && !reportData.competitorMatrix._fallback) {
           const yourIdea = reportData.competitorMatrix.competitors.find((c: any) => c.isYou);
           if (yourIdea && (!yourIdea.scores || Object.keys(yourIdea.scores).length === 0)) {
             yourIdea.scores = Object.fromEntries(
@@ -4347,6 +4522,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       });
     }
 
+    // ── Inject GitHub complexity + Pioneer Market into report ──
+    if (reportData) {
+      if (rawData.githubComplexity) {
+        reportData.githubComplexityScore = rawData.githubComplexity;
+      } else {
+        reportData.githubComplexityScore = { score: null, reposAnalyzed: 0, signals: [], label: "Insufficient GitHub data to estimate complexity." };
+      }
+      if (pioneerMarketFlag) {
+        reportData.pioneerMarketBanner = "Pioneer Market Detected — Low signal volume may indicate an early-stage or untapped market rather than lack of demand. Treat this score with higher uncertainty but higher upside potential.";
+      }
+    }
+
     // ── Inject pipeline metrics into report for debugging ──
     if (reportData) {
       reportData.pipelineMetrics = {
@@ -4394,6 +4581,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       overall_score: finalOverallScore,
       signal_strength: finalSignalStrength,
       report_data: reportData,
+      idea_hash: ideaHash,
       updated_at: new Date().toISOString(),
     }).eq("id", analysisId);
 
