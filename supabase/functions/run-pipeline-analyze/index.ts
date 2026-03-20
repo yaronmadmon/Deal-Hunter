@@ -83,16 +83,16 @@ Deno.serve(async (req) => {
     const ideaHash = phase1Data.ideaHash;
     const sanitizedIdea = phase1Data.sanitizedIdea;
 
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
-    console.log("[PHASE 2] ANTHROPIC_API_KEY set:", !!anthropicKey, "| length:", anthropicKey?.length ?? 0);
-    console.log("[PHASE 2] Starting Claude analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
+    console.log("[PHASE 2] LOVABLE_API_KEY set:", !!lovableApiKey);
+    console.log("[PHASE 2] Starting AI analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
     await supabase.from("analyses").update({ status: "analyzing" }).eq("id", analysisId);
 
-    if (!anthropicKey) {
-      console.error("ANTHROPIC_API_KEY not found");
+    if (!lovableApiKey) {
+      console.error("LOVABLE_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
     }
