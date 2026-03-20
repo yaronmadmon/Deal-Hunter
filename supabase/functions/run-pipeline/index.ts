@@ -1528,14 +1528,33 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // ── Pipeline metrics tracker ──
     const pipelineMetrics: Record<string, { status: string; durationMs: number; signalCount: number; error?: string }> = {};
 
+    const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+        ),
+      ]);
+
+    // Source timeout ceilings: GitHub=5000ms, all others=8000ms
+    const SOURCE_TIMEOUTS: Record<string, number> = { github: 5000 };
+    const DEFAULT_SOURCE_TIMEOUT = 8000;
+
     async function trackSource(name: string, fn: () => Promise<number>): Promise<void> {
       const start = Date.now();
+      const timeoutMs = SOURCE_TIMEOUTS[name] ?? DEFAULT_SOURCE_TIMEOUT;
       try {
-        const signalCount = await fn();
+        const signalCount = await withTimeout(fn(), timeoutMs, name);
         pipelineMetrics[name] = { status: "ok", durationMs: Date.now() - start, signalCount };
       } catch (e: any) {
-        pipelineMetrics[name] = { status: "error", durationMs: Date.now() - start, signalCount: 0, error: e?.message || String(e) };
-        console.error(`[PIPELINE] ${name} error:`, e);
+        const isTimeout = e?.message?.includes("timed out after");
+        pipelineMetrics[name] = {
+          status: isTimeout ? "timeout" : "error",
+          durationMs: Date.now() - start,
+          signalCount: 0,
+          error: e?.message || String(e),
+        };
+        console.error(`[PIPELINE] ${name} ${isTimeout ? "TIMEOUT" : "error"}:`, e?.message || e);
       }
     }
 
