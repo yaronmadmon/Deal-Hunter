@@ -679,7 +679,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             role: "user",
             content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
-        ],
+        ];
+
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: aiMessages,
         temperature: 0.0,
         max_tokens: 8000,
         stream: true,
