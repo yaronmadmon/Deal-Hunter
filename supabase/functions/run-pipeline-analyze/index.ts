@@ -301,16 +301,6 @@ You MUST:
     const aiMessages = [
           {
             role: "system",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
             content: `You are the AI analysis engine for Gold Rush, a market validation platform for app developers.
 
 Your job is to produce a structured JSON report that is:
