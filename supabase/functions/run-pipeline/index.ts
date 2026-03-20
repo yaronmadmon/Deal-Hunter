@@ -4262,16 +4262,18 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           const competitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
           const features = ["Pricing", "UX Quality", "Feature Depth", "Market Presence"];
           reportData.competitorMatrix = {
+            _fallback: true,
+            _fallbackWarning: "Insufficient competitor data — manual review required.",
             features,
             competitors: [
-              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, "Medium"])) })),
-              { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, "Strong"])) },
+              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, null])) })),
+              { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, null])) },
             ],
             confidence: "Low",
           };
         }
-        // Ensure "Your Idea" in competitorMatrix always has scores filled in
-        if (reportData.competitorMatrix?.competitors && reportData.competitorMatrix?.features) {
+        // Ensure "Your Idea" in competitorMatrix always has scores filled in (only for non-fallback matrices)
+        if (reportData.competitorMatrix?.competitors && reportData.competitorMatrix?.features && !reportData.competitorMatrix._fallback) {
           const yourIdea = reportData.competitorMatrix.competitors.find((c: any) => c.isYou);
           if (yourIdea && (!yourIdea.scores || Object.keys(yourIdea.scores).length === 0)) {
             yourIdea.scores = Object.fromEntries(
