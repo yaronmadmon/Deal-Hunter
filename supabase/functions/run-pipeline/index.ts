@@ -4516,6 +4516,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       overall_score: finalOverallScore,
       signal_strength: finalSignalStrength,
       report_data: reportData,
+      idea_hash: ideaHash,
       updated_at: new Date().toISOString(),
     }).eq("id", analysisId);
 
