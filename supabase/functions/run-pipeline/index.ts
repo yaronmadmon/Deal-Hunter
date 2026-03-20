@@ -3781,6 +3781,42 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         const scoreAfterComplexity = reportData.overallScore || 0;
 
         // ══════════════════════════════════════════════════════════════
+        // PIONEER MARKET DETECTION (must run BEFORE ECM)
+        // Intercepts ECM penalty for legitimately novel ideas with
+        // low signal volume but real long-tail keyword demand.
+        // ══════════════════════════════════════════════════════════════
+        let pioneerMarketFlag = false;
+        let ecmSkipped = false;
+        {
+          const totalEvidenceItems = totalEvidence;
+          const validatedCompetitorCount = rawData.validatedCompetitors?.length ?? 0;
+          
+          // Check for long-tail keyword variants with volume > 0
+          const kwData = rawData.serperKeywordIntel?.keywords || reportData.keywordDemand?.keywords || [];
+          const hasLongTailWithVolume = kwData.some((kw: any) => {
+            const vol = String(kw.volume || "0").replace(/[^0-9]/g, "");
+            return parseInt(vol, 10) > 0;
+          });
+
+          // Check for declining trend flag
+          const hasNoDecline = !matchedDecliningTrend;
+
+          const isPioneer = totalEvidenceItems < 15 
+            && validatedCompetitorCount <= 2 
+            && hasLongTailWithVolume 
+            && hasNoDecline;
+
+          if (isPioneer) {
+            pioneerMarketFlag = true;
+            ecmSkipped = true;
+            reportData.pioneerMarketFlag = true;
+            console.warn(`[PIONEER MARKET] Detected — evidence: ${totalEvidenceItems}, competitors: ${validatedCompetitorCount}, long-tail: true, decline: false. ECM penalty will be SKIPPED.`);
+          } else {
+            console.log(`[PIONEER MARKET] Not detected — evidence: ${totalEvidenceItems}, competitors: ${validatedCompetitorCount}, long-tail: ${hasLongTailWithVolume}, decline: ${!!matchedDecliningTrend}`);
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // IMPROVEMENT #2 + #3 + #4: EVIDENCE CONFIDENCE SYSTEM
         // Adjusts the final score when evidence quality is low.
         // Combines: dataTier distribution, unique sources, source
