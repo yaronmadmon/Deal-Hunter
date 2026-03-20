@@ -38,6 +38,7 @@ export type Database = {
           created_at: string
           id: string
           idea: string
+          idea_hash: string | null
           overall_score: number | null
           report_data: Json | null
           signal_strength: string | null
@@ -50,6 +51,7 @@ export type Database = {
           created_at?: string
           id?: string
           idea: string
+          idea_hash?: string | null
           overall_score?: number | null
           report_data?: Json | null
           signal_strength?: string | null
@@ -62,6 +64,7 @@ export type Database = {
           created_at?: string
           id?: string
           idea?: string
+          idea_hash?: string | null
           overall_score?: number | null
           report_data?: Json | null
           signal_strength?: string | null
