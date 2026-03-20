@@ -2939,7 +2939,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
         ],
-        temperature: 0.2,
+        temperature: 0.0,
         max_tokens: 16000,
       }),
     });
