@@ -298,15 +298,7 @@ You MUST:
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
+    const aiMessages = [
           {
             role: "system",
             content: `You are the AI analysis engine for Gold Rush, a market validation platform for app developers.
@@ -677,7 +669,17 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             role: "user",
             content: `Analyze this startup idea: "${idea}"\n\nHere is the structured evidence block collected from real data sources:\n${fullContext}`,
           },
-        ],
+        ];
+
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: aiMessages,
         temperature: 0.0,
         max_tokens: 8000,
         stream: true,
@@ -694,6 +696,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     }
 
     let fullContent = "";
+    let finishReason = "stop";
     const reader = aiResponse.body.getReader();
     const decoder = new TextDecoder();
 
@@ -712,10 +715,62 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) fullContent += delta;
+            const reason = parsed.choices?.[0]?.finish_reason;
+            if (reason) finishReason = reason;
           } catch {
             // Skip malformed chunks
           }
         }
+      }
+    }
+
+    if (finishReason === "length") {
+      console.warn("[PHASE 2] GPT-4o hit token limit at 8000. Retrying with 12000 tokens.");
+      fullContent = "";
+      finishReason = "stop";
+
+      const retryResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          temperature: 0.0,
+          max_tokens: 12000,
+          stream: true,
+          messages: aiMessages,
+        }),
+      });
+
+      if (retryResponse.body) {
+        const retryReader = retryResponse.body.getReader();
+        while (true) {
+          const { done, value } = await retryReader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n").filter(line => line.trim() !== "");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") break;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta?.content;
+                if (delta) fullContent += delta;
+                const reason = parsed.choices?.[0]?.finish_reason;
+                if (reason) finishReason = reason;
+              } catch { }
+            }
+          }
+        }
+      }
+
+      if (finishReason === "length") {
+        console.warn("[PHASE 2] WARNING: Response truncated even at 12000 tokens — JSON recovery will attempt parsing.");
+      } else {
+        console.log("[PHASE 2] Retry succeeded with 12000 tokens.");
       }
     }
 
