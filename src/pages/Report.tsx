@@ -572,7 +572,7 @@ const Report = () => {
         />
       </main>
 
-      <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border/50">
+      <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border">
         © 2026 Gold Rush
       </footer>
     </div>
