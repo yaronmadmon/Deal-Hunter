@@ -601,6 +601,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       console.warn("[PHASE 2] WARNING: Response hit token limit — JSON recovery will attempt parsing.");
     }
 
+    console.log(`[PHASE 2] finish_reason: ${finishReason}, content length: ${fullContent.length} chars`);
+    console.log(`[PHASE 2] First 300 chars: ${fullContent.slice(0, 300)}`);
+
     const content = fullContent;
 
     let reportData = null;
