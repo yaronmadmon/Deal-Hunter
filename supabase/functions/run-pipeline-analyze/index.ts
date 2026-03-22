@@ -1141,7 +1141,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (competitorSnapshotCard.confidence !== "Low") competitorSnapshotCard.confidence = "Medium";
           competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
         }
-        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
+        debugLog(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
 
         // ══════════════════════════════════════════════════════════════
         // GRAVEYARD SIGNAL DETECTION (runs BEFORE Low Competition Boost)
