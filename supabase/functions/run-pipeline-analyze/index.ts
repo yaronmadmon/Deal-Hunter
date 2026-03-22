@@ -708,9 +708,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
 
-        // Store AI raw score for scoring journey log
-        reportData._aiRawScore = reportData.overallScore || 0;
-
         // ══════════════════════════════════════════════════════════════
         // DETERMINISTIC POST-AI VALIDATION
         // These checks enforce scoring rules in CODE, not just the prompt.
@@ -723,10 +720,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown) && reportData.scoreBreakdown.length === 5) {
           const computedSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
           if (reportData.overallScore !== computedSum) {
-            console.warn(`[SCORE VALIDATION] overallScore mismatch: AI returned ${reportData.overallScore}, computed sum is ${computedSum}. Correcting.`);
+            debugLog(`[SCORE VALIDATION] overallScore mismatch: AI returned ${reportData.overallScore}, computed sum is ${computedSum}. Correcting.`);
             reportData.overallScore = computedSum;
           }
         }
+
+        // Store AI raw score AFTER scoreBreakdown sum is computed (AI no longer generates overallScore)
+        reportData._aiRawScore = reportData.overallScore || 0;
 
         // 2. Enforce verdict thresholds deterministically
         {
