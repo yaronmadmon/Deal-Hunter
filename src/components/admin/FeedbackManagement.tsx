@@ -38,7 +38,7 @@ export const FeedbackManagement = () => {
   const fetchFeedback = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("feedback" as any).select("*").order("created_at", { ascending: false });
+      let query = supabase.from("feedback").select("*").order("created_at", { ascending: false });
       if (filter !== "all") {
         query = query.eq("category", filter);
       }
