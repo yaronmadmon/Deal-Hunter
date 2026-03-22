@@ -2178,7 +2178,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     const finalOverallScore = reportData?.overallScore ?? 0;
     const finalSignalStrength = reportData?.signalStrength ?? "Weak";
     await supabase.from("analyses").update({
-      status: "complete",
+      status: isPartial ? "partial" : "complete",
       overall_score: finalOverallScore,
       signal_strength: finalSignalStrength,
       report_data: reportData,
