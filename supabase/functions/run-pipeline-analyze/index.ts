@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-    console.log("[PHASE 2] OPENAI_API_KEY set:", !!openaiApiKey);
+    debugLog("[PHASE 2] OPENAI_API_KEY set:", !!openaiApiKey);
     console.log("[PHASE 2] Starting AI analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
