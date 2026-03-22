@@ -48,7 +48,7 @@ export const ReportNavigator = () => {
   };
 
   return (
-    <nav className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-1 bg-card/80 backdrop-blur-md border border-border/50 rounded-xl p-1.5 shadow-lg">
+    <nav className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-1 bg-card/80 backdrop-blur-md border border-border rounded-xl p-1.5 shadow-lg">
       {sections.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
