@@ -211,8 +211,8 @@ const Report = () => {
     <div className="min-h-screen bg-background">
       <ReportNavigator />
 
-      <nav className="flex items-center justify-between px-4 sm:px-6 py-4 max-w-6xl mx-auto border-b border-border/50">
-        <span className="font-heading text-xl font-bold text-foreground shrink-0">⛏️ Gold Rush</span>
+      <nav className="flex items-center justify-between px-4 sm:px-6 py-4 max-w-6xl mx-auto border-b border-border">
+        <span className="font-heading text-lg font-bold text-foreground shrink-0">Gold Rush</span>
         <div className="flex items-center gap-1 sm:gap-2">
           <NotificationBell />
           <ThemeToggle />
@@ -238,7 +238,7 @@ const Report = () => {
             ═══════════════════════════════════════════════════════ */}
         <ReportLayerHeader
           id="layer-verdict"
-          title="Verdict"
+          title="Signal Overview"
           subtitle="Your idea at a glance"
           icon={<Trophy className="w-4 h-4 text-primary" />}
           className="pt-0"
@@ -572,7 +572,7 @@ const Report = () => {
         />
       </main>
 
-      <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border/50">
+      <footer className="text-center py-8 text-sm text-muted-foreground border-t border-border">
         © 2026 Gold Rush
       </footer>
     </div>

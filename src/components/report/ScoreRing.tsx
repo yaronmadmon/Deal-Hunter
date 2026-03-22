@@ -15,10 +15,10 @@ export const ScoreRing = ({ score, signalStrength }: Props) => {
     <div className="flex items-center gap-6">
       <div className="relative w-32 h-32">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="54" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="hsl(var(--border))" strokeWidth="8" />
           <circle
             cx="60" cy="60" r="54" fill="none"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(var(--primary) / 0.8)"
             strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={circumference}
