@@ -71,7 +71,7 @@ export const FeedbackManagement = () => {
   };
 
   const saveNotes = async (id: string) => {
-    const { error } = await supabase.from("feedback" as any).update({ admin_notes: notesText } as any).eq("id", id);
+    const { error } = await supabase.from("feedback").update({ admin_notes: notesText }).eq("id", id);
     if (error) { toast.error("Failed to save notes"); return; }
     setItems(prev => prev.map(i => i.id === id ? { ...i, admin_notes: notesText } : i));
     setEditingNotes(null);
