@@ -129,7 +129,7 @@ export const UserManagement = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ suspended: newSuspended } as any)
+        .update({ suspended: newSuspended })
         .eq('id', profile.id);
       
       if (error) throw error;

@@ -163,7 +163,7 @@ export const AnalysisManagement = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    {analysis.status === 'completed' && (
+                    {(analysis.status === 'complete' || analysis.status === 'completed' || analysis.status === 'partial') && (
                       <Button 
                         variant="outline" 
                         size="sm"
