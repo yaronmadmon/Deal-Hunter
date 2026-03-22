@@ -1,5 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// ── Environment-based logging ──────────────────────────────────────
+const LOG_LEVEL = Deno.env.get("LOG_LEVEL") || "info";
+const debugLog = (...args: any[]) => { if (LOG_LEVEL === "debug") console.log(...args); };
+
 // ── Shared verdict + signal strength helpers ───────────────────────
 function computeVerdict(score: number): string {
   if (score >= 75) return "Build Now";
@@ -85,7 +89,7 @@ Deno.serve(async (req) => {
 
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-    console.log("[PHASE 2] OPENAI_API_KEY set:", !!openaiApiKey);
+    debugLog("[PHASE 2] OPENAI_API_KEY set:", !!openaiApiKey);
     console.log("[PHASE 2] Starting AI analysis for", analysisId, "| Evidence:", totalEvidence, "signals");
 
     // ── Step 2: Analyzing with AI (grounded in real data) ──
@@ -548,87 +552,96 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: aiMessages,
-        max_tokens: 7000,
-        temperature: 0,
-        stream: true,
-        response_format: { type: "json_object" },
-      }),
-    });
+    // ── Streaming AI call with truncation retry ──
+    const executeAiCall = async (maxTokens: number): Promise<{ fullContent: string; finishReason: string }> => {
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: aiMessages,
+          max_tokens: maxTokens,
+          temperature: 0,
+          stream: true,
+          response_format: { type: "json_object" },
+        }),
+      });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      throw new Error(`AI Gateway error: ${aiResponse.status} - ${errorText}`);
-    }
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`AI Gateway error: ${resp.status} - ${errorText}`);
+      }
 
-    if (!aiResponse.body) {
-      throw new Error("AI Gateway streaming response has no body");
-    }
+      if (!resp.body) {
+        throw new Error("AI Gateway streaming response has no body");
+      }
 
-    let fullContent = "";
-    let finishReason = "stop";
-    const reader = aiResponse.body.getReader();
-    const decoder = new TextDecoder();
-    let sseEventBuffer = "";
+      let content = "";
+      let reason = "stop";
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
 
-    const processSseEvent = (eventChunk: string) => {
-      const dataLines: string[] = [];
-      for (const line of eventChunk.split(/\r?\n/)) {
-        if (line.startsWith("data:")) {
-          dataLines.push(line.slice(5).trimStart());
+      const processSseEvent = (eventChunk: string) => {
+        const dataLines: string[] = [];
+        for (const line of eventChunk.split(/\r?\n/)) {
+          if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        }
+        if (dataLines.length === 0) return;
+        const data = dataLines.join("\n").trim();
+        if (!data || data === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) content += delta;
+          const r = parsed.choices?.[0]?.finish_reason;
+          if (r) reason = r;
+        } catch {
+          // Ignore malformed partial events
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const completeEvents = sseBuffer.split(/\r?\n\r?\n/);
+        sseBuffer = completeEvents.pop() || "";
+        for (const eventChunk of completeEvents) {
+          processSseEvent(eventChunk);
         }
       }
-
-      if (dataLines.length === 0) return;
-
-      const data = dataLines.join("\n").trim();
-      if (!data || data === "[DONE]") return;
-
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) fullContent += delta;
-        const reason = parsed.choices?.[0]?.finish_reason;
-        if (reason) finishReason = reason;
-      } catch {
-        // Ignore malformed partial events; complete events are assembled via sseEventBuffer.
+      sseBuffer += decoder.decode();
+      if (sseBuffer.trim()) {
+        processSseEvent(sseBuffer);
       }
+
+      return { fullContent: content, finishReason: reason };
     };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    // First attempt
+    let { fullContent, finishReason } = await executeAiCall(7000);
 
-      sseEventBuffer += decoder.decode(value, { stream: true });
-
-      const completeEvents = sseEventBuffer.split(/\r?\n\r?\n/);
-      sseEventBuffer = completeEvents.pop() || "";
-
-      for (const eventChunk of completeEvents) {
-        processSseEvent(eventChunk);
-      }
-    }
-
-    // Flush any remaining decoder bytes and process the final buffered event.
-    sseEventBuffer += decoder.decode();
-    if (sseEventBuffer.trim()) {
-      processSseEvent(sseEventBuffer);
-    }
-
+    // Truncation retry: if hit token limit, retry ONCE with +30%
+    let isPartial = false;
     if (finishReason === "length") {
-      console.warn("[PHASE 2] WARNING: Response hit token limit — JSON recovery will attempt parsing.");
+      console.warn("[PHASE 2] Response truncated (finish_reason=length). Retrying with +30% tokens (9100)...");
+      const retry = await executeAiCall(9100);
+      fullContent = retry.fullContent;
+      finishReason = retry.finishReason;
+      if (finishReason === "length") {
+        console.warn("[PHASE 2] Retry also truncated. Marking as partial and continuing with available data.");
+        isPartial = true;
+      }
     }
 
     console.log(`[PHASE 2] finish_reason: ${finishReason}, content length: ${fullContent.length} chars`);
-    console.log(`[PHASE 2] First 300 chars: ${fullContent.slice(0, 300)}`);
+    debugLog(`[PHASE 2] First 300 chars: ${fullContent.slice(0, 300)}`);
 
     const content = fullContent;
 
@@ -695,9 +708,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
 
-        // Store AI raw score for scoring journey log
-        reportData._aiRawScore = reportData.overallScore || 0;
-
         // ══════════════════════════════════════════════════════════════
         // DETERMINISTIC POST-AI VALIDATION
         // These checks enforce scoring rules in CODE, not just the prompt.
@@ -710,10 +720,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown) && reportData.scoreBreakdown.length === 5) {
           const computedSum = reportData.scoreBreakdown.reduce((sum: number, cat: any) => sum + (Number(cat.value) || 0), 0);
           if (reportData.overallScore !== computedSum) {
-            console.warn(`[SCORE VALIDATION] overallScore mismatch: AI returned ${reportData.overallScore}, computed sum is ${computedSum}. Correcting.`);
+            debugLog(`[SCORE VALIDATION] overallScore mismatch: AI returned ${reportData.overallScore}, computed sum is ${computedSum}. Correcting.`);
             reportData.overallScore = computedSum;
           }
         }
+
+        // Store AI raw score AFTER scoreBreakdown sum is computed (AI no longer generates overallScore)
+        reportData._aiRawScore = reportData.overallScore || 0;
 
         // 2. Enforce verdict thresholds deterministically
         {
@@ -1087,10 +1100,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             applyVerdictToReport(reportData);
           }
 
-          console.log(`[SIGNAL COUNTS RAW] Trend: ${rawTrendSignals}, Market: ${rawMarketSignals}, Sentiment: ${rawSentimentSignals}, Growth: ${rawGrowthSignals}, Opportunity: ${rawOpportunitySignals}`);
-          console.log(`[SIGNAL COUNTS EFFECTIVE] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
-          console.log(`[SIGNAL CEILINGS] ${JSON.stringify(ceilingMap)}`);
-          console.log(`[SIGNAL FLOORS] ${JSON.stringify(floorMap)}`);
+          debugLog(`[SIGNAL COUNTS RAW] Trend: ${rawTrendSignals}, Market: ${rawMarketSignals}, Sentiment: ${rawSentimentSignals}, Growth: ${rawGrowthSignals}, Opportunity: ${rawOpportunitySignals}`);
+          debugLog(`[SIGNAL COUNTS EFFECTIVE] Trend: ${trendSignals}, Market: ${marketSignals}, Sentiment: ${sentimentSignals}, Growth: ${growthSignals}, Opportunity: ${opportunitySignals}`);
+          debugLog(`[SIGNAL CEILINGS] ${JSON.stringify(ceilingMap)}`);
+          debugLog(`[SIGNAL FLOORS] ${JSON.stringify(floorMap)}`);
         }
 
         // Capture score after signal bounds for journey log
@@ -1128,7 +1141,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (competitorSnapshotCard.confidence !== "Low") competitorSnapshotCard.confidence = "Medium";
           competitorSnapshotCard.insight = `${competitorSnapshotCard.insight || ""} [Note: ${validatedCount} validated competitors were found — more competitors may exist than listed.]`.trim();
         }
-        console.log(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
+        debugLog(`[COMPETITOR VALIDATION] AI competitors: ${aiCompetitorCount}, Validated: ${validatedCount}, Discovery: ${competitorDiscoveryCount}, Snapshot: ${aiCompetitorListCount}`);
 
         // ══════════════════════════════════════════════════════════════
         // GRAVEYARD SIGNAL DETECTION (runs BEFORE Low Competition Boost)
@@ -1774,6 +1787,36 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         reportData.perplexityDominanceBanner = perplexityDominanceBanner;
 
         // ══════════════════════════════════════════════════════════════
+        // PERPLEXITY DOMINANCE HARD CAP
+        // If >50% of signals are Perplexity-derived, cap final score at 75
+        // This runs AFTER all scoring steps including ECM.
+        // ══════════════════════════════════════════════════════════════
+        if (perplexityPct > 50 && reportData.overallScore > 75) {
+          console.warn(`[PERPLEXITY HARD CAP] ${perplexityPct}% Perplexity dominance. Capping overallScore from ${reportData.overallScore} to 75.`);
+          reportData.overallScore = 75;
+          reportData._perplexityHardCap = true;
+          applyVerdictToReport(reportData);
+          // Update scoring journey to reflect the cap
+          if (reportData.scoringJourney?.steps) {
+            reportData.scoringJourney.steps.push({
+              label: "Perplexity Hard Cap",
+              value: 75,
+              description: `${perplexityPct}% of signals are AI-synthesized — score capped at 75 to ensure data integrity`,
+            });
+            reportData.scoringJourney.finalScore = 75;
+          }
+          if (!perplexityDominanceBanner) {
+            perplexityDominanceBanner = {
+              percentage: perplexityPct,
+              message: `${perplexityPct}% of report metrics trace back to AI-synthesized data. Score has been capped at 75 to reflect data quality limitations.`,
+            };
+            reportData.perplexityDominanceBanner = perplexityDominanceBanner;
+          } else {
+            perplexityDominanceBanner.message += " Score has been capped at 75 to reflect data quality limitations.";
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // IMPROVEMENT #10: FALLBACK GAP FLAGGING
         // Track which primary data sources returned empty/error and
         // inject warnings into the relevant signal card sections.
@@ -1969,11 +2012,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
         if (!reportData.recommendedStrategy) {
           reportData.recommendedStrategy = {
-            positioning: "Differentiate through a focused niche approach based on competitor weaknesses identified in this report.",
-            suggestedPricing: "Competitive with existing solutions — see Revenue Benchmark section.",
-            differentiators: (reportData.opportunity?.featureGaps || []).slice(0, 4),
-            primaryTarget: (reportData.opportunity?.underservedUsers || ["Early adopters"])[0],
-            channels: ["Product Hunt launch", "Relevant subreddits", "Content marketing"],
+            _status: "insufficient_data",
+            positioning: null,
+            suggestedPricing: null,
+            differentiators: [],
+            primaryTarget: null,
+            channels: [],
             confidence: "Low",
           };
         }
@@ -2027,13 +2071,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
         if (!reportData.killShotAnalysis) {
           reportData.killShotAnalysis = {
-            risks: [
-              { risk: "Established competitors with large user bases", severity: "Medium" },
-              { risk: "Market may require significant user acquisition spend", severity: "Medium" },
-            ],
+            _status: "insufficient_data",
+            risks: [],
             riskLevel: "Medium",
-            interpretation: "Standard market risks apply. Review competitor analysis and sentiment sections for specific threats.",
+            interpretation: null,
             confidence: "Low",
+          };
           };
         }
         if (!reportData.scoreExplanationData) {
@@ -2135,7 +2178,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     const finalOverallScore = reportData?.overallScore ?? 0;
     const finalSignalStrength = reportData?.signalStrength ?? "Weak";
     await supabase.from("analyses").update({
-      status: "complete",
+      status: isPartial ? "partial" : "complete",
       overall_score: finalOverallScore,
       signal_strength: finalSignalStrength,
       report_data: reportData,
