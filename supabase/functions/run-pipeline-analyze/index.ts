@@ -577,44 +577,50 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     let finishReason = "stop";
     const reader = aiResponse.body.getReader();
     const decoder = new TextDecoder();
-    let sseBuffer = "";
+    let sseEventBuffer = "";
+
+    const processSseEvent = (eventChunk: string) => {
+      const dataLines: string[] = [];
+      for (const line of eventChunk.split(/\r?\n/)) {
+        if (line.startsWith("data:")) {
+          dataLines.push(line.slice(5).trimStart());
+        }
+      }
+
+      if (dataLines.length === 0) return;
+
+      const data = dataLines.join("\n").trim();
+      if (!data || data === "[DONE]") return;
+
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) fullContent += delta;
+        const reason = parsed.choices?.[0]?.finish_reason;
+        if (reason) finishReason = reason;
+      } catch {
+        // Ignore malformed partial events; complete events are assembled via sseEventBuffer.
+      }
+    };
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      sseBuffer += decoder.decode(value, { stream: true });
-      // Split on double-newline or single newline; process only complete lines
-      const parts = sseBuffer.split("\n");
-      // Keep the last part as it may be incomplete
-      sseBuffer = parts.pop() || "";
-      for (const line of parts) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        if (trimmed.startsWith("data: ")) {
-          const data = trimmed.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) fullContent += delta;
-            const reason = parsed.choices?.[0]?.finish_reason;
-            if (reason) finishReason = reason;
-          } catch { }
-        }
+
+      sseEventBuffer += decoder.decode(value, { stream: true });
+
+      const completeEvents = sseEventBuffer.split(/\r?\n\r?\n/);
+      sseEventBuffer = completeEvents.pop() || "";
+
+      for (const eventChunk of completeEvents) {
+        processSseEvent(eventChunk);
       }
     }
-    // Process any remaining buffer
-    if (sseBuffer.trim().startsWith("data: ")) {
-      const data = sseBuffer.trim().slice(6).trim();
-      if (data !== "[DONE]") {
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) fullContent += delta;
-          const reason = parsed.choices?.[0]?.finish_reason;
-          if (reason) finishReason = reason;
-        } catch { }
-      }
+
+    // Flush any remaining decoder bytes and process the final buffered event.
+    sseEventBuffer += decoder.decode();
+    if (sseEventBuffer.trim()) {
+      processSseEvent(sseEventBuffer);
     }
 
     if (finishReason === "length") {
