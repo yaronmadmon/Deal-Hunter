@@ -2077,7 +2077,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             interpretation: null,
             confidence: "Low",
           };
-          };
         }
         if (!reportData.scoreExplanationData) {
           const breakdown = reportData.scoreBreakdown || [];
