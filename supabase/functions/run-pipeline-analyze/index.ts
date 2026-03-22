@@ -387,11 +387,6 @@ If any category has more than 3 "estimated" fields, force confidenceLevel for th
 Produce the JSON report with this EXACT structure:
 
 {
-  "idea": "the idea text",
-  "overallScore": 0-100,
-  "signalStrength": "Strong" or "Moderate" or "Weak",
-  "scoreExplanation": "1-2 sentence explanation referencing specific data points",
-  "dataSources": ["list of all source URLs used"],
   "dataQualitySummary": [
     {"sourceName": "source", "dataTier": "tier", "signalCount": "X signals", "reliabilityNote": "string"}
   ],
@@ -496,7 +491,7 @@ Produce the JSON report with this EXACT structure:
   }
 }
 
-Do NOT generate the following fields — they are populated programmatically from raw pipeline data: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard, blueprint. Omit them entirely from your JSON output.
+Do NOT generate the following fields — they are populated programmatically: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard, blueprint, overallScore, verdict, signalStrength, dataSources, idea, scoreExplanation. Omit them entirely from your JSON output.
 
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
@@ -560,9 +555,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: aiMessages,
-        max_tokens: 10000,
+        max_tokens: 7000,
         temperature: 0,
         stream: true,
       }),
@@ -636,8 +631,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           throw new Error("AI response JSON parsing failed");
         }
 
-        // Inject the collected source URLs into the report
+        // Populate fields removed from AI output contract
+        reportData.idea = idea;
         reportData.dataSources = uniqueSources;
+        if (!reportData.scoreExplanation && reportData.scoreExplanationData?.summary) {
+          reportData.scoreExplanation = reportData.scoreExplanationData.summary;
+        }
         // Always override methodology with ACTUAL pipeline counts (AI returns zeros)
         {
           const countSourcesByPrefix = (prefix: string) =>
