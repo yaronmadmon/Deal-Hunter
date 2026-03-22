@@ -218,7 +218,7 @@ const Watchlist = () => {
                           <span className="text-xs text-muted-foreground">/100</span>
                         </div>
                         {changeIndicator(item.score_change)}
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-[11px] text-muted-foreground">
                           Last analyzed: {new Date(item.last_analyzed_at).toLocaleDateString()}
                         </span>
                       </div>

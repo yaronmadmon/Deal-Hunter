@@ -83,7 +83,7 @@ export const ReportComparison = ({ currentReport, currentAnalysisId, userId }: R
         <div className="flex items-center gap-2">
           <GitCompareArrows className="h-5 w-5 text-primary" />
           <CardTitle className="text-base font-semibold">Run Comparison</CardTitle>
-          <Badge variant="secondary" className="text-[10px] ml-auto">vs {prevDate}</Badge>
+          <Badge variant="secondary" className="text-[11px] ml-auto">vs {prevDate}</Badge>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           How this analysis compares to your previous run of the same idea.

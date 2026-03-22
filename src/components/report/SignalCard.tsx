@@ -126,7 +126,7 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
         {card.sparkline && (
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
+              <span className="text-[11px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
             </div>
             <div className="h-16 -mx-1 opacity-60">
               <ResponsiveContainer width="100%" height="100%">
@@ -228,7 +228,7 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
         {card.lineChart && (
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
+              <span className="text-[11px] text-muted-foreground/60 italic uppercase tracking-wide">Simulated trend (illustrative only)</span>
             </div>
             <div className="h-16 -mx-1 opacity-60">
               <ResponsiveContainer width="100%" height="100%">
@@ -311,7 +311,7 @@ export const SignalCard = ({ card, subtitle }: SignalCardProps) => {
                         {displayValue}
                       </span>
                       {showReported && (
-                        <span className="text-[10px] text-muted-foreground/60 italic">Reported (unverified)</span>
+                        <span className="text-[11px] text-muted-foreground/60 italic">Reported (unverified)</span>
                       )}
                       {m.dataSource && (
                         <DataSourceBadge dataSource={m.dataSource} sourceUrl={m.sourceUrl} compact />

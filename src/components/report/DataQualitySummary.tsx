@@ -50,17 +50,17 @@ export const DataQualitySummary = ({ data, relevanceFilter }: DataQualitySummary
           How reliable is each data source in this report?
         </p>
         <div className="flex gap-3 mt-2 flex-wrap">
-          <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20 text-[10px]">
+          <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20 text-[11px]">
             {verifiedCount} Verified
           </Badge>
-          <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px]">
+          <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[11px]">
             {reportedCount} Reported
           </Badge>
-          <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]">
+          <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[11px]">
             {estimatedCount} Estimated
           </Badge>
           {hasRelevanceData && (
-            <Badge variant="secondary" className="bg-muted text-muted-foreground border-border/50 text-[10px]">
+            <Badge variant="secondary" className="bg-muted text-muted-foreground border-border/50 text-[11px]">
               <Filter className="w-3 h-3 mr-1" />
               {relevanceFilter.filtered} items filtered as irrelevant
             </Badge>
@@ -83,7 +83,7 @@ export const DataQualitySummary = ({ data, relevanceFilter }: DataQualitySummary
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
                   <span className="text-xs text-muted-foreground">{entry.signalCount}</span>
-                  <Badge variant="secondary" className={`text-[10px] ${config.bg}`}>
+                  <Badge variant="secondary" className={`text-[11px] ${config.bg}`}>
                     {entry.dataTier}
                   </Badge>
                 </div>
@@ -98,15 +98,15 @@ export const DataQualitySummary = ({ data, relevanceFilter }: DataQualitySummary
             <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
               <Filter className="w-3.5 h-3.5" />
               <span>{relevanceFilter.filtered} of {relevanceFilter.scored} collected signals were filtered as irrelevant (score &lt; 5/10)</span>
-              <span className="ml-auto text-[10px]">{showDiscarded ? "Hide" : "Show"} details</span>
+              <span className="ml-auto text-[11px]">{showDiscarded ? "Hide" : "Show"} details</span>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2">
               <div className="bg-muted/20 rounded-lg p-3 space-y-1.5 border border-border/20">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-2">Discarded Items</p>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold mb-2">Discarded Items</p>
                 {relevanceFilter.discardedItems.map((item, i) => (
                   <div key={i} className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <Badge variant="outline" className="text-[9px] shrink-0">{item.source}</Badge>
+                      <Badge variant="outline" className="text-[11px] shrink-0">{item.source}</Badge>
                       <span className="text-muted-foreground truncate">{item.title}</span>
                     </div>
                     <span className="text-destructive/70 shrink-0 ml-2">{item.score}/10</span>
