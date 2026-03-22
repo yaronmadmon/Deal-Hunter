@@ -28,7 +28,7 @@ export const CrossValidationCard = ({ signals }: CrossValidationCardProps) => {
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-green-400" />
           <CardTitle className="text-base font-semibold">Cross-Validated Signals</CardTitle>
-          <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20 text-[10px] ml-auto">
+          <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20 text-[11px] ml-auto">
             {signals.length} confirmed
           </Badge>
         </div>
@@ -44,11 +44,11 @@ export const CrossValidationCard = ({ signals }: CrossValidationCardProps) => {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground">{signal.claim}</p>
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <Badge variant="secondary" className={`text-[9px] ${categoryColors[signal.category] || "bg-muted text-muted-foreground"}`}>
+                  <Badge variant="secondary" className={`text-[11px] ${categoryColors[signal.category] || "bg-muted text-muted-foreground"}`}>
                     {signal.category}
                   </Badge>
                   {signal.sources.map((src, j) => (
-                    <Badge key={j} variant="outline" className="text-[9px]">
+                    <Badge key={j} variant="outline" className="text-[11px]">
                       {src}
                     </Badge>
                   ))}

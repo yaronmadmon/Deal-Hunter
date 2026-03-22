@@ -451,7 +451,7 @@ const Live = () => {
                     <span className="font-heading text-sm font-bold uppercase tracking-wider text-yellow-500">
                       Opportunity of the Day
                     </span>
-                    <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-[10px]">
+                    <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30 text-[11px]">
                       AI-Identified Gap
                     </Badge>
                     <ReliabilityBadge reliability={breakout._reliability} />
@@ -462,9 +462,9 @@ const Live = () => {
                         {breakout.suggestedIdea || breakout.name}
                       </h3>
                       <div className="flex items-center gap-2 mb-3">
-                        <Badge variant="secondary" className="text-[10px]">{breakout.category}</Badge>
+                        <Badge variant="secondary" className="text-[11px]">{breakout.category}</Badge>
                         {breakout.originalSignal && breakout.originalSignal !== breakout.name && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[11px] text-muted-foreground">
                             Inspired by: {breakout.originalSignal}
                           </span>
                         )}
@@ -479,8 +479,8 @@ const Live = () => {
                     </div>
                     <div className="text-center shrink-0">
                       <div className="font-heading text-3xl font-bold text-foreground">{breakout.score}</div>
-                      <div className="text-[10px] text-muted-foreground">/100</div>
-                      <Badge className={`mt-1 text-[10px] ${
+                      <div className="text-[11px] text-muted-foreground">/100</div>
+                      <Badge className={`mt-1 text-[11px] ${
                         breakout.signalStrength === "Strong"
                           ? "bg-success/20 text-green-500 border-success/30"
                           : "bg-warning/20 text-yellow-600 border-warning/30"
@@ -528,24 +528,24 @@ const Live = () => {
                   <div className="flex items-center gap-2 mb-4">
                     <Lightbulb className="w-5 h-5 text-primary" />
                     <h3 className="font-heading text-lg font-bold text-foreground">Market Gaps</h3>
-                    <Badge variant="secondary" className="text-[9px]">AI Pattern Recognition</Badge>
+                    <Badge variant="secondary" className="text-[11px]">AI Pattern Recognition</Badge>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {filteredGaps.map((gap, i) => (
                       <div key={i} className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-colors group">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <h4 className="font-heading text-sm font-bold text-foreground leading-tight">{gap.title}</h4>
-                          <Badge className={`text-[9px] px-1.5 py-0 shrink-0 ${
+                          <Badge className={`text-[11px] px-1.5 py-0 shrink-0 ${
                             gap.confidenceLevel === "High" ? "bg-success/20 text-green-600 border-success/30" :
                             gap.confidenceLevel === "Medium" ? "bg-warning/20 text-yellow-600 border-warning/30" :
                             "bg-muted text-muted-foreground"
                           }`}>{gap.confidenceLevel}</Badge>
                         </div>
-                        <Badge variant="secondary" className="text-[9px] mb-2">{gap.category}</Badge>
+                        <Badge variant="secondary" className="text-[11px] mb-2">{gap.category}</Badge>
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">{gap.insight}</p>
                         <div className="flex items-center gap-1.5 mb-3">
                           {gap.signalSources?.map((src, j) => (
-                            <span key={j} className="inline-flex items-center gap-1 text-[9px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                            <span key={j} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                               {SOURCE_ICONS[src] || null}
                               {SOURCE_LABELS[src] || src}
                             </span>
@@ -576,7 +576,7 @@ const Live = () => {
                       <CardTitle className="flex items-center gap-2 text-base font-heading">
                         <Sparkles className="w-5 h-5 text-primary" />
                         Opportunity Feed
-                        <Badge variant="secondary" className="text-[9px]">{filteredOpportunities.length} signals</Badge>
+                        <Badge variant="secondary" className="text-[11px]">{filteredOpportunities.length} signals</Badge>
                       </CardTitle>
                       {expandedSources.has("enriched") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </CollapsibleTrigger>
@@ -593,17 +593,17 @@ const Live = () => {
                                 <div className="flex-1 min-w-0">
                                   {/* Source + Category + Reliability */}
                                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                                       {SOURCE_ICONS[opp._source] || null}
                                       {SOURCE_LABELS[opp._source] || opp._source}
                                     </span>
                                     <ReliabilityBadge reliability={opp._reliability || DEFAULT_SOURCE_RELIABILITY[opp._source]} />
                                     {opp._category && opp._category !== "Other" && (
-                                      <Badge variant="secondary" className="text-[9px]">{opp._category}</Badge>
+                                      <Badge variant="secondary" className="text-[11px]">{opp._category}</Badge>
                                     )}
                                     <SignalBadge score={opp._signalScore} confidence={opp._confidence} />
                                     {opp._momentum && (
-                                      <Badge className={`text-[9px] px-1.5 py-0 ${
+                                      <Badge className={`text-[11px] px-1.5 py-0 ${
                                         opp._momentum === "Exploding" ? "bg-destructive/15 text-destructive border-destructive/20" :
                                         opp._momentum === "Rising" ? "bg-success/15 text-green-600 border-success/20" :
                                         "bg-muted text-muted-foreground"
@@ -636,7 +636,7 @@ const Live = () => {
                                 <div className="shrink-0 flex flex-col items-end gap-2">
                                   <div className="text-right">
                                     <div className="font-heading text-lg font-bold text-foreground">{opp._signalScore}</div>
-                                    <div className="text-[9px] text-muted-foreground">/100</div>
+                                    <div className="text-[11px] text-muted-foreground">/100</div>
                                   </div>
                                   {opp._suggestedIdea ? (
                                     <Button
@@ -733,7 +733,7 @@ const Live = () => {
                 {reddit.length === 0 ? <EmptyCategory category="startup problems" /> : (
                   <div className="space-y-2">
                     {reddit.map((r, i) => (
-                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<div className="flex items-center gap-2"><span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>{r.commentCount != null && <span className="text-[10px] text-muted-foreground">{r.commentCount} comments</span>}</div>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} linkUrl={r.url || (r.subreddit ? `https://www.reddit.com/${r.subreddit}/search/?q=${encodeURIComponent(r.title?.slice(0, 60) || "")}` : undefined)} />
+                      <RawSignalRow key={i} label={r.problemSummary || r.title} meta={<div className="flex items-center gap-2"><span className="text-blue-500 font-heading font-bold text-sm flex items-center gap-1"><TrendingUp className="w-3 h-3" />{r.upvotes}</span>{r.commentCount != null && <span className="text-[11px] text-muted-foreground">{r.commentCount} comments</span>}</div>} badge={r.subreddit} signal={r as any} onValidate={() => openValidateDialog(`App solving: ${r.problemSummary || r.title}`, r.problemSummary || r.title)} linkUrl={r.url || (r.subreddit ? `https://www.reddit.com/${r.subreddit}/search/?q=${encodeURIComponent(r.title?.slice(0, 60) || "")}` : undefined)} />
                     ))}
                   </div>
                 )}
@@ -773,7 +773,7 @@ const Live = () => {
                 {hackerNews.length === 0 ? <EmptyCategory category="developer buzz" /> : (
                   <div className="space-y-2">
                     {hackerNews.map((hn, i) => (
-                      <RawSignalRow key={i} label={hn.title} meta={<div className="flex items-center gap-2"><Badge variant="secondary" className="text-[9px]">{hn.points} pts</Badge><a href={hn.hnUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5" onClick={e => e.stopPropagation()}><ExternalLink className="w-2.5 h-2.5" /> HN</a></div>} signal={hn as any} onValidate={() => openValidateDialog(`Build a solution inspired by: ${hn.title}`, hn.title)} />
+                      <RawSignalRow key={i} label={hn.title} meta={<div className="flex items-center gap-2"><Badge variant="secondary" className="text-[11px]">{hn.points} pts</Badge><a href={hn.hnUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-0.5" onClick={e => e.stopPropagation()}><ExternalLink className="w-2.5 h-2.5" /> HN</a></div>} signal={hn as any} onValidate={() => openValidateDialog(`Build a solution inspired by: ${hn.title}`, hn.title)} />
                     ))}
                   </div>
                 )}
@@ -793,7 +793,7 @@ const Live = () => {
                 {githubTrending.length === 0 ? <EmptyCategory category="open source" /> : (
                   <div className="space-y-2">
                     {githubTrending.map((repo, i) => (
-                      <RawSignalRow key={i} label={repo.name} subtitle={repo.description} meta={<div className="flex items-center gap-2"><span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}</span>{repo.starsPerDay != null && <span className="text-[10px] text-green-500 font-medium">⚡ {repo.starsPerDay}/day</span>}{repo.language && <Badge variant="outline" className="text-[9px] px-1 py-0">{repo.language}</Badge>}</div>} signal={repo as any} onValidate={() => openValidateDialog(`A hosted/managed version of ${repo.name.split("/").pop()}`, repo.name)} linkUrl={repo.url} />
+                      <RawSignalRow key={i} label={repo.name} subtitle={repo.description} meta={<div className="flex items-center gap-2"><span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><Star className="w-3 h-3 text-warning" /> {repo.stars.toLocaleString()}</span>{repo.starsPerDay != null && <span className="text-[11px] text-green-500 font-medium">⚡ {repo.starsPerDay}/day</span>}{repo.language && <Badge variant="outline" className="text-[11px] px-1 py-0">{repo.language}</Badge>}</div>} signal={repo as any} onValidate={() => openValidateDialog(`A hosted/managed version of ${repo.name.split("/").pop()}`, repo.name)} linkUrl={repo.url} />
                     ))}
                   </div>
                 )}
@@ -813,7 +813,7 @@ const Live = () => {
                 {googleSearch.length === 0 ? <EmptyCategory category="search results" /> : (
                   <div className="space-y-2">
                     {googleSearch.map((item, i) => (
-                      <RawSignalRow key={i} label={item.title} subtitle={item.snippet} meta={<Badge variant="secondary" className="text-[9px]">{item.type === "news" ? "News" : "Search"}</Badge>} signal={item as any} onValidate={() => openValidateDialog(`Build a tool related to: ${item.title}`, item.title)} linkUrl={item.url} />
+                      <RawSignalRow key={i} label={item.title} subtitle={item.snippet} meta={<Badge variant="secondary" className="text-[11px]">{item.type === "news" ? "News" : "Search"}</Badge>} signal={item as any} onValidate={() => openValidateDialog(`Build a tool related to: ${item.title}`, item.title)} linkUrl={item.url} />
                     ))}
                   </div>
                 )}
@@ -833,7 +833,7 @@ const Live = () => {
                 {appStoreTrends.length === 0 ? <EmptyCategory category="app store trends" /> : (
                   <div className="space-y-2">
                     {appStoreTrends.map((app, i) => (
-                      <RawSignalRow key={i} label={app.name} subtitle={app.snippet} meta={<div className="flex items-center gap-1"><Badge variant="secondary" className="text-[9px]">{app.platform}</Badge>{app.category && <Badge variant="outline" className="text-[9px] px-1 py-0">{app.category}</Badge>}</div>} signal={app as any} onValidate={() => openValidateDialog(`A better ${app.category || ""} app alternative to ${app.name}`, app.name)} linkUrl={app.url} />
+                      <RawSignalRow key={i} label={app.name} subtitle={app.snippet} meta={<div className="flex items-center gap-1"><Badge variant="secondary" className="text-[11px]">{app.platform}</Badge>{app.category && <Badge variant="outline" className="text-[11px] px-1 py-0">{app.category}</Badge>}</div>} signal={app as any} onValidate={() => openValidateDialog(`A better ${app.category || ""} app alternative to ${app.name}`, app.name)} linkUrl={app.url} />
                     ))}
                   </div>
                 )}
@@ -853,7 +853,7 @@ const Live = () => {
                 {twitterBuzz.length === 0 ? <EmptyCategory category="Twitter buzz" /> : (
                   <div className="space-y-2">
                     {twitterBuzz.map((tweet, i) => (
-                      <RawSignalRow key={i} label={tweet.text} meta={<div className="flex items-center gap-3"><span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Heart className="w-3 h-3 text-red-400" /> {tweet.likes}</span><span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Repeat className="w-3 h-3 text-green-500" /> {tweet.retweets}</span></div>} badge={tweet.topic} signal={tweet as any} onValidate={() => openValidateDialog(tweet.topic ? `Build a tool for: ${tweet.topic}` : `Build a solution for: ${tweet.text.slice(0, 60)}`, tweet.topic || tweet.text.slice(0, 60))} linkUrl={tweet.tweetId ? `https://x.com/i/status/${tweet.tweetId}` : undefined} />
+                      <RawSignalRow key={i} label={tweet.text} meta={<div className="flex items-center gap-3"><span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><Heart className="w-3 h-3 text-red-400" /> {tweet.likes}</span><span className="text-[11px] text-muted-foreground flex items-center gap-0.5"><Repeat className="w-3 h-3 text-green-500" /> {tweet.retweets}</span></div>} badge={tweet.topic} signal={tweet as any} onValidate={() => openValidateDialog(tweet.topic ? `Build a tool for: ${tweet.topic}` : `Build a solution for: ${tweet.text.slice(0, 60)}`, tweet.topic || tweet.text.slice(0, 60))} linkUrl={tweet.tweetId ? `https://x.com/i/status/${tweet.tweetId}` : undefined} />
                     ))}
                   </div>
                 )}
@@ -934,7 +934,7 @@ function ReliabilityBadge({ reliability }: { reliability?: DataReliability }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 font-normal gap-0.5 cursor-help ${c.className}`}>
+        <Badge variant="outline" className={`text-[11px] px-1.5 py-0 font-normal gap-0.5 cursor-help ${c.className}`}>
           <Icon className="w-2.5 h-2.5" />
           {c.label}
         </Badge>
@@ -949,16 +949,16 @@ function ReliabilityBadge({ reliability }: { reliability?: DataReliability }) {
 function VelocityDelta({ delta }: { delta?: number | null }) {
   if (delta == null) return null;
   if (delta === 0) return (
-    <span className="inline-flex items-center gap-0.5 text-[9px] text-muted-foreground">
+    <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
       <Minus className="w-2.5 h-2.5" /> 0
     </span>
   );
   return delta > 0 ? (
-    <span className="inline-flex items-center gap-0.5 text-[9px] text-green-600 font-medium">
+    <span className="inline-flex items-center gap-0.5 text-[11px] text-green-600 font-medium">
       <ArrowUpRight className="w-2.5 h-2.5" /> +{delta}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-0.5 text-[9px] text-red-500 font-medium">
+    <span className="inline-flex items-center gap-0.5 text-[11px] text-red-500 font-medium">
       <ArrowDownRight className="w-2.5 h-2.5" /> {delta}
     </span>
   );
@@ -970,7 +970,7 @@ function SourceFreshness({ timestamp }: { timestamp?: string }) {
   const isStale = mins > STALE_THRESHOLD_HOURS * 60;
   const label = mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[9px] ${isStale ? "text-warning" : "text-muted-foreground"}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[11px] ${isStale ? "text-warning" : "text-muted-foreground"}`}>
       <Clock className="w-2.5 h-2.5" /> {label}
     </span>
   );
@@ -991,7 +991,7 @@ function CollapsibleSourceCard({
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <CardTitle className="flex items-center gap-2 text-sm font-heading">
               {icon} {title}
-              <Badge variant="secondary" className="text-[9px]">{count}</Badge>
+              <Badge variant="secondary" className="text-[11px]">{count}</Badge>
               <ReliabilityBadge reliability={reliability} />
             </CardTitle>
             <div className="flex items-center gap-2">
@@ -1042,7 +1042,7 @@ function RawSignalRow({
         {subtitle && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
         <div className="flex items-center gap-2 mt-1">
           {meta}
-          {badge && <Badge variant="secondary" className="text-[9px]">{badge}</Badge>}
+          {badge && <Badge variant="secondary" className="text-[11px]">{badge}</Badge>}
         </div>
       </div>
       <Button
@@ -1090,7 +1090,7 @@ function SignalBadge({ score, confidence }: { score?: number; confidence?: strin
     score >= 35 ? "bg-warning/20 text-yellow-600 border-warning/30" :
     "bg-muted text-muted-foreground";
   const confLabel = confidence && confidence !== "undefined" ? ` · ${confidence}` : "";
-  return <Badge className={`text-[9px] px-1.5 py-0 ${color}`}>{score}{confLabel}</Badge>;
+  return <Badge className={`text-[11px] px-1.5 py-0 ${color}`}>{score}{confLabel}</Badge>;
 }
 
 function PlaceholderGrid() {

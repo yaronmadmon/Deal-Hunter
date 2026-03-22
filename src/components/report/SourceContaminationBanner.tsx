@@ -38,7 +38,7 @@ export const SourceContaminationBanner = ({ sources }: SourceContaminationBanner
               <Badge
                 key={i}
                 variant="secondary"
-                className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px]"
+                className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[11px]"
               >
                 {sourceDisplayNames[src.source] || src.source}: {src.contaminationPct}% irrelevant ({src.filtered}/{src.total})
               </Badge>

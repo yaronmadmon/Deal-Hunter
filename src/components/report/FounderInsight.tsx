@@ -24,7 +24,7 @@ export function FounderInsight({ data }: FounderInsightProps) {
             <BookOpen className="w-5 h-5 text-primary" />
             What the Signals Say
             {data.confidence && (
-              <Badge className={`text-[9px] ml-2 ${
+              <Badge className={`text-[11px] ml-2 ${
                 data.confidence === "High" ? "bg-success/20 text-green-600 border-success/30" :
                 data.confidence === "Medium" ? "bg-warning/20 text-yellow-600 border-warning/30" :
                 "bg-muted text-muted-foreground"

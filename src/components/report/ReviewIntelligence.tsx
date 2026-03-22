@@ -43,18 +43,18 @@ const ReviewMatrix = ({ data }: { data: ReviewIntelligenceData["matrixData"] }) 
         <rect x={padding + plotW / 2} y={padding + plotH / 2} width={plotW / 2} height={plotH / 2} fill="hsl(var(--primary) / 0.08)" />
 
         {/* Quadrant labels */}
-        <text x={padding + plotW * 0.25} y={padding + 18} textAnchor="middle" className="fill-muted-foreground text-[10px] font-semibold">Hidden Gem</text>
-        <text x={padding + plotW * 0.75} y={padding + 18} textAnchor="middle" className="fill-destructive text-[10px] font-semibold">Critical Pain</text>
-        <text x={padding + plotW * 0.25} y={padding + plotH - 8} textAnchor="middle" className="fill-success text-[10px] font-semibold">Loved Feature</text>
-        <text x={padding + plotW * 0.75} y={padding + plotH - 8} textAnchor="middle" className="fill-muted-foreground text-[10px] font-semibold">Minor Annoyance</text>
+        <text x={padding + plotW * 0.25} y={padding + 18} textAnchor="middle" className="fill-muted-foreground text-[11px] font-semibold">Hidden Gem</text>
+        <text x={padding + plotW * 0.75} y={padding + 18} textAnchor="middle" className="fill-destructive text-[11px] font-semibold">Critical Pain</text>
+        <text x={padding + plotW * 0.25} y={padding + plotH - 8} textAnchor="middle" className="fill-success text-[11px] font-semibold">Loved Feature</text>
+        <text x={padding + plotW * 0.75} y={padding + plotH - 8} textAnchor="middle" className="fill-muted-foreground text-[11px] font-semibold">Minor Annoyance</text>
 
         {/* Axes */}
         <line x1={padding} y1={padding + plotH} x2={padding + plotW} y2={padding + plotH} stroke="hsl(var(--border))" strokeWidth={1} />
         <line x1={padding} y1={padding} x2={padding} y2={padding + plotH} stroke="hsl(var(--border))" strokeWidth={1} />
 
         {/* Axis labels */}
-        <text x={padding + plotW / 2} y={height - 8} textAnchor="middle" className="fill-muted-foreground text-[10px]">Frequency →</text>
-        <text x={12} y={padding + plotH / 2} textAnchor="middle" className="fill-muted-foreground text-[10px]" transform={`rotate(-90, 12, ${padding + plotH / 2})`}>Intensity →</text>
+        <text x={padding + plotW / 2} y={height - 8} textAnchor="middle" className="fill-muted-foreground text-[11px]">Frequency →</text>
+        <text x={12} y={padding + plotH / 2} textAnchor="middle" className="fill-muted-foreground text-[11px]" transform={`rotate(-90, 12, ${padding + plotH / 2})`}>Intensity →</text>
 
         {/* Midlines */}
         <line x1={padding + plotW / 2} y1={padding} x2={padding + plotW / 2} y2={padding + plotH} stroke="hsl(var(--border))" strokeWidth={0.5} strokeDasharray="4 4" />
