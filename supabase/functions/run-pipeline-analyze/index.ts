@@ -387,11 +387,6 @@ If any category has more than 3 "estimated" fields, force confidenceLevel for th
 Produce the JSON report with this EXACT structure:
 
 {
-  "idea": "the idea text",
-  "overallScore": 0-100,
-  "signalStrength": "Strong" or "Moderate" or "Weak",
-  "scoreExplanation": "1-2 sentence explanation referencing specific data points",
-  "dataSources": ["list of all source URLs used"],
   "dataQualitySummary": [
     {"sourceName": "source", "dataTier": "tier", "signalCount": "X signals", "reliabilityNote": "string"}
   ],
