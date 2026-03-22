@@ -64,7 +64,7 @@ export const FeedbackManagement = () => {
   useEffect(() => { fetchFeedback(); }, [filter]);
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("feedback" as any).update({ status } as any).eq("id", id);
+    const { error } = await supabase.from("feedback").update({ status }).eq("id", id);
     if (error) { toast.error("Failed to update"); return; }
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
     toast.success("Status updated");
