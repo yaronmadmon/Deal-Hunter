@@ -1787,6 +1787,36 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         reportData.perplexityDominanceBanner = perplexityDominanceBanner;
 
         // ══════════════════════════════════════════════════════════════
+        // PERPLEXITY DOMINANCE HARD CAP
+        // If >50% of signals are Perplexity-derived, cap final score at 75
+        // This runs AFTER all scoring steps including ECM.
+        // ══════════════════════════════════════════════════════════════
+        if (perplexityPct > 50 && reportData.overallScore > 75) {
+          console.warn(`[PERPLEXITY HARD CAP] ${perplexityPct}% Perplexity dominance. Capping overallScore from ${reportData.overallScore} to 75.`);
+          reportData.overallScore = 75;
+          reportData._perplexityHardCap = true;
+          applyVerdictToReport(reportData);
+          // Update scoring journey to reflect the cap
+          if (reportData.scoringJourney?.steps) {
+            reportData.scoringJourney.steps.push({
+              label: "Perplexity Hard Cap",
+              value: 75,
+              description: `${perplexityPct}% of signals are AI-synthesized — score capped at 75 to ensure data integrity`,
+            });
+            reportData.scoringJourney.finalScore = 75;
+          }
+          if (!perplexityDominanceBanner) {
+            perplexityDominanceBanner = {
+              percentage: perplexityPct,
+              message: `${perplexityPct}% of report metrics trace back to AI-synthesized data. Score has been capped at 75 to reflect data quality limitations.`,
+            };
+            reportData.perplexityDominanceBanner = perplexityDominanceBanner;
+          } else {
+            perplexityDominanceBanner.message += " Score has been capped at 75 to reflect data quality limitations.";
+          }
+        }
+
+        // ══════════════════════════════════════════════════════════════
         // IMPROVEMENT #10: FALLBACK GAP FLAGGING
         // Track which primary data sources returned empty/error and
         // inject warnings into the relevant signal card sections.
