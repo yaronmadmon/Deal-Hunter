@@ -58,7 +58,7 @@ export const ReviewsManagement = () => {
   };
 
   const deleteReview = async (id: string) => {
-    const { error } = await supabase.from("reviews" as any).delete().eq("id", id);
+    const { error } = await supabase.from("reviews").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     setReviews(prev => prev.filter(r => r.id !== id));
     toast.success("Review deleted");

@@ -79,7 +79,7 @@ export const FeedbackManagement = () => {
   };
 
   const deleteFeedback = async (id: string) => {
-    const { error } = await supabase.from("feedback" as any).delete().eq("id", id);
+    const { error } = await supabase.from("feedback").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     setItems(prev => prev.filter(i => i.id !== id));
     toast.success("Feedback deleted");
