@@ -2087,7 +2087,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       } else {
         reportData.githubComplexityScore = { score: null, reposAnalyzed: 0, signals: [], label: "Insufficient GitHub data to estimate complexity." };
       }
-      if (pioneerMarketFlag) {
+      if (reportData.pioneerMarketFlag) {
         reportData.pioneerMarketBanner = "Pioneer Market Detected — Low signal volume may indicate an early-stage or untapped market rather than lack of demand. Treat this score with higher uncertainty but higher upside potential.";
       }
     }
