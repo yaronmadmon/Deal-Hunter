@@ -375,7 +375,7 @@ Apply the three-field estimated threshold recursively to every leaf-level metric
 SECTION 6: JSON OUTPUT CONTRACT
 ═══════════════════════════════════════
 
-Return valid JSON only. No markdown fences. No preamble. No trailing commas. No special characters or emoji in any string value.
+You MUST respond with valid JSON only. No markdown, no code blocks, no text outside the JSON object. No preamble. No trailing commas. No special characters or emoji in any string value.
 
 The three required fields apply RECURSIVELY to every leaf-level metric in every nested section:
 - dataTier ("verified" | "reported" | "estimated")
@@ -560,6 +560,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         max_tokens: 7000,
         temperature: 0,
         stream: true,
+        response_format: { type: "json_object" },
       }),
     });
 
