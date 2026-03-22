@@ -1791,7 +1791,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // If >50% of signals are Perplexity-derived, cap final score at 75
         // This runs AFTER all scoring steps including ECM.
         // ══════════════════════════════════════════════════════════════
-        if (perplexityPct > 50 && reportData.overallScore > 75) {
+        if (perplexityPct > 50 && reportData.overallScore > 75 && !pioneerMarketFlag) {
           console.warn(`[PERPLEXITY HARD CAP] ${perplexityPct}% Perplexity dominance. Capping overallScore from ${reportData.overallScore} to 75.`);
           reportData.overallScore = 75;
           reportData._perplexityHardCap = true;
@@ -2129,7 +2129,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       } else {
         reportData.githubComplexityScore = { score: null, reposAnalyzed: 0, signals: [], label: "Insufficient GitHub data to estimate complexity." };
       }
-      if (reportData.pioneerMarketFlag) {
+      if (reportData.pioneerMarketFlag && !reportData.pioneerMarketBanner) {
         reportData.pioneerMarketBanner = "Pioneer Market Detected — Low signal volume may indicate an early-stage or untapped market rather than lack of demand. Treat this score with higher uncertainty but higher upside potential.";
       }
     }
