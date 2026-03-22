@@ -80,9 +80,13 @@ export const AnalysisManagement = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'complete':
       case 'completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'partial': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'processing': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'processing':
+      case 'fetching':
+      case 'analyzing': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'failed': return 'bg-red-500/20 text-red-400 border-red-500/30';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -159,7 +163,7 @@ export const AnalysisManagement = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    {analysis.status === 'completed' && (
+                    {(analysis.status === 'complete' || analysis.status === 'completed' || analysis.status === 'partial') && (
                       <Button 
                         variant="outline" 
                         size="sm"

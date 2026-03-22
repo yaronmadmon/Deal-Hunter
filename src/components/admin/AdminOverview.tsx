@@ -55,9 +55,9 @@ export const AdminOverview = () => {
       setStats({
         totalUsers: profilesRes.count || 0,
         totalAnalyses: analyses.length,
-        completedAnalyses: analyses.filter(a => a.status === 'completed').length,
+        completedAnalyses: analyses.filter(a => a.status === 'complete' || a.status === 'completed' || a.status === 'partial').length,
         failedAnalyses: analyses.filter(a => a.status === 'failed').length,
-        pendingAnalyses: analyses.filter(a => a.status === 'pending' || a.status === 'processing').length,
+        pendingAnalyses: analyses.filter(a => ['pending', 'processing', 'fetching', 'analyzing'].includes(a.status)).length,
         totalCreditsIssued: credits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0),
         totalCreditsUsed: credits.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0),
         totalWatchlistItems: watchlistRes.count || 0,

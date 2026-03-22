@@ -76,7 +76,7 @@ export const DataSourceHealth = () => {
       const { data, error } = await supabase
         .from("analyses")
         .select("created_at, report_data")
-        .eq("status", "completed")
+        .in("status", ["complete", "completed", "partial"])
         .order("created_at", { ascending: false })
         .limit(10);
 

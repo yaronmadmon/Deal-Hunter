@@ -38,7 +38,7 @@ export const FeedbackManagement = () => {
   const fetchFeedback = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("feedback" as any).select("*").order("created_at", { ascending: false });
+      let query = supabase.from("feedback").select("*").order("created_at", { ascending: false });
       if (filter !== "all") {
         query = query.eq("category", filter);
       }
@@ -64,14 +64,14 @@ export const FeedbackManagement = () => {
   useEffect(() => { fetchFeedback(); }, [filter]);
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("feedback" as any).update({ status } as any).eq("id", id);
+    const { error } = await supabase.from("feedback").update({ status }).eq("id", id);
     if (error) { toast.error("Failed to update"); return; }
     setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
     toast.success("Status updated");
   };
 
   const saveNotes = async (id: string) => {
-    const { error } = await supabase.from("feedback" as any).update({ admin_notes: notesText } as any).eq("id", id);
+    const { error } = await supabase.from("feedback").update({ admin_notes: notesText }).eq("id", id);
     if (error) { toast.error("Failed to save notes"); return; }
     setItems(prev => prev.map(i => i.id === id ? { ...i, admin_notes: notesText } : i));
     setEditingNotes(null);
@@ -79,7 +79,7 @@ export const FeedbackManagement = () => {
   };
 
   const deleteFeedback = async (id: string) => {
-    const { error } = await supabase.from("feedback" as any).delete().eq("id", id);
+    const { error } = await supabase.from("feedback").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     setItems(prev => prev.filter(i => i.id !== id));
     toast.success("Feedback deleted");

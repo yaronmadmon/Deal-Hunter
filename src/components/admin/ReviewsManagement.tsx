@@ -27,7 +27,7 @@ export const ReviewsManagement = () => {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("reviews" as any).select("*").order("created_at", { ascending: false });
+      let query = supabase.from("reviews").select("*").order("created_at", { ascending: false });
       if (filter === "pending") query = query.eq("approved", false);
       if (filter === "approved") query = query.eq("approved", true);
       const { data, error } = await query;
@@ -51,14 +51,14 @@ export const ReviewsManagement = () => {
   useEffect(() => { fetchReviews(); }, [filter]);
 
   const toggleApproval = async (id: string, approved: boolean) => {
-    const { error } = await supabase.from("reviews" as any).update({ approved } as any).eq("id", id);
+    const { error } = await supabase.from("reviews").update({ approved }).eq("id", id);
     if (error) { toast.error("Failed to update"); return; }
     setReviews(prev => prev.map(r => r.id === id ? { ...r, approved } : r));
     toast.success(approved ? "Review approved" : "Review hidden");
   };
 
   const deleteReview = async (id: string) => {
-    const { error } = await supabase.from("reviews" as any).delete().eq("id", id);
+    const { error } = await supabase.from("reviews").delete().eq("id", id);
     if (error) { toast.error("Failed to delete"); return; }
     setReviews(prev => prev.filter(r => r.id !== id));
     toast.success("Review deleted");
