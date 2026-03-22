@@ -9,7 +9,7 @@ interface NavSection {
 }
 
 const sections: NavSection[] = [
-  { id: "layer-verdict", label: "Verdict", icon: Trophy },
+  { id: "layer-verdict", label: "Overview", icon: Trophy },
   { id: "layer-explanation", label: "Explanation", icon: Brain },
   { id: "layer-evidence", label: "Evidence", icon: Search },
   { id: "layer-deep-analysis", label: "Deep Analysis", icon: Microscope },
