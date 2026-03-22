@@ -552,79 +552,92 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           },
         ];
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: aiMessages,
-        max_tokens: 7000,
-        temperature: 0,
-        stream: true,
-        response_format: { type: "json_object" },
-      }),
-    });
+    // ── Streaming AI call with truncation retry ──
+    const executeAiCall = async (maxTokens: number): Promise<{ fullContent: string; finishReason: string }> => {
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: aiMessages,
+          max_tokens: maxTokens,
+          temperature: 0,
+          stream: true,
+          response_format: { type: "json_object" },
+        }),
+      });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      throw new Error(`AI Gateway error: ${aiResponse.status} - ${errorText}`);
-    }
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`AI Gateway error: ${resp.status} - ${errorText}`);
+      }
 
-    if (!aiResponse.body) {
-      throw new Error("AI Gateway streaming response has no body");
-    }
+      if (!resp.body) {
+        throw new Error("AI Gateway streaming response has no body");
+      }
 
-    let fullContent = "";
-    let finishReason = "stop";
-    const reader = aiResponse.body.getReader();
-    const decoder = new TextDecoder();
-    let sseEventBuffer = "";
+      let content = "";
+      let reason = "stop";
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
 
-    const processSseEvent = (eventChunk: string) => {
-      const dataLines: string[] = [];
-      for (const line of eventChunk.split(/\r?\n/)) {
-        if (line.startsWith("data:")) {
-          dataLines.push(line.slice(5).trimStart());
+      const processSseEvent = (eventChunk: string) => {
+        const dataLines: string[] = [];
+        for (const line of eventChunk.split(/\r?\n/)) {
+          if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        }
+        if (dataLines.length === 0) return;
+        const data = dataLines.join("\n").trim();
+        if (!data || data === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) content += delta;
+          const r = parsed.choices?.[0]?.finish_reason;
+          if (r) reason = r;
+        } catch {
+          // Ignore malformed partial events
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const completeEvents = sseBuffer.split(/\r?\n\r?\n/);
+        sseBuffer = completeEvents.pop() || "";
+        for (const eventChunk of completeEvents) {
+          processSseEvent(eventChunk);
         }
       }
-
-      if (dataLines.length === 0) return;
-
-      const data = dataLines.join("\n").trim();
-      if (!data || data === "[DONE]") return;
-
-      try {
-        const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) fullContent += delta;
-        const reason = parsed.choices?.[0]?.finish_reason;
-        if (reason) finishReason = reason;
-      } catch {
-        // Ignore malformed partial events; complete events are assembled via sseEventBuffer.
+      sseBuffer += decoder.decode();
+      if (sseBuffer.trim()) {
+        processSseEvent(sseBuffer);
       }
+
+      return { fullContent: content, finishReason: reason };
     };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    // First attempt
+    let { fullContent, finishReason } = await executeAiCall(7000);
 
-      sseEventBuffer += decoder.decode(value, { stream: true });
-
-      const completeEvents = sseEventBuffer.split(/\r?\n\r?\n/);
-      sseEventBuffer = completeEvents.pop() || "";
-
-      for (const eventChunk of completeEvents) {
-        processSseEvent(eventChunk);
+    // Truncation retry: if hit token limit, retry ONCE with +30%
+    let isPartial = false;
+    if (finishReason === "length") {
+      console.warn("[PHASE 2] Response truncated (finish_reason=length). Retrying with +30% tokens (9100)...");
+      const retry = await executeAiCall(9100);
+      fullContent = retry.fullContent;
+      finishReason = retry.finishReason;
+      if (finishReason === "length") {
+        console.warn("[PHASE 2] Retry also truncated. Marking as partial and continuing with available data.");
+        isPartial = true;
       }
-    }
-
-    // Flush any remaining decoder bytes and process the final buffered event.
-    sseEventBuffer += decoder.decode();
-    if (sseEventBuffer.trim()) {
-      processSseEvent(sseEventBuffer);
     }
 
     if (finishReason === "length") {
