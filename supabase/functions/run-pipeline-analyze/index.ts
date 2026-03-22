@@ -1,5 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// ── Environment-based logging ──────────────────────────────────────
+const LOG_LEVEL = Deno.env.get("LOG_LEVEL") || "info";
+const debugLog = (...args: any[]) => { if (LOG_LEVEL === "debug") console.log(...args); };
+
 // ── Shared verdict + signal strength helpers ───────────────────────
 function computeVerdict(score: number): string {
   if (score >= 75) return "Build Now";
