@@ -577,16 +577,22 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     let finishReason = "stop";
     const reader = aiResponse.body.getReader();
     const decoder = new TextDecoder();
+    let sseBuffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter(line => line.trim() !== "");
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      // Split on double-newline or single newline; process only complete lines
+      const parts = sseBuffer.split("\n");
+      // Keep the last part as it may be incomplete
+      sseBuffer = parts.pop() || "";
+      for (const line of parts) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed.startsWith("data: ")) {
+          const data = trimmed.slice(6).trim();
+          if (data === "[DONE]") continue;
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
@@ -595,6 +601,19 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             if (reason) finishReason = reason;
           } catch { }
         }
+      }
+    }
+    // Process any remaining buffer
+    if (sseBuffer.trim().startsWith("data: ")) {
+      const data = sseBuffer.trim().slice(6).trim();
+      if (data !== "[DONE]") {
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) fullContent += delta;
+          const reason = parsed.choices?.[0]?.finish_reason;
+          if (reason) finishReason = reason;
+        } catch { }
       }
     }
 
