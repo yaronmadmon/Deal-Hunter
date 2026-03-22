@@ -631,8 +631,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           throw new Error("AI response JSON parsing failed");
         }
 
-        // Inject the collected source URLs into the report
+        // Populate fields removed from AI output contract
+        reportData.idea = idea;
         reportData.dataSources = uniqueSources;
+        if (!reportData.scoreExplanation && reportData.scoreExplanationData?.summary) {
+          reportData.scoreExplanation = reportData.scoreExplanationData.summary;
+        }
         // Always override methodology with ACTUAL pipeline counts (AI returns zeros)
         {
           const countSourcesByPrefix = (prefix: string) =>
