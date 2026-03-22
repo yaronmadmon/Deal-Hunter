@@ -238,7 +238,7 @@ const Report = () => {
             ═══════════════════════════════════════════════════════ */}
         <ReportLayerHeader
           id="layer-verdict"
-          title="Verdict"
+          title="Signal Overview"
           subtitle="Your idea at a glance"
           icon={<Trophy className="w-4 h-4 text-primary" />}
           className="pt-0"
