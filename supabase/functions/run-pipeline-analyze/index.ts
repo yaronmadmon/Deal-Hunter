@@ -560,6 +560,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         max_tokens: 7000,
         temperature: 0,
         stream: true,
+        response_format: { type: "json_object" },
       }),
     });
 
