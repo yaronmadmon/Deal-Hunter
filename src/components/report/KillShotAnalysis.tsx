@@ -90,6 +90,23 @@ function RiskGauge({ level }: { level: "Low" | "Medium" | "High" }) {
 }
 
 export const KillShotAnalysis = ({ data }: Props) => {
+  // Show insufficient data banner instead of fake content
+  if ((data as any)._status === "insufficient_data") {
+    return (
+      <div className="bg-card border rounded-2xl p-8 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldAlert className="w-5 h-5 text-destructive" />
+          <h2 className="font-heading text-xl font-bold text-foreground">Kill Shot Analysis</h2>
+        </div>
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            This section could not be populated with reliable data. Not enough evidence was collected to assess critical risks.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bg-card border rounded-2xl p-8 mb-8">
       <div className="flex items-center justify-between mb-6">

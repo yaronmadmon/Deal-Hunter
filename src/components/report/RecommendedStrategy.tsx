@@ -1,13 +1,32 @@
 import { Badge } from "@/components/ui/badge";
-import { Target, Lightbulb, DollarSign, Crosshair } from "lucide-react";
+import { Target, Lightbulb, DollarSign, Crosshair, AlertTriangle } from "lucide-react";
 import type { RecommendedStrategyData } from "@/data/mockReport";
 import { ConfidenceLabel } from "./ConfidenceLabel";
 
 interface Props {
-  data: RecommendedStrategyData;
+  data: RecommendedStrategyData & { _status?: string };
 }
 
 export const RecommendedStrategy = ({ data }: Props) => {
+  // Show insufficient data banner instead of fake content
+  if (data._status === "insufficient_data") {
+    return (
+      <div className="bg-card border rounded-2xl p-8 mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+            <Target className="w-4 h-4 text-success" />
+          </div>
+          <h2 className="font-heading text-xl font-bold text-foreground">Recommended Strategy</h2>
+        </div>
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
+            This section could not be populated with reliable data. Not enough evidence was collected to recommend a strategy.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bg-card border rounded-2xl p-8 mb-8">
       <div className="flex items-center justify-between mb-6">
