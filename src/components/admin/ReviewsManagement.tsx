@@ -51,7 +51,7 @@ export const ReviewsManagement = () => {
   useEffect(() => { fetchReviews(); }, [filter]);
 
   const toggleApproval = async (id: string, approved: boolean) => {
-    const { error } = await supabase.from("reviews" as any).update({ approved } as any).eq("id", id);
+    const { error } = await supabase.from("reviews").update({ approved }).eq("id", id);
     if (error) { toast.error("Failed to update"); return; }
     setReviews(prev => prev.map(r => r.id === id ? { ...r, approved } : r));
     toast.success(approved ? "Review approved" : "Review hidden");
