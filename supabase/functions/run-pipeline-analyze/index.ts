@@ -2012,11 +2012,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
         if (!reportData.recommendedStrategy) {
           reportData.recommendedStrategy = {
-            positioning: "Differentiate through a focused niche approach based on competitor weaknesses identified in this report.",
-            suggestedPricing: "Competitive with existing solutions — see Revenue Benchmark section.",
-            differentiators: (reportData.opportunity?.featureGaps || []).slice(0, 4),
-            primaryTarget: (reportData.opportunity?.underservedUsers || ["Early adopters"])[0],
-            channels: ["Product Hunt launch", "Relevant subreddits", "Content marketing"],
+            _status: "insufficient_data",
+            positioning: null,
+            suggestedPricing: null,
+            differentiators: [],
+            primaryTarget: null,
+            channels: [],
             confidence: "Low",
           };
         }
@@ -2070,13 +2071,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
         if (!reportData.killShotAnalysis) {
           reportData.killShotAnalysis = {
-            risks: [
-              { risk: "Established competitors with large user bases", severity: "Medium" },
-              { risk: "Market may require significant user acquisition spend", severity: "Medium" },
-            ],
+            _status: "insufficient_data",
+            risks: [],
             riskLevel: "Medium",
-            interpretation: "Standard market risks apply. Review competitor analysis and sentiment sections for specific threats.",
+            interpretation: null,
             confidence: "Low",
+          };
           };
         }
         if (!reportData.scoreExplanationData) {
