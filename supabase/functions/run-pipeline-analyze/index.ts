@@ -496,7 +496,7 @@ Produce the JSON report with this EXACT structure:
   }
 }
 
-Do NOT generate the following fields — they are populated programmatically from raw pipeline data: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard. Omit them entirely from your JSON output.
+Do NOT generate the following fields — they are populated programmatically from raw pipeline data: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard, blueprint. Omit them entirely from your JSON output.
 
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
