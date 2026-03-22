@@ -27,7 +27,7 @@ export const ReviewsManagement = () => {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("reviews" as any).select("*").order("created_at", { ascending: false });
+      let query = supabase.from("reviews").select("*").order("created_at", { ascending: false });
       if (filter === "pending") query = query.eq("approved", false);
       if (filter === "approved") query = query.eq("approved", true);
       const { data, error } = await query;
