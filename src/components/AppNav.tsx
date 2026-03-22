@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard, Settings } from "lucide-react";
@@ -26,13 +26,13 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
     ...(location.pathname !== "/dashboard"
       ? [{ label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" }]
       : []),
-    { label: "Live", icon: Flame, path: "/live", className: "text-orange-500" },
+    { label: "Live", icon: Flame, path: "/live" },
     ...(location.pathname !== "/watchlist"
       ? [{ label: "Watchlist", icon: Bookmark, path: "/watchlist" }]
       : []),
     { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin
-      ? [{ label: "Admin", icon: Shield, path: "/admin", className: "text-gold" }]
+      ? [{ label: "Admin", icon: Shield, path: "/admin" }]
       : []),
   ];
 
@@ -42,14 +42,14 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border/50 relative z-50">
-      <span className="font-heading text-xl font-bold text-foreground">⛏️ Gold Rush</span>
+    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border relative z-50">
+      <span className="font-heading text-lg font-bold text-foreground">Gold Rush</span>
 
       {/* Desktop nav */}
       <div className="hidden md:flex items-center gap-3">
         {showCredits && credits !== undefined && (
-          <div className="flex items-center gap-1.5 bg-card border rounded-full px-3 py-1.5 text-sm">
-            <Coins className="w-4 h-4 text-primary" />
+          <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-sm">
+            <Coins className="w-4 h-4 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
             <span className="text-muted-foreground">credits</span>
           </div>
@@ -57,10 +57,10 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
         {navItems.map((item) => (
           <Button
             key={item.path}
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => go(item.path)}
-            className={item.className}
+            className="text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
             <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
           </Button>
@@ -70,7 +70,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
         <NotificationBell />
         <ThemeToggle />
         {onSignOut && (
-          <Button variant="ghost" size="icon" onClick={onSignOut}>
+          <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground hover:text-foreground">
             <LogOut className="w-4 h-4" />
           </Button>
         )}
@@ -79,8 +79,8 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
       {/* Mobile hamburger */}
       <div className="flex md:hidden items-center gap-2">
         {showCredits && credits !== undefined && (
-          <div className="flex items-center gap-1 bg-card border rounded-full px-2.5 py-1 text-xs">
-            <Coins className="w-3.5 h-3.5 text-primary" />
+          <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2.5 py-1 text-xs">
+            <Coins className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
           </div>
         )}
@@ -93,7 +93,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
       {/* Backdrop overlay */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
           onClick={() => setOpen(false)}
         />
       )}
@@ -115,7 +115,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
           <Button
             key={item.path}
             variant="ghost"
-            className={`justify-start h-11 text-base ${item.className ?? ""}`}
+            className="justify-start h-11 text-base text-muted-foreground hover:text-foreground"
             style={{ animationDelay: `${i * 50}ms` }}
             onClick={() => go(item.path)}
           >

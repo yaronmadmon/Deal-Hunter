@@ -17,7 +17,7 @@ export const ReportLayerHeader = ({ id, title, subtitle, icon, className }: Prop
         </div>
       )}
       <div>
-        <h2 className="font-heading text-lg font-bold text-foreground uppercase tracking-wider text-primary/80">
+        <h2 className="font-heading text-lg font-bold text-foreground uppercase tracking-wider">
           {title}
         </h2>
         {subtitle && (
@@ -25,6 +25,6 @@ export const ReportLayerHeader = ({ id, title, subtitle, icon, className }: Prop
         )}
       </div>
     </div>
-    <div className="mt-3 h-px bg-gradient-to-r from-primary/30 via-border/50 to-transparent" />
+    <div className="mt-3 h-px bg-border" />
   </div>
 );

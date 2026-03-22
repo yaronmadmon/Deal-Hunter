@@ -91,12 +91,8 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      backgroundImage: {
-        "headline-spectrum": "linear-gradient(90deg, hsl(var(--accent-blue)), hsl(var(--accent-lavender)))",
-        "divider-spectrum": "linear-gradient(90deg, hsl(var(--divider-start) / 0), hsl(var(--divider-start) / 0.5), hsl(var(--divider-end) / 0.5), hsl(var(--divider-end) / 0))",
-      },
       boxShadow: {
-        accent: "0 0 0 1px hsl(var(--primary) / 0.22), 0 14px 34px -16px hsl(var(--primary) / 0.5)",
+        accent: "0 0 20px -8px hsl(var(--primary) / 0.3)",
       },
       keyframes: {
         "accordion-down": {
