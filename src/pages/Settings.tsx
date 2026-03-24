@@ -125,7 +125,18 @@ const Settings = () => {
   };
 
   const handleDeleteAccount = async () => {
-    toast.info("Please contact support to delete your account.");
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) {
+        toast.error("Failed to delete account: " + error.message);
+        return;
+      }
+      await supabase.auth.signOut();
+      toast.success("Account deleted. Sorry to see you go.");
+      navigate("/");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    }
   };
 
   const handleManageSubscription = async () => {

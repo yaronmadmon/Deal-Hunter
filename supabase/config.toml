@@ -1,4 +1,4 @@
-project_id = "erryuxbqbcvbyzjeseon"
+project_id = "vnileremxagzmlieykgm"
 
 [functions.run-pipeline]
 verify_jwt = false
@@ -46,4 +46,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.health-check]
+verify_jwt = false
+
+[functions.delete-account]
 verify_jwt = false

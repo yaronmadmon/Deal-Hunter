@@ -66,13 +66,27 @@ export const UserManagement = () => {
     return email && adminEmails.some(ae => ae.email.toLowerCase() === email.toLowerCase());
   };
 
+  const auditLog = async (action: string, targetUserId?: string, targetEmail?: string, metadata?: Record<string, unknown>) => {
+    try {
+      const { data: { user: me } } = await supabase.auth.getUser();
+      await (supabase.from('admin_audit_log') as any).insert({
+        admin_id: me?.id,
+        admin_email: me?.email,
+        action,
+        target_user_id: targetUserId,
+        target_email: targetEmail,
+        metadata,
+      });
+    } catch { /* audit failures must never block the action */ }
+  };
+
   const handleAddAdmin = async () => {
     if (!newAdminEmail.trim()) return;
-    
+
     try {
       const { error } = await supabase.from('admin_emails').insert({ email: newAdminEmail.trim().toLowerCase() });
       if (error) throw error;
-      
+      await auditLog('grant_admin', undefined, newAdminEmail.trim().toLowerCase());
       toast.success(`${newAdminEmail} added as admin`);
       setNewAdminEmail("");
       fetchData();
@@ -85,7 +99,7 @@ export const UserManagement = () => {
     try {
       const { error } = await supabase.from('admin_emails').delete().eq('id', id);
       if (error) throw error;
-      
+      await auditLog('revoke_admin', undefined, email);
       toast.success(`${email} removed from admins`);
       fetchData();
     } catch (error: any) {
@@ -95,17 +109,17 @@ export const UserManagement = () => {
 
   const handleModifyCredits = async (add: boolean) => {
     if (!selectedUser) return;
-    
-    const newCredits = add 
-      ? selectedUser.credits + creditAmount 
+
+    const newCredits = add
+      ? selectedUser.credits + creditAmount
       : Math.max(0, selectedUser.credits - creditAmount);
-    
+
     try {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ credits: newCredits })
         .eq('id', selectedUser.id);
-      
+
       if (profileError) throw profileError;
 
       const { error: logError } = await supabase.from('credits_log').insert({
@@ -115,6 +129,13 @@ export const UserManagement = () => {
       });
 
       if (logError) console.error('Failed to log credit change:', logError);
+
+      await auditLog(
+        add ? 'add_credits' : 'remove_credits',
+        selectedUser.id,
+        selectedUser.email ?? undefined,
+        { amount: creditAmount, new_balance: newCredits }
+      );
 
       toast.success(`${add ? 'Added' : 'Removed'} ${creditAmount} credits`);
       setCreditDialogOpen(false);
@@ -131,8 +152,13 @@ export const UserManagement = () => {
         .from('profiles')
         .update({ suspended: newSuspended })
         .eq('id', profile.id);
-      
+
       if (error) throw error;
+      await auditLog(
+        newSuspended ? 'suspend_user' : 'reactivate_user',
+        profile.id,
+        profile.email ?? undefined
+      );
       toast.success(`User ${newSuspended ? 'suspended' : 'reactivated'}`);
       fetchData();
     } catch (error: any) {
