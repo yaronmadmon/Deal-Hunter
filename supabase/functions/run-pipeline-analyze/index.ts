@@ -495,6 +495,25 @@ Produce the JSON report with this EXACT structure:
   }
 }
 
+You MUST include a "scoreBreakdown" field in your JSON. This is the ONLY place scores are set — the system computes overallScore by summing these values. Score each category based ONLY on evidence in the evidence block:
+
+"scoreBreakdown": [
+  {"label": "Trend Momentum", "value": 0-25, "weight": "25%"},
+  {"label": "Market Saturation", "value": 0-20, "weight": "20%"},
+  {"label": "Sentiment", "value": 0-20, "weight": "20%"},
+  {"label": "Growth", "value": 0-15, "weight": "15%"},
+  {"label": "Opportunity", "value": 0-20, "weight": "20%"}
+]
+
+SCORING RULES (mandatory):
+- Trend Momentum (max 25): 0-5 = no demand signals; 6-12 = weak/thin signals; 13-19 = moderate demand evidence; 20-25 = strong verified search demand.
+- Market Saturation (max 20): INVERTED — 0-5 = extremely crowded (bad); 6-12 = saturated but gaps exist; 13-19 = moderate competition; 20 = blue ocean with little competition.
+- Sentiment (max 20): 0-5 = no sentiment data; 6-10 = mixed/negative; 11-15 = mostly positive with pain points; 16-20 = strong validated pain with clear demand.
+- Growth (max 15): 0-3 = no growth signals; 4-7 = some PH/GitHub activity; 8-11 = clear growth indicators; 12-15 = multiple strong growth signals.
+- Opportunity (max 20): 0-5 = no gaps found; 6-10 = minor gaps; 11-15 = clear underserved segments; 16-20 = strong unmet demand with weak competition.
+- If evidence for a category is INSUFFICIENT (0 signals), assign 0-3 only. NEVER assign a neutral mid-range value (like 10-12) when you have no evidence — that is dishonest. Low evidence = low score.
+- The sum of all 5 values becomes the overallScore. A sum of exactly 50 when evidence is thin is a sign you are hedging — do not hedge, score honestly based on what the evidence shows.
+
 Do NOT generate the following fields — they are populated programmatically: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard, blueprint, overallScore, verdict, signalStrength, dataSources, idea, scoreExplanation. Omit them entirely from your JSON output.
 
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
@@ -1932,7 +1951,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // ── Ensure scoreBreakdown exists with defaults ──
         if (!reportData.scoreBreakdown || !Array.isArray(reportData.scoreBreakdown) || reportData.scoreBreakdown.length !== 5) {
-          const total = reportData.overallScore || 50;
+          // AI failed to return scoreBreakdown — use 0 as the base so the score is
+          // honestly 0 rather than silently faking a neutral 50.
+          const total = reportData.overallScore || 0;
+          console.warn(`[SCORE FALLBACK] scoreBreakdown missing or malformed. overallScore=${reportData.overallScore}. Distributing ${total} across categories.`);
           // Distribute proportionally: 25/20/20/15/20
           const trendDefault = Math.round(total * 0.25);
           const satDefault = Math.round(total * 0.20);
