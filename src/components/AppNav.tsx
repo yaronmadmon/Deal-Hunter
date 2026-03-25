@@ -42,8 +42,8 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto border-b border-border relative z-50">
-      <span className="font-heading text-lg font-bold text-foreground">Gold Rush</span>
+    <nav className="flex items-center justify-between px-6 py-3.5 max-w-5xl mx-auto border-b border-border relative z-50">
+      <span className="font-heading text-[15px] font-bold tracking-[-0.02em] text-foreground">Gold Rush</span>
 
       {/* Desktop nav */}
       <div className="hidden md:flex items-center gap-3">

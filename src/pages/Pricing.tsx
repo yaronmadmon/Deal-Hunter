@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, X, Sparkles, Zap, Star, Loader2, Settings } from "lucide-react";
+import { ArrowRight, Check, X, Sparkles, Zap, Star, Loader2, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -201,7 +201,7 @@ const Pricing = () => {
           className="font-heading text-xl font-bold text-foreground cursor-pointer"
           onClick={() => navigate("/")}
         >
-          ⛏️ Gold Rush
+          Gold Rush
         </span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -215,9 +215,9 @@ const Pricing = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Find Your Next Big Idea Before Anyone Else
+            Simple, transparent pricing
           </h1>
-          <p className="text-lg text-muted-foreground mb-4">Real market data. Not guesses.</p>
+          <p className="text-base text-muted-foreground mb-4">Start free. Upgrade when it's working.</p>
 
           {/* Current plan badge */}
           {user && subscription.subscribed && (
@@ -430,17 +430,18 @@ const Pricing = () => {
         </div>
 
         {/* Bottom CTA */}
-        <div className="rounded-2xl bg-gradient-to-br from-card via-card to-gold/5 border border-gold/20 p-10 sm:p-14 text-center">
+        <div className="rounded-2xl border border-border bg-card p-10 sm:p-14 text-center">
           <h2 className="font-heading text-2xl sm:text-3xl font-bold text-foreground mb-3">
-            Your next big idea is already trending.
+            Your next idea deserves honest analysis.
           </h2>
-          <p className="text-muted-foreground mb-8">Find it before someone else builds it.</p>
+          <p className="text-muted-foreground mb-8 text-sm leading-7">Most ideas fail from avoidable mistakes. Find out early — before the sprint, before the build.</p>
           <Button
             size="lg"
-            className="bg-gold text-gold-foreground hover:bg-gold/90 shadow-lg shadow-gold/25 text-base px-8 py-6 font-bold"
+            className="px-8 font-semibold shadow-lg shadow-primary/20"
             onClick={() => user ? navigate("/dashboard") : navigate("/auth")}
           >
-            {user ? "Go to Dashboard" : "Start Free Today"}
+            {user ? "Go to Dashboard" : "Start Free"}
+            <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </main>

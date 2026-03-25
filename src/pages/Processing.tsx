@@ -133,8 +133,8 @@ const Processing = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-      <span className="font-heading text-2xl font-bold text-foreground mb-2">⛏️ Gold Rush</span>
-      <p className="text-muted-foreground mb-10">Building your market report...</p>
+      <span className="font-heading text-xl font-bold text-foreground mb-1">Gold Rush</span>
+      <p className="text-sm text-muted-foreground mb-10">Scanning the market for your idea...</p>
 
       <div className="w-full max-w-sm space-y-4">
         {steps.map((step, i) => {

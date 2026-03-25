@@ -99,13 +99,13 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <span className="font-heading text-2xl font-bold text-foreground cursor-pointer" onClick={() => navigate("/")}>
+          <button onClick={() => navigate("/")} className="font-heading text-xl font-bold text-foreground tracking-[-0.02em] hover:text-muted-foreground transition-colors">
             Gold Rush
-          </span>
-          <p className="text-muted-foreground mt-2">
+          </button>
+          <p className="text-sm text-muted-foreground mt-2">
             {mode === "login" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset your password"}
           </p>
         </div>
@@ -143,11 +143,11 @@ const Auth = () => {
             </div>
 
             {/* Mode tabs */}
-            <div className="flex mb-4 rounded-lg overflow-hidden border border-border">
+            <div className="flex mb-4 rounded-lg overflow-hidden border border-border bg-secondary/50">
               <button
                 type="button"
-                className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                  mode === "login" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"
+                className={`flex-1 py-2.5 text-sm font-medium transition-all rounded-md ${
+                  mode === "login" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setMode("login")}
               >
@@ -155,8 +155,8 @@ const Auth = () => {
               </button>
               <button
                 type="button"
-                className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                  mode === "signup" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"
+                className={`flex-1 py-2.5 text-sm font-medium transition-all rounded-md ${
+                  mode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
                 onClick={() => setMode("signup")}
               >
@@ -166,7 +166,7 @@ const Auth = () => {
           </>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-6 space-y-4 shadow-sm">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required autoComplete="email" />
@@ -177,7 +177,7 @@ const Auth = () => {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} />
             </div>
           )}
-          <Button type="submit" className="w-full text-base py-5" variant="default" disabled={submitting}>
+          <Button type="submit" className="w-full py-5 font-semibold shadow-sm shadow-primary/20" variant="default" disabled={submitting}>
             {submitting ? "Please wait…" : mode === "login" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link"}
           </Button>
           {mode === "login" && (

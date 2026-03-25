@@ -21,20 +21,20 @@ import { useNavigate } from "react-router-dom";
 const featureCards = [
   {
     icon: Search,
-    title: "Demand",
-    description: "See whether people are already searching for the problem you want to solve.",
+    title: "Search Demand",
+    description: "See how many people are actively searching for your idea — and whether that interest is growing or fading.",
     tag: "Search intent",
   },
   {
     icon: Users,
-    title: "Crowding",
-    description: "Measure how saturated the market is and where competitors are still weak.",
+    title: "Market Saturation",
+    description: "Measure competitor density and pinpoint the gaps where you can still build a defensible position.",
     tag: "Competitive gaps",
   },
   {
     icon: Target,
-    title: "Pain",
-    description: "Pull recurring complaints from reviews, communities, and product feedback.",
+    title: "Real User Pain",
+    description: "Surface recurring complaints from app store reviews, Reddit, and community feedback — in users' own words.",
     tag: "User language",
   },
 ];
@@ -43,26 +43,26 @@ const workflowSteps = [
   {
     step: "01",
     icon: Lightbulb,
-    title: "Drop in the idea",
-    description: "Describe the startup in one sentence. No deck, no research, no setup.",
+    title: "Describe your idea",
+    description: "One sentence is enough. No deck, no research doc, no setup required.",
   },
   {
     step: "02",
     icon: Search,
-    title: "Gold Rush scans the market",
-    description: "It pulls demand, competitors, reviews, and market momentum into one evidence layer.",
+    title: "We scan the market",
+    description: "Seven live sources — search trends, app stores, Reddit, GitHub, and competitor reviews.",
   },
   {
     step: "03",
     icon: BarChart3,
-    title: "You get a clear read",
-    description: "See the score, the upside, the risks, and what deserves a closer look.",
+    title: "Get a scored read",
+    description: "A market score with evidence behind every signal: demand, competition, user pain, and risk.",
   },
   {
     step: "04",
     icon: Map,
-    title: "Build from signal, not vibes",
-    description: "Use the blueprint to position the product, scope the MVP, and avoid wasted months.",
+    title: "Build on real signal",
+    description: "Use the blueprint to define positioning, scope the MVP, and avoid the most common failure modes.",
   },
 ];
 
@@ -108,10 +108,10 @@ const Index = () => {
             <Button
               size="sm"
               onClick={() => navigate("/auth")}
-              className="rounded-lg border border-primary/40 bg-primary/15 px-5 text-foreground transition-all duration-200 hover:bg-primary/25 hover:shadow-accent"
+              className="rounded-lg px-5 font-medium shadow-sm shadow-primary/20"
             >
-              Analyze My Idea
-              <ArrowRight className="h-4 w-4" />
+              Get Started
+              <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </div>
 
@@ -153,20 +153,21 @@ const Index = () => {
             Log In
           </Button>
           <Button
-            className="w-full justify-center rounded-lg border border-primary/40 bg-primary/15 text-foreground transition-all duration-200 hover:bg-primary/25"
+            className="w-full justify-center rounded-lg font-medium"
             onClick={() => { navigate("/auth"); setMobileMenuOpen(false); }}
           >
-            Analyze My Idea
+            Get Started
           </Button>
         </div>
       </div>
 
       <main>
+        {/* Hero */}
         <section className="mx-auto grid max-w-6xl gap-16 px-6 pb-24 pt-20 md:grid-cols-[minmax(0,1.1fr)_360px] md:items-end md:pt-28">
           <div className="max-w-3xl">
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               <Zap className="h-3.5 w-3.5" />
-              For founders shipping fast
+              Market intelligence for founders
             </div>
 
             <h1 className="max-w-4xl font-heading text-5xl font-bold leading-[0.95] tracking-[-0.06em] text-foreground sm:text-6xl lg:text-7xl">
@@ -176,14 +177,14 @@ const Index = () => {
             </h1>
 
             <p className="mt-7 max-w-xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
-              Gold Rush shows you search demand, market pressure, competitor density, and user pain before you commit months to building.
+              Gold Rush analyzes real search demand, competitor density, and user pain points — then scores the opportunity so you know what's worth building before you commit months to it.
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <Button
                 size="lg"
                 onClick={() => navigate("/auth")}
-                className="rounded-xl border border-primary/40 bg-primary/15 px-7 text-foreground transition-all duration-200 hover:bg-primary/25 hover:shadow-accent"
+                className="rounded-xl px-7 font-semibold shadow-lg shadow-primary/20"
               >
                 Analyze My Idea
                 <ArrowRight className="h-4 w-4" />
@@ -216,9 +217,9 @@ const Index = () => {
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">Search, reviews, apps, and live market signals.</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-5">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Signal Strength</div>
+                <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Signal</div>
                 <div className="mt-3 font-mono text-3xl font-semibold text-foreground">Clear</div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">A clear read before you spend the next quarter building.</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">One score. Real evidence. A clear decision.</p>
               </div>
             </div>
           </div>
@@ -226,14 +227,15 @@ const Index = () => {
 
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
+        {/* Three core signals */}
         <section className="mx-auto max-w-6xl px-6 py-24" id="proof">
           <div className="mb-12 max-w-2xl">
-            <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">What founders expect</p>
+            <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">What we analyze</p>
             <h2 className="font-heading text-3xl font-bold tracking-[-0.05em] text-foreground md:text-4xl">
-              A landing page for this category needs one thing fast: proof.
+              Three signals that tell the real story.
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
-              So the page now leads with the product outcome, shows a real sample early, and keeps every section focused on the decision a founder is trying to make.
+              Most founders validate with gut feel and Google. Gold Rush pulls structured evidence from seven live sources and synthesizes it into a single, actionable read.
             </p>
           </div>
 
@@ -257,15 +259,16 @@ const Index = () => {
 
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
+        {/* Report preview */}
         <section id="report-preview" className="mx-auto max-w-6xl px-6 py-24">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_320px] lg:items-end">
             <div>
               <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Sample output</p>
               <h2 className="font-heading text-3xl font-bold tracking-[-0.05em] text-foreground md:text-4xl">
-                Show the report before asking for trust.
+                See exactly what you'll get.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
-                This sits directly under the hero so visitors can inspect the product immediately instead of hunting for proof halfway down the page.
+                A real sample report — scored, structured, and sourced. No blurry screenshots or vague previews.
               </p>
 
               <div className="mt-10 overflow-hidden rounded-xl border border-border bg-card">
@@ -302,7 +305,7 @@ const Index = () => {
 
                     <div className="rounded-xl border border-border bg-background p-4">
                       <div className="mb-3 flex items-center justify-between gap-3">
-                        <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Why it matters</span>
+                        <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Key insight</span>
                         <span className="rounded-full border border-border bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">
                           Review synthesis
                         </span>
@@ -318,19 +321,22 @@ const Index = () => {
 
             <div className="space-y-4 rounded-xl border border-border bg-card p-6">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">What people want to know</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Every report includes</p>
                 <h3 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.04em] text-foreground">
-                  Can I trust the output quickly?
+                  Six analysis layers.
                 </h3>
               </div>
 
               {[
-                "Real sample report available before signup",
-                "Numbers surfaced in scan-friendly blocks",
-                "Category tags clarify what each signal means",
+                "Market demand score with trend direction",
+                "Competitor density and positioning gaps",
+                "User pain synthesis from real reviews",
+                "Revenue benchmarks from comparable apps",
+                "Risk flags and kill-shot analysis",
+                "Startup blueprint for the MVP phase",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
-                  <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/50" />
+                  <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -338,7 +344,7 @@ const Index = () => {
               <Button
                 size="lg"
                 onClick={() => navigate("/sample-report")}
-                className="mt-2 w-full rounded-xl border border-primary/40 bg-primary/15 text-foreground transition-all duration-200 hover:bg-primary/25 hover:shadow-accent"
+                className="mt-2 w-full rounded-xl font-semibold shadow-sm shadow-primary/20"
               >
                 Open Sample Report
                 <FileText className="h-4 w-4" />
@@ -349,14 +355,15 @@ const Index = () => {
 
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
+        {/* How it works */}
         <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-24">
           <div className="mb-12 max-w-2xl">
             <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">How it works</p>
             <h2 className="font-heading text-3xl font-bold tracking-[-0.05em] text-foreground md:text-4xl">
-              Four steps. No fluff. No black box.
+              Four steps. No setup. No fluff.
             </h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-[15px]">
-              The layout is intentionally sparse so the page reads more like a product spec than a marketing wall.
+              Drop in your idea. We handle the research, the scoring, and the synthesis.
             </p>
           </div>
 
@@ -378,30 +385,30 @@ const Index = () => {
 
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
+        {/* Value props */}
         <section className="mx-auto max-w-6xl px-6 py-24">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid gap-5 lg:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-8">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Why this feels sharper</p>
-              <h2 className="mt-3 font-heading text-3xl font-bold tracking-[-0.05em] text-foreground">
-                Built like a developer tool, not a glossy promise.
+              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+              </div>
+              <h2 className="font-heading text-xl font-semibold tracking-[-0.04em] text-foreground">
+                Evidence, not guesswork
               </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
-                Minimal surfaces, tight type, structured spacing, and restrained accent color give the page a more credible product posture — closer to what founders expect from serious B2B tools.
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                Every signal links back to a real source — search volume, competitor reviews, Reddit threads, or app store rankings. No invented statistics, no AI hallucinations presented as data.
               </p>
             </div>
 
             <div className="rounded-xl border border-border bg-card p-8">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <ShieldCheck className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Trust signal</p>
-                  <h3 className="font-heading text-xl font-semibold tracking-[-0.04em] text-foreground">Data over guesswork</h3>
-                </div>
+              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Clock className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-sm leading-7 text-muted-foreground sm:text-[15px]">
-                Gold Rush leads with evidence, keeps claims tight, and uses color only where attention matters: scores, labels, status, and decisions.
+              <h2 className="font-heading text-xl font-semibold tracking-[-0.04em] text-foreground">
+                A decision in minutes
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                The full pipeline runs in under three minutes. Enough to validate five ideas in an afternoon, kill a weak one before a sprint starts, or pressure-test an assumption before a pitch.
               </p>
             </div>
           </div>
@@ -409,19 +416,19 @@ const Index = () => {
 
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
+        {/* Final CTA */}
         <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Final call to action</p>
           <h2 className="font-heading text-4xl font-bold tracking-[-0.06em] text-foreground sm:text-5xl">
-            Validate the idea before the build sprint starts.
+            Validate before you build.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
-            If the idea is weak, you find out early. If the signal is real, you move with more confidence.
+            If the signal is weak, you find out in minutes — not months. If it's strong, you move with real evidence behind you.
           </p>
           <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
             <Button
               size="lg"
               onClick={() => navigate("/auth")}
-              className="rounded-xl border border-primary/40 bg-primary/15 px-7 text-foreground transition-all duration-200 hover:bg-primary/25 hover:shadow-accent"
+              className="rounded-xl px-7 font-semibold shadow-lg shadow-primary/20"
             >
               Analyze My Idea
               <ArrowRight className="h-4 w-4" />
@@ -442,6 +449,11 @@ const Index = () => {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground md:flex-row">
           <span className="font-heading font-semibold text-foreground">Gold Rush</span>
           <p>© 2026 Gold Rush. Validate faster. Build smarter.</p>
+          <div className="flex items-center gap-5">
+            <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
+            <button onClick={() => navigate("/pricing")} className="hover:text-foreground transition-colors">Pricing</button>
+          </div>
         </div>
       </footer>
     </div>

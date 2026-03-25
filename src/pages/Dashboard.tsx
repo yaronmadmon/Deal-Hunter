@@ -231,42 +231,43 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <AppNav credits={credits} onSignOut={() => { signOut(); navigate("/"); }} />
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
+      <main className="max-w-3xl mx-auto px-6 py-12">
         {/* Subscription success banner */}
         {subscriptionSuccess && (
-          <div className="mb-6 rounded-xl border border-success/30 bg-success/10 p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-            <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center text-xl">🎉</div>
+          <div className="mb-8 rounded-xl border border-success/30 bg-success/10 p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
             <div className="flex-1">
-              <p className="text-foreground font-semibold">Subscription Activated!</p>
+              <p className="text-foreground font-semibold text-sm">Subscription activated</p>
               <p className="text-muted-foreground text-sm">
                 {subscription.tier !== "free" ? (
-                  <>Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active. 3 bonus credits have been added to your account.</>
+                  <>Your <span className="font-medium capitalize text-foreground">{subscription.tier}</span> plan is now active. 3 bonus credits added.</>
                 ) : (
                   <>Your plan is being activated. This may take a moment...</>
                 )}
               </p>
             </div>
-            <button onClick={() => setSubscriptionSuccess(false)} className="text-muted-foreground hover:text-foreground text-lg">×</button>
+            <button onClick={() => setSubscriptionSuccess(false)} className="text-muted-foreground hover:text-foreground">×</button>
           </div>
         )}
 
-        <h1 className="font-heading text-3xl font-bold text-foreground mb-2">Validate an Idea</h1>
-        <p className="text-muted-foreground mb-8">Describe your startup idea and we'll analyze real market data.</p>
+        <div className="mb-8">
+          <h1 className="font-heading text-2xl font-bold text-foreground mb-1.5">Validate an Idea</h1>
+          <p className="text-sm text-muted-foreground">Describe your startup concept and we'll analyze real market data.</p>
+        </div>
 
-        <Card className="mb-10">
-          <CardContent className="p-6">
+        <Card className="mb-10 shadow-sm">
+          <CardContent className="p-5">
             <Textarea
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
-              placeholder="Describe your startup or app idea (20–500 characters)..."
-              className="min-h-[120px] resize-none mb-4"
+              placeholder="e.g. An AI-powered tool that helps indie founders validate startup ideas using real market data..."
+              className="min-h-[110px] resize-none mb-4 text-sm leading-relaxed placeholder:text-muted-foreground/60"
               maxLength={500}
             />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{idea.length}/500</span>
-              <Button variant="default" onClick={handleSubmit} disabled={idea.length < 20 || submitting}>
-                {submitting ? "Starting…" : "Validate Idea"}
-                <ArrowRight className="ml-1" />
+              <span className="text-xs text-muted-foreground tabular-nums">{idea.length} / 500</span>
+              <Button onClick={handleSubmit} disabled={idea.length < 20 || submitting} className="shadow-sm shadow-primary/20">
+                {submitting ? "Starting…" : "Analyze Idea"}
+                <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </CardContent>
@@ -274,18 +275,18 @@ const Dashboard = () => {
 
         {analyses.length > 0 && (
           <>
-            <h2 className="font-heading text-xl font-semibold text-foreground mb-4">Previous Analyses</h2>
+            <h2 className="font-heading text-base font-semibold text-foreground mb-3 tracking-[-0.02em]">Previous analyses</h2>
             <div className="space-y-3">
               {analyses.map((item) => (
                 <Card
                   key={item.id}
-                  className="cursor-pointer hover:border-primary/40 transition-colors"
+                  className="cursor-pointer hover:border-primary/30 transition-colors"
                   onClick={() => item.status === "complete" ? navigate(`/report/${item.id}`) : item.status !== "failed" ? navigate(`/processing/${item.id}`) : null}
                 >
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground text-sm truncate">{item.idea}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{new Date(item.created_at).toLocaleDateString()}</p>
+                      <p className="font-medium text-foreground text-sm truncate leading-snug">{item.idea}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{new Date(item.created_at).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
                       {item.status === "complete" && item.overall_score !== null ? (
