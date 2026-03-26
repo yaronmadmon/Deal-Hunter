@@ -27,6 +27,7 @@ const Processing = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pipelineTriggered = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -80,10 +81,10 @@ const Processing = () => {
     }
   }, [status]);
 
-  // Initial fetch
+  // Initial fetch + pipeline fallback trigger
   useEffect(() => {
     if (!id) return;
-    supabase.from("analyses").select("status, report_data").eq("id", id).single()
+    supabase.from("analyses").select("status, report_data, idea").eq("id", id).single()
       .then(({ data }) => {
         if (data) {
           setStatus(data.status);
@@ -94,6 +95,28 @@ const Processing = () => {
             if (message) toast.error(message);
             else toast.error("Analysis failed. Please try again.");
             navigate("/dashboard", { replace: true });
+            return;
+          }
+          // If still pending after 5s, the pipeline was never triggered (e.g. browser closed
+          // on the dashboard). Re-invoke it here so the analysis can still complete.
+          if (data.status === "pending" && !pipelineTriggered.current) {
+            pipelineTriggered.current = true;
+            setTimeout(() => {
+              supabase.from("analyses").select("status").eq("id", id).single()
+                .then(({ data: fresh }) => {
+                  if (fresh?.status === "pending") {
+                    supabase.functions.invoke("start-pipeline", {
+                      body: { analysisId: id, idea: data.idea },
+                    }).then(({ error }) => {
+                      if (error) {
+                        supabase.from("analyses").update({ status: "failed" }).eq("id", id!);
+                      }
+                    }).catch(() => {
+                      supabase.from("analyses").update({ status: "failed" }).eq("id", id!);
+                    });
+                  }
+                });
+            }, 5000);
           }
         }
       });

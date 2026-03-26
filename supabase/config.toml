@@ -1,5 +1,8 @@
 project_id = "vnileremxagzmlieykgm"
 
+[functions.start-pipeline]
+verify_jwt = false
+
 [functions.run-pipeline]
 verify_jwt = false
 
