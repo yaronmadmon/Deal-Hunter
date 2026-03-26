@@ -1141,7 +1141,8 @@ async function productHuntSearch(
             return posts;
           }
         } else {
-          await topicRes.text(); // consume body
+          const errBody = await topicRes.text();
+          console.error(`[PRODUCT HUNT] API error ${topicRes.status} for slug "${slug}": ${errBody.slice(0, 200)}`);
         }
         return [];
       } catch {
@@ -1213,45 +1214,47 @@ async function productHuntSearch(
     }
   }
 
-  // Strategy 2: Serper site:producthunt.com fallback (always try if we have few results)
+  // Strategy 2: Serper fallback — search broadly and filter for producthunt.com URLs
+  // (site:producthunt.com returns mostly topic/index pages, not product pages)
   if (serperKey && allProducts.length < first) {
     try {
-      const res = await fetch("https://google.serper.dev/search", {
-        method: "POST",
-        headers: {
-          "X-API-KEY": serperKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ q: `${topic} site:producthunt.com`, num: 30 }),
-      });
-      if (res.ok) {
+      // Use two queries: one with "producthunt" keyword, one broader
+      const queries = [
+        `${topic} producthunt`,
+        `${topic} "product hunt" app launch`,
+      ];
+      for (const q of queries) {
+        if (allProducts.length >= first) break;
+        const res = await fetch("https://google.serper.dev/search", {
+          method: "POST",
+          headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ q, num: 20 }),
+        });
+        if (!res.ok) {
+          console.error(`[PRODUCT HUNT] Serper error (${res.status}) for "${q}"`);
+          continue;
+        }
         const data = await res.json();
         const organic = data.organic || [];
+        console.log(`[PRODUCT HUNT] Serper query "${q}" returned ${organic.length} results`);
+        const skipPatterns = ["/topics/", "/collections/", "/newsletters/", "/upcoming/", "/discussions/", "/stories/", "/r/", "/leaderboard", "/blog/", "/jobs/", "/login", "/signup", "/about", "/@"];
         const products = organic
-          .filter((r: any) => (r.link || "").includes("producthunt.com/posts/"))
+          .filter((r: any) => {
+            const link = r.link || "";
+            if (!link.includes("producthunt.com")) return false;
+            if (skipPatterns.some(s => link.includes(s))) return false;
+            const path = link.replace(/https?:\/\/(www\.)?producthunt\.com/, "").replace(/\?.*/, "");
+            return path.length > 2 && path !== "/";
+          })
           .map((r: any) => {
             const titleParts = (r.title || "").split(/\s*[-–—|]\s*/);
             const name = titleParts[0]?.trim() || "";
             const tagline = titleParts.length > 1 ? titleParts.slice(1).filter((p: string) => !p.toLowerCase().includes("product hunt")).join(" - ").trim() : "";
-            return {
-              name,
-              tagline: tagline || r.snippet || "",
-              upvotes: null,
-              launchDate: null,
-              url: r.link,
-              website: null,
-            };
+            return { name, tagline: tagline || r.snippet || "", upvotes: null, launchDate: null, url: r.link, website: null };
           })
           .filter((p: any) => p.name && p.name.length > 1);
-
-        for (const p of products) {
-          addProduct(p);
-        }
-        if (products.length > 0) {
-          console.log(`[PRODUCT HUNT] Serper fallback found ${products.length} products for "${topic}"`);
-        }
-      } else {
-        console.error(`[PRODUCT HUNT] Serper fallback error (${res.status}): ${await res.text()}`);
+        for (const p of products) addProduct(p);
+        if (products.length > 0) console.log(`[PRODUCT HUNT] Serper found ${products.length} products for "${q}"`);
       }
     } catch (e) {
       console.error("[PRODUCT HUNT] Serper fallback error:", e);
@@ -1409,6 +1412,7 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════════════════════════
     let semanticQueries: string[] = [];
     let primaryKeywords = sanitizedIdea; // fallback
+    let pendingQueryStrategy: { broad: string[]; niche: string[]; problem: string[] } | null = null;
 
     if (openaiKey) {
       try {
@@ -1456,8 +1460,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
                 const niche = (parsed.niche || []).map((q: any) => String(q).trim()).filter(Boolean);
                 const problem = (parsed.problem || []).map((q: any) => String(q).trim()).filter(Boolean);
                 semanticQueries = [...broad, ...niche, ...problem].slice(0, 5);
-                rawData.queryStrategy = { broad, niche, problem };
                 primaryKeywords = broad[0] || semanticQueries[0] || primaryKeywords;
+                pendingQueryStrategy = { broad, niche, problem };
                 console.log(`[SEMANTIC KEYWORDS] Multi-query strategy in ${Date.now() - semanticStart}ms: broad=${JSON.stringify(broad)}, niche=${JSON.stringify(niche)}, problem=${JSON.stringify(problem)}`);
               } else {
                 throw new Error("Missing categories");
@@ -1522,6 +1526,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       twitterCounts: null,
       twitterInfluencers: null,
       semanticQueries,
+      queryStrategy: pendingQueryStrategy,
       sources: [],
     };
 
@@ -1536,8 +1541,15 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         ),
       ]);
 
-    // Source timeout ceilings: GitHub=5000ms, all others=8000ms
-    const SOURCE_TIMEOUTS: Record<string, number> = { github: 5000 };
+    // Source timeout ceilings (ms)
+    const SOURCE_TIMEOUTS: Record<string, number> = {
+      github: 5000,
+      firecrawl_appstore: 18000,
+      perplexity_build_costs: 15000,
+      perplexity_market: 15000,
+      perplexity_revenue: 15000,
+      perplexity_competitors: 15000,
+    };
     const DEFAULT_SOURCE_TIMEOUT = 8000;
 
     async function trackSource(name: string, fn: () => Promise<number>): Promise<void> {
@@ -1630,7 +1642,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       const firecrawlQuery = semanticQueries.length > 1 ? semanticQueries[0] : sanitizedIdea;
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 20));
+          const r = await firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 20);
           rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
           return r.results.length;
         })
