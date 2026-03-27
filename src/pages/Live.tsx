@@ -99,6 +99,13 @@ const DEFAULT_SOURCE_RELIABILITY: Record<string, DataReliability> = {
 const CACHE_HOURS = 4;
 const STALE_THRESHOLD_HOURS = 8;
 
+const THEME_SECTIONS = [
+  { id: "builder_buzz", label: "Builder Buzz", subtitle: "What developers are building right now", sources: ["github_trending", "hacker_news"] as const, colorClass: "text-orange-600", borderClass: "border-orange-500/20", bgFrom: "from-orange-500/5" },
+  { id: "utilities_on_the_rise", label: "Utilities on the Rise", subtitle: "Apps and tools gaining traction this week", sources: ["app_store_trends", "trending_searches"] as const, colorClass: "text-indigo-500", borderClass: "border-indigo-500/20", bgFrom: "from-indigo-500/5" },
+  { id: "consumer_pain", label: "Consumer Pain", subtitle: "Real problems people are complaining about", sources: ["reddit_pain_points", "product_hunt"] as const, colorClass: "text-blue-500", borderClass: "border-blue-500/20", bgFrom: "from-blue-500/5" },
+  { id: "search_momentum", label: "Search Momentum", subtitle: "What's being searched but not yet solved", sources: ["google_search", "growing_niches"] as const, colorClass: "text-primary", borderClass: "border-primary/20", bgFrom: "from-primary/5" },
+];
+
 const Live = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -118,6 +125,7 @@ const Live = () => {
   const [breakout, setBreakout] = useState<BreakoutItem | null>(null);
   const [enrichedOpportunities, setEnrichedOpportunities] = useState<EnrichedSignal[]>([]);
   const [marketGaps, setMarketGaps] = useState<MarketGap[]>([]);
+  const [sleepingGiants, setSleepingGiants] = useState<any[]>([]);
 
   // Per-source timestamps
   const [sourceTimestamps, setSourceTimestamps] = useState<Record<string, string>>({});
@@ -128,7 +136,7 @@ const Live = () => {
   // UI state
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set(["enriched"]));
-  const [validateDialog, setValidateDialog] = useState<{ open: boolean; idea: string; originalSignal: string }>({ open: false, idea: "", originalSignal: "" });
+  const [validateDialog, setValidateDialog] = useState<{ open: boolean; idea: string; originalSignal: string; liveSignalContext?: { opportunityGap?: string; whyNow?: string; category?: string; sources?: string[]; signalScore?: number } }>({ open: false, idea: "", originalSignal: "" });
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -188,6 +196,7 @@ const Live = () => {
         case "breakout_idea": if (Array.isArray(payload) && payload[0]) setBreakout(payload[0]); break;
         case "enriched_opportunities": if (Array.isArray(payload)) setEnrichedOpportunities(payload); break;
         case "market_gaps": if (Array.isArray(payload)) setMarketGaps(payload); break;
+        case "sleeping_giants": if (Array.isArray(payload)) setSleepingGiants(payload); break;
         case "source_timestamps": if (payload && typeof payload === "object") Object.assign(timestamps, payload); break;
       }
     }
@@ -228,6 +237,35 @@ const Live = () => {
     })();
   }, [user, isPro, loadCachedData, refreshFeed]);
 
+  // Realtime subscription — updates each section as live-feed-refresh saves snapshots
+  useEffect(() => {
+    if (!user || !isPro) return;
+    const channel = supabase
+      .channel("live-feed-updates")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "live_feed_snapshots" }, (payload) => {
+        const row = payload.new as any;
+        const p = row.data_payload;
+        switch (row.section_name) {
+          case "trending_searches": if (Array.isArray(p)) setTrending(p); break;
+          case "product_hunt": if (Array.isArray(p)) setProductHunt(p); break;
+          case "reddit_pain_points": if (Array.isArray(p)) setReddit(p); break;
+          case "growing_niches": if (Array.isArray(p)) setNiches(p); break;
+          case "hacker_news": if (Array.isArray(p)) setHackerNews(p); break;
+          case "github_trending": if (Array.isArray(p)) setGithubTrending(p); break;
+          case "google_search": case "google_trends": if (Array.isArray(p)) setGoogleSearch(p); break;
+          case "app_store_trends": if (Array.isArray(p)) setAppStoreTrends(p); break;
+          case "twitter_buzz": if (Array.isArray(p)) setTwitterBuzz(p); break;
+          case "breakout_idea": if (Array.isArray(p) && p[0]) setBreakout(p[0]); break;
+          case "enriched_opportunities": if (Array.isArray(p)) setEnrichedOpportunities(p); break;
+          case "market_gaps": if (Array.isArray(p)) setMarketGaps(p); break;
+          case "sleeping_giants": if (Array.isArray(p)) setSleepingGiants(p); break;
+          case "source_timestamps": if (p && typeof p === "object") setSourceTimestamps(prev => ({ ...prev, ...p })); break;
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, isPro]);
+
   // Filter enriched opportunities by category
   const filteredOpportunities = useMemo(() => {
     if (selectedCategory === "All") return enrichedOpportunities;
@@ -246,6 +284,20 @@ const Live = () => {
     return marketGaps.filter(g => g.category === selectedCategory);
   }, [marketGaps, selectedCategory]);
 
+  // Signals per themed section — from enriched_opportunities filtered by source
+  const themedSectionSignals = useMemo(() => {
+    return THEME_SECTIONS.map(section => ({
+      ...section,
+      signals: enrichedOpportunities
+        .filter(s => {
+          const sources: string[] = s._mergedSources || [s._source];
+          return sources.some((src: string) => (section.sources as readonly string[]).includes(src));
+        })
+        .filter(s => selectedCategory === "All" || s._category === selectedCategory)
+        .slice(0, 3),
+    }));
+  }, [enrichedOpportunities, selectedCategory]);
+
   // Detect stale sources
   const staleSources = useMemo(() => {
     const stale: string[] = [];
@@ -260,11 +312,11 @@ const Live = () => {
     return stale;
   }, [sourceTimestamps]);
 
-  const openValidateDialog = (suggestedIdea: string, originalSignal: string) => {
-    setValidateDialog({ open: true, idea: suggestedIdea, originalSignal });
+  const openValidateDialog = (suggestedIdea: string, originalSignal: string, liveSignalContext?: { opportunityGap?: string; whyNow?: string; category?: string; sources?: string[]; signalScore?: number }) => {
+    setValidateDialog({ open: true, idea: suggestedIdea, originalSignal, liveSignalContext });
   };
 
-  const analyzeIdea = async (ideaText: string) => {
+  const analyzeIdea = async (ideaText: string, liveSignalContext?: { opportunityGap?: string; whyNow?: string; category?: string; sources?: string[]; signalScore?: number }) => {
     if (!user) return;
     if (credits <= 0) {
       toast.error("No credits remaining");
@@ -274,7 +326,12 @@ const Live = () => {
 
     const { data, error } = await supabase
       .from("analyses")
-      .insert({ user_id: user.id, idea: ideaText, status: "pending" })
+      .insert({
+        user_id: user.id,
+        idea: ideaText,
+        status: "pending",
+        ...(liveSignalContext ? { report_data: { _liveSignalContext: liveSignalContext } } : {}),
+      })
       .select("id")
       .single();
 
@@ -320,7 +377,7 @@ const Live = () => {
 
   const handleValidateSubmit = () => {
     if (validateDialog.idea.trim()) {
-      analyzeIdea(validateDialog.idea.trim());
+      analyzeIdea(validateDialog.idea.trim(), validateDialog.liveSignalContext);
       setValidateDialog({ open: false, idea: "", originalSignal: "" });
     }
   };
@@ -422,24 +479,6 @@ const Live = () => {
               </div>
             )}
 
-            {/* ── Category Filter Bar ── */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-              {activeCategories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                    selectedCategory === cat
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
             {/* ── Breakout Opportunity of the Day ── */}
             {loadingData ? (
               <BreakoutSkeleton />
@@ -502,6 +541,188 @@ const Live = () => {
                 </CardContent>
               </Card>
             ) : null}
+
+            {/* ── Sleeping Giants ── */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🌑</span>
+                <h3 className="font-heading text-lg font-bold text-foreground">Sleeping Giants</h3>
+                <Badge variant="secondary" className="text-[11px]">Accelerating before they explode</Badge>
+              </div>
+              {loadingData ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-2">
+                      <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                      <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                      <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : sleepingGiants.length === 0 ? (
+                <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center">
+                  <p className="text-sm text-muted-foreground">No sleeping giants detected yet — check back after a few refresh cycles.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {sleepingGiants.slice(0, 3).map((giant, i) => {
+                    const label = giant.keyword || giant.name || giant.title || "Signal";
+                    const sources: string[] = giant._mergedSources || [giant._source];
+                    return (
+                      <div key={i} className="p-4 rounded-xl bg-gradient-to-br from-amber-500/8 to-background border border-amber-500/25 hover:border-amber-500/50 transition-colors group flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-heading font-bold text-foreground text-sm leading-tight flex-1">{label}</p>
+                          <div className="text-right shrink-0">
+                            <div className="font-heading text-lg font-bold text-foreground">{giant._signalScore}</div>
+                            <div className="text-[10px] text-muted-foreground">/100</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {giant._accelerationSlope != null && (
+                            <span className="inline-flex items-center gap-0.5 text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                              <ArrowUpRight className="w-3 h-3" /> +{giant._accelerationSlope} slope
+                            </span>
+                          )}
+                          {giant._estimatedBreakout && (
+                            <Badge className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 px-1.5 py-0">
+                              Breakout: {giant._estimatedBreakout}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {sources.slice(0, 3).map((src: string, j: number) => (
+                            <span key={j} className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5">
+                              {SOURCE_ICONS[src] || null} {SOURCE_LABELS[src] || src}
+                            </span>
+                          ))}
+                        </div>
+                        {giant._opportunityGap && (
+                          <p className="text-[11px] text-muted-foreground leading-snug border-l-2 border-amber-500/40 pl-2">
+                            {giant._opportunityGap}
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 w-full mt-auto border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/60 transition-colors"
+                          onClick={() => openValidateDialog(
+                            giant._suggestedIdea || `Build for: ${label}`,
+                            label,
+                            { opportunityGap: giant._opportunityGap, whyNow: giant._whyNow, category: giant._category, sources, signalScore: giant._signalScore }
+                          )}
+                        >
+                          <Zap className="w-3 h-3 mr-1" /> Deep Dive
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── Category Filter Bar ── */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+              {activeCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    selectedCategory === cat
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Themed Sections ── */}
+            {themedSectionSignals.map(section => (
+              <Card key={section.id} className={`border ${section.borderClass} bg-gradient-to-br ${section.bgFrom} to-background shadow-sm`}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div>
+                      <h3 className={`font-heading text-base font-bold ${section.colorClass} mb-0.5`}>{section.label}</h3>
+                      <p className="text-xs text-muted-foreground">{section.subtitle}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                      {(section.sources as readonly string[]).map(src => (
+                        <span key={src} className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                          {SOURCE_ICONS[src] || null} {SOURCE_LABELS[src] || src}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {section.signals.length === 0 ? (
+                    loadingData ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                            <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                            <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                            <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">No signals detected yet in this category.</p>
+                    )
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {section.signals.map((sig, i) => {
+                        const label = sig.keyword || sig.name || sig.title || sig.problemSummary || "Signal";
+                        const sigSources: string[] = sig._mergedSources || [sig._source];
+                        return (
+                          <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/20 transition-colors group flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-medium text-foreground text-sm leading-snug flex-1">{label}</p>
+                              <div className="text-right shrink-0">
+                                <div className="font-heading text-base font-bold text-foreground">{sig._signalScore}</div>
+                                <div className="text-[10px] text-muted-foreground">/100</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {sig._momentum && (
+                                <Badge className={`text-[10px] px-1.5 py-0 ${
+                                  sig._momentum === "Exploding" ? "bg-destructive/15 text-destructive border-destructive/20" :
+                                  sig._momentum === "Rising" ? "bg-success/15 text-green-600 border-success/20" :
+                                  "bg-muted text-muted-foreground"
+                                }`}>{sig._momentum}</Badge>
+                              )}
+                              <VelocityDelta delta={sig._velocityDelta} />
+                              {sigSources.length > 1 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {sigSources.length} sources
+                                </span>
+                              )}
+                            </div>
+                            {sig._opportunityGap && (
+                              <p className="text-[11px] text-muted-foreground leading-snug border-l-2 border-primary/30 pl-2">
+                                {sig._opportunityGap}
+                              </p>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 w-full mt-auto group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                              onClick={() => openValidateDialog(
+                                sig._suggestedIdea || `Build for: ${label}`,
+                                label,
+                                { opportunityGap: sig._opportunityGap, whyNow: sig._whyNow, category: sig._category, sources: sigSources, signalScore: sig._signalScore }
+                              )}
+                            >
+                              <Target className="w-3 h-3 mr-1" /> Deep Dive
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
 
             {/* ── Market Gaps ── */}
             {loadingData ? (
@@ -567,118 +788,16 @@ const Live = () => {
               </Card>
             ) : null}
 
-            {/* ── Enriched Opportunity Feed ── */}
-            {filteredOpportunities.length > 0 && (
-              <Collapsible open={expandedSources.has("enriched")} onOpenChange={() => toggleSource("enriched")}>
-                <Card className="shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full">
-                      <CardTitle className="flex items-center gap-2 text-base font-heading">
-                        <Sparkles className="w-5 h-5 text-primary" />
-                        Opportunity Feed
-                        <Badge variant="secondary" className="text-[11px]">{filteredOpportunities.length} signals</Badge>
-                      </CardTitle>
-                      {expandedSources.has("enriched") ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                    </CollapsibleTrigger>
-                  </CardHeader>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        {filteredOpportunities.map((opp, i) => {
-                          const label = getSignalLabel(opp);
-                          const hasInsight = !!opp._opportunityGap;
-                          return (
-                            <div key={i} className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/20 transition-colors">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  {/* Source + Category + Reliability */}
-                                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
-                                      {SOURCE_ICONS[opp._source] || null}
-                                      {SOURCE_LABELS[opp._source] || opp._source}
-                                    </span>
-                                    <ReliabilityBadge reliability={opp._reliability || DEFAULT_SOURCE_RELIABILITY[opp._source]} />
-                                    {opp._category && opp._category !== "Other" && (
-                                      <Badge variant="secondary" className="text-[11px]">{opp._category}</Badge>
-                                    )}
-                                    <SignalBadge score={opp._signalScore} confidence={opp._confidence} />
-                                    {opp._momentum && (
-                                      <Badge className={`text-[11px] px-1.5 py-0 ${
-                                        opp._momentum === "Exploding" ? "bg-destructive/15 text-destructive border-destructive/20" :
-                                        opp._momentum === "Rising" ? "bg-success/15 text-green-600 border-success/20" :
-                                        "bg-muted text-muted-foreground"
-                                      }`}>{opp._momentum}</Badge>
-                                    )}
-                                    <VelocityDelta delta={opp._velocityDelta} />
-                                  </div>
-
-                                  {/* Signal name */}
-                                  <p className="font-medium text-foreground text-sm mb-1">
-                                    📡 {label}
-                                  </p>
-
-                                  {/* Opportunity gap insight */}
-                                  {hasInsight && (
-                                    <div className="mt-2 pl-3 border-l-2 border-primary/30">
-                                      <p className="text-xs text-foreground/80 leading-relaxed">
-                                        <span className="font-semibold text-primary">Gap:</span> {opp._opportunityGap}
-                                      </p>
-                                      {opp._whyNow && (
-                                        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                                          <Zap className="w-3 h-3 text-yellow-500" /> {opp._whyNow}
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* CTA */}
-                                <div className="shrink-0 flex flex-col items-end gap-2">
-                                  <div className="text-right">
-                                    <div className="font-heading text-lg font-bold text-foreground">{opp._signalScore}</div>
-                                    <div className="text-[11px] text-muted-foreground">/100</div>
-                                  </div>
-                                  {opp._suggestedIdea ? (
-                                    <Button
-                                      size="sm"
-                                      className="text-xs h-7 px-2.5"
-                                      onClick={() => openValidateDialog(opp._suggestedIdea!, label)}
-                                    >
-                                      <Target className="w-3 h-3 mr-1" /> Validate
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-xs h-7 px-2.5"
-                                      onClick={() => openValidateDialog(
-                                        `Build a better alternative for: ${label}`,
-                                        label
-                                      )}
-                                    >
-                                      <Target className="w-3 h-3 mr-1" /> Validate
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            )}
-
-            {/* ── Raw Signal Sources (collapsible) ── */}
-            <h3 className="font-heading text-lg font-bold text-foreground flex items-center gap-2 mt-4">
-              <Eye className="w-5 h-5 text-muted-foreground" />
-              Raw Signal Sources
-              <span className="text-xs font-normal text-muted-foreground">(tap to expand)</span>
-            </h3>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* ── Explore Raw Sources (collapsed by default) ── */}
+            <Collapsible open={expandedSources.has("raw_sources")} onOpenChange={() => toggleSource("raw_sources")}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 text-muted-foreground hover:text-foreground transition-colors">
+                <Eye className="w-4 h-4" />
+                <span className="text-sm font-medium">Explore Raw Sources</span>
+                <Badge variant="secondary" className="text-[11px]">9 feeds</Badge>
+                <span className="ml-auto">{expandedSources.has("raw_sources") ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
               {/* Trending Searches */}
               <CollapsibleSourceCard
                 icon={<TrendingUp className="w-5 h-5 text-green-500" />}
@@ -858,7 +977,9 @@ const Live = () => {
                   </div>
                 )}
               </CollapsibleSourceCard>
-            </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
       </main>

@@ -168,6 +168,86 @@ function addSignalMeta(items: any[], source: string, opts: {
 const MIN_SIGNAL_SCORE = 10;
 const MAX_SNAPSHOTS_PER_SECTION = 3;
 
+// Sleeping Giant: weighted by data reliability (all 9 sources eligible)
+const SLEEPING_GIANT_SOURCE_WEIGHTS: Record<string, number> = {
+  github_trending:    15,
+  reddit_pain_points: 15,
+  hacker_news:        15,
+  product_hunt:       15,
+  twitter_buzz:       15,
+  app_store_trends:   10,
+  google_search:      10,
+  trending_searches:   5,
+  growing_niches:      5,
+};
+
+function detectSleepingGiants(
+  signals: any[],
+  prevScores: Record<string, number>,
+  olderScores: Record<string, number>
+): any[] {
+  const giants: any[] = [];
+
+  for (const sig of signals) {
+    const key = (sig.keyword || sig.name || sig.title || "").toLowerCase().trim();
+    if (!key) continue;
+
+    const current = sig._signalScore ?? 0;
+    const prev = prevScores[key];
+    const older = olderScores[key];
+
+    // Need at least one previous snapshot to detect acceleration
+    if (prev === undefined) continue;
+
+    const delta1 = current - prev;
+    let slope = delta1;
+
+    if (older !== undefined) {
+      const delta2 = prev - older;
+      slope = (delta1 + delta2) / 2;
+      // Must be rising now (not a one-time spike that's already correcting)
+      if (delta1 <= 0) continue;
+    }
+
+    // Core criteria
+    if (current < 25 || current > 60) continue; // not yet mainstream
+    if (slope < 8) continue;                      // must be accelerating
+    if (sig._confidence === "Low") continue;
+    if (!sig._opportunityGap) continue;
+
+    // Cross-source validation: 2+ sources required
+    const mergedSources: string[] = sig._mergedSources || [sig._source];
+    if (mergedSources.length < 2) continue;
+
+    const sourcePoints = mergedSources.reduce(
+      (sum: number, src: string) => sum + (SLEEPING_GIANT_SOURCE_WEIGHTS[src] ?? 5), 0
+    );
+
+    const giantScore =
+      slope * 0.40 +
+      sourcePoints * 0.30 +
+      (100 - current) * 0.15 +
+      (sig._recency ?? 50) * 0.15;
+
+    const estimatedBreakout =
+      slope >= 20 ? "1–2 weeks" :
+      slope >= 12 ? "2–4 weeks" :
+                   "4–8 weeks";
+
+    giants.push({
+      ...sig,
+      _sleepingGiantScore: Math.round(giantScore),
+      _accelerationSlope: Math.round(slope),
+      _estimatedBreakout: estimatedBreakout,
+      _mergedSources: mergedSources,
+    });
+  }
+
+  return giants
+    .sort((a: any, b: any) => b._sleepingGiantScore - a._sleepingGiantScore)
+    .slice(0, 5);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -181,20 +261,26 @@ Deno.serve(async (req) => {
   const { section } = await req.json().catch(() => ({ section: "all" }));
   const results: Record<string, unknown> = {};
 
-  // Load previous scores for velocity delta calculation
+  // Load previous scores for velocity delta + sleeping giant slope calculation
   let previousScores: Record<string, number> = {};
+  let olderScores: Record<string, number> = {};
   try {
-    const { data: prevSnapshot } = await supabase
+    const { data: prevSnapshots } = await supabase
       .from("live_feed_snapshots")
       .select("data_payload")
       .eq("section_name", "enriched_opportunities")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    if (prevSnapshot?.data_payload && Array.isArray(prevSnapshot.data_payload)) {
-      for (const sig of prevSnapshot.data_payload as any[]) {
+      .limit(2);
+    if (prevSnapshots && prevSnapshots.length > 0 && Array.isArray(prevSnapshots[0].data_payload)) {
+      for (const sig of prevSnapshots[0].data_payload as any[]) {
         const key = (sig.keyword || sig.name || sig.title || "").toLowerCase().trim();
         if (key) previousScores[key] = sig._signalScore ?? 0;
+      }
+    }
+    if (prevSnapshots && prevSnapshots.length > 1 && Array.isArray(prevSnapshots[1].data_payload)) {
+      for (const sig of prevSnapshots[1].data_payload as any[]) {
+        const key = (sig.keyword || sig.name || sig.title || "").toLowerCase().trim();
+        if (key) olderScores[key] = sig._signalScore ?? 0;
       }
     }
   } catch { /* no previous data, that's fine */ }
@@ -706,6 +792,16 @@ Return ONLY a valid JSON array.`;
 
     if (mergedSignals.length > 0) {
       await saveSnapshot(supabase, "enriched_opportunities", mergedSignals.slice(0, 12));
+    }
+
+    // ── Sleeping Giants Detection ──
+    if (section === "all") {
+      const sleepingGiants = detectSleepingGiants(mergedSignals, previousScores, olderScores);
+      if (sleepingGiants.length > 0) {
+        await saveSnapshot(supabase, "sleeping_giants", sleepingGiants);
+        results.sleeping_giants = sleepingGiants;
+        console.log(`Detected ${sleepingGiants.length} sleeping giants`);
+      }
     }
 
     // ── Breakout Idea of the Day ──

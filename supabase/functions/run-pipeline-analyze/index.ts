@@ -69,6 +69,14 @@ Deno.serve(async (req) => {
       throw new Error("raw_data not found — Phase 1 may have failed");
     }
 
+    const liveSignalContext = (analysisRow.report_data as any)?._liveSignalContext as {
+      opportunityGap?: string;
+      whyNow?: string;
+      category?: string;
+      sources?: string[];
+      signalScore?: number;
+    } | undefined;
+
     const idea = analysisRow.idea;
     const pipelineUserId = analysisRow.user_id;
 
@@ -194,7 +202,17 @@ You MUST:
       console.warn(`[PERPLEXITY DOMINANCE] Only ${tier1SourcesWithData} Tier 1 sources vs ${perplexitySourcesWithData} Perplexity sources. Injecting dominance warning.`);
     }
 
-    const fullContext = evidenceContext + perplexityDominanceWarning;
+    const liveContextBlock = liveSignalContext ? `
+=== LIVE MARKET SIGNAL CONTEXT ===
+This idea was surfaced from the Gold Rush live feed based on real-time cross-source signal detection. Treat this as additional pre-validated evidence — weight it alongside (not above) the evidence block below.
+- Market Opportunity Gap: ${liveSignalContext.opportunityGap || "N/A"}
+- Why Now: ${liveSignalContext.whyNow || "N/A"}
+- Category: ${liveSignalContext.category || "N/A"}
+- Detected In: ${(liveSignalContext.sources || []).join(", ") || "N/A"}
+- Live Signal Score: ${liveSignalContext.signalScore ?? "N/A"}/100
+` : "";
+
+    const fullContext = evidenceContext + perplexityDominanceWarning + liveContextBlock;
 
     // Unique source URLs for the report
     const uniqueSources = [...new Set(rawData.sources.map((s: any) => s.url).filter(Boolean))];
