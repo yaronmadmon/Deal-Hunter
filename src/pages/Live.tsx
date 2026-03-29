@@ -11,6 +11,7 @@ import {
   CheckCircle2, Bot, Globe, ArrowUpRight, ArrowDownRight, Minus, Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -109,6 +110,7 @@ const THEME_SECTIONS = [
 const Live = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { isAdmin } = useAdmin();
   const [credits, setCredits] = useState<number>(0);
   const [isPro, setIsPro] = useState(false);
 
@@ -143,6 +145,10 @@ const Live = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    if (isAdmin) setIsPro(true);
+  }, [isAdmin]);
+
+  useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
@@ -152,10 +158,10 @@ const Live = () => {
       .then(({ data }) => {
         if (data) {
           setCredits(data.credits);
-          setIsPro(data.credits >= 3);
+          setIsPro(isAdmin || data.credits >= 3);
         }
       });
-  }, [user]);
+  }, [user, isAdmin]);
 
   const loadCachedData = useCallback(async () => {
     const { data } = await supabase
