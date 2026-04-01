@@ -1638,8 +1638,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     const firecrawlPromises: Promise<void>[] = [];
 
     if (firecrawlKey) {
-      // Use semantic queries for better app store discovery
-      const firecrawlQuery = semanticQueries.length > 1 ? semanticQueries[0] : sanitizedIdea;
+      // Use niche query (index 2) for specificity over broad category (index 0) (Fix 12)
+      const firecrawlQuery = semanticQueries.length > 2 ? semanticQueries[2] : (semanticQueries.length > 0 ? semanticQueries[0] : sanitizedIdea);
       firecrawlPromises.push(
         trackSource("firecrawl_appstore", async () => {
           const r = await firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 20);

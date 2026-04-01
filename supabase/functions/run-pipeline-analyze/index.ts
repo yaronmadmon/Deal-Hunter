@@ -499,8 +499,9 @@ Produce the JSON report with this EXACT structure:
   "recommendedStrategy": {"positioning": "specific", "suggestedPricing": "with reasoning", "differentiators": ["4-6 items"], "primaryTarget": "ONE segment and why", "channels": ["3-5 real channels"], "confidence": "Medium"},
   
   "marketExploitMap": {"competitorWeaknesses": ["4-6 concrete weaknesses"], "competitorStrengths": ["3-5 honest strengths"], "topComplaints": [{"complaint": "specific", "frequency": "High/Medium/Low"}], "topPraise": [{"praise": "specific", "frequency": "High/Medium/Low"}], "whereToWin": ["4-6 opportunities"], "attackAngle": "1-2 sentence positioning", "confidence": "High/Medium/Low"},
-  "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "name", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong/Medium/Weak/No", "Pricing": "Strong/Medium/Weak/No", "FILL ALL features with realistic assessments based on the idea's strengths": ""}}], "confidence": "Medium"},
-  "founderDecision": {"decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold", "whyFactors": ["3-5 data-backed reasons"], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
+  "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "Competitor 1", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 2", "classification": "direct", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 3", "classification": "adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong/Medium/Weak/No", "Pricing": "Strong/Medium/Weak/No", "FILL ALL features with realistic assessments based on the idea's strengths": ""}}], "confidence": "Medium"},
+COMPETITOR MATRIX RULE: You MUST include ALL competitors found in the VALIDATED COMPETITORS section of the evidence block above. Do NOT reduce to 1 competitor — the matrix must show the full competitive landscape. Minimum 3 non-"Your Idea" rows. If the evidence shows 5 competitors, list all 5. Missing a validated competitor is an error.
+  "founderDecision": {"decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold", "whyFactors": ["FORMAT REQUIRED: '[specific user behavior or pain] — [what this means for the opportunity]'. EXAMPLE: 'Pet owners cannot find verified walkers on short notice — existing apps lack real-time availability, creating a clear trust and reliability gap to exploit'. DO NOT write: High demand for X / Strong interest in X / X indicates demand / Positive sentiment towards X. These passive labels will be REJECTED."], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
   "killShotAnalysis": {"risks": [{"risk": "specific risk referencing data", "severity": "High/Medium/Low", "mitigation": "one sentence — how to survive it"}], "riskLevel": "Low/Medium/High", "interpretation": "2-3 sentences — manageable or deal-breakers? Reference data.", "confidence": "Medium"},
   "scoreExplanationData": {"summary": "1-2 sentences", "factors": [{"category": "Demand Strength", "explanation": "narrative must match score"}, {"category": "Competition Density", "explanation": "string"}, {"category": "User Sentiment", "explanation": "string"}, {"category": "Market Growth", "explanation": "string"}, {"category": "Opportunity Gap", "explanation": "if <=10, explain weakness clearly"}], "confidence": "Medium"},
   "founderInsight": {
@@ -525,7 +526,7 @@ You MUST include a "scoreBreakdown" field in your JSON. This is the ONLY place s
 
 SCORING RULES (mandatory):
 - Trend Momentum (max 25): 0-5 = no demand signals; 6-12 = weak/thin signals; 13-19 = moderate demand evidence; 20-25 = strong verified search demand.
-- Market Saturation (max 20): INVERTED — 0-5 = extremely crowded (bad); 6-12 = saturated but gaps exist; 13-19 = moderate competition; 20 = blue ocean with little competition.
+- Market Saturation (max 20): INVERTED — 0-5 = extremely crowded (bad); 6-12 = saturated but gaps exist; 13-19 = moderate competition; 20 = blue ocean with little competition. COMPETITOR COUNT OVERRIDE: If the evidence block shows 5+ validated competitors, Market Saturation CANNOT exceed 12. If 3–4 validated competitors, maximum is 15. Only ≤2 validated competitors may score 16+. This overrides the general range above.
 - Sentiment (max 20): 0-5 = no sentiment data; 6-10 = mixed/negative; 11-15 = mostly positive with pain points; 16-20 = strong validated pain with clear demand.
 - Growth (max 15): 0-3 = no growth signals; 4-7 = some PH/GitHub activity; 8-11 = clear growth indicators; 12-15 = multiple strong growth signals.
 - Opportunity (max 20): 0-5 = no gaps found; 6-10 = minor gaps; 11-15 = clear underserved segments; 16-20 = strong unmet demand with weak competition.
@@ -555,6 +556,18 @@ REVIEW INTELLIGENCE INSTRUCTIONS:
 - Surface top 3 attack angles from the highest-opportunity clusters.
 - matrixData: Assign each theme a frequency (0-100 scale) and intensity (0-100 emotional intensity scale). Quadrants: frequency>=50 & intensity>=50 = "Critical Pain", frequency>=50 & intensity<50 = "Minor Annoyance", frequency<50 & intensity>=50 = "Hidden Gem", frequency<50 & intensity<50 = "Loved Feature".
 - differentiationStatements: Generate 3 specific positioning statements the founder can use, e.g. "Position as the only X that solves Y" or "Own the Z dimension where [competitor] scores lowest".
+
+WHYFACTORS FORMAT RULE (mandatory):
+Each whyFactors item MUST follow this format: "[human behavior or pain] — [what this means for the opportunity]"
+PROHIBITED phrasing (these are lazy labels, not insights):
+  ✗ "High demand for X"
+  ✗ "Strong interest in X"
+  ✗ "X indicates demand"
+  ✗ "Positive sentiment towards X"
+REQUIRED phrasing (explains WHY humans behave this way):
+  ✓ "Users accumulate notes they never revisit — they want synthesis and outputs, not storage, which no existing tool delivers"
+  ✓ "Pet owners struggle to find trustworthy walkers on short notice — existing platforms lack real-time availability and identity verification"
+  ✓ "Developers cite integration complexity as the primary reason they abandon tools after trial — simpler APIs would directly convert this intent into revenue"
 
 CRITICAL REMINDERS:
 - If evidence does not exist for a section, set dataSource to "ai_estimated", dataTier to "estimated", sourceUrl to null, signalNote to "Insufficient data — no evidence collected for this metric."
@@ -765,6 +778,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // Store AI raw score AFTER scoreBreakdown sum is computed (AI no longer generates overallScore)
         reportData._aiRawScore = reportData.overallScore || 0;
 
+        // Enforce Market Saturation cap based on validated competitor count (Fix 9)
+        if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
+          const competitorCount = (rawData.validatedCompetitors || []).length;
+          const satEntry = reportData.scoreBreakdown.find((b: any) => b.label === "Market Saturation");
+          if (satEntry && competitorCount > 0) {
+            const maxAllowed = competitorCount >= 5 ? 12 : competitorCount >= 3 ? 15 : 20;
+            if (satEntry.value > maxAllowed) {
+              console.warn(`[SATURATION CAP] Market Saturation ${satEntry.value} → ${maxAllowed} (${competitorCount} validated competitors)`);
+              satEntry.value = maxAllowed;
+              reportData.overallScore = reportData.scoreBreakdown.reduce((s: number, c: any) => s + (Number(c.value) || 0), 0);
+            }
+          }
+        }
+
         // 2. Enforce verdict thresholds deterministically
         {
           const finalScore = reportData.overallScore || 0;
@@ -777,6 +804,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             console.warn(`[SIGNAL VALIDATION] signalStrength "${reportData.signalStrength}" doesn't match score ${finalScore}. Correcting to "${correctStrength}".`);
           }
           applyVerdictToReport(reportData);
+
+          // Cap signalStrength when both primary scraping sources returned nothing (Fix 3)
+          const _appstoreEmpty = ((pipelineMetrics as any)?.firecrawl_appstore?.signalCount ?? 1) === 0;
+          const _redditEmpty = ((pipelineMetrics as any)?.firecrawl_reddit?.signalCount ?? 1) === 0;
+          if (_appstoreEmpty && _redditEmpty && reportData.signalStrength === "Strong") {
+            reportData.signalStrength = "Moderate";
+            console.warn(`[SIGNAL CAP] Strong → Moderate: both firecrawl_appstore and firecrawl_reddit returned 0 signals`);
+          }
         }
 
         // 3. Demand Override Rule — code-level enforcement
@@ -1371,6 +1406,35 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
           // No penalty applied — complexity is advisory only
           reportData.buildComplexity.scorePenalty = 0;
+        } else {
+          // AI didn't generate buildComplexity — construct from heuristics (Fix 10)
+          const githubScore = (rawData.githubComplexityScore?.score ?? rawData.github?.complexityScore) || 3;
+          const ideaLower = idea.toLowerCase();
+          let score = Number(githubScore) || 3;
+          const factors: string[] = [];
+
+          if (/\b(ocr|handwriting|multimodal|computer.?vision)\b/.test(ideaLower)) { score = Math.max(score, 6); factors.push("Computer vision / OCR pipeline"); }
+          if (/\b(ai|machine.?learning|llm|gpt|claude|neural)\b/.test(ideaLower)) { score = Math.max(score, 5); factors.push("AI model integration"); }
+          if (/\b(real.?time|live|streaming)\b/.test(ideaLower)) { score = Math.max(score, 5); factors.push("Real-time data processing"); }
+          if (/\b(voice|speech|audio|transcri)\b/.test(ideaLower)) { score = Math.max(score, 5); factors.push("Voice/audio processing"); }
+          if (/\b(gis|map|geo|spatial|network.plann)\b/.test(ideaLower)) { score = Math.max(score, 6); factors.push("Geospatial / network planning"); }
+          if (/\b(hipaa|pci|gdpr|compliance|healthcare|medical|fintech)\b/.test(ideaLower)) { score = Math.max(score, 7); factors.push("Regulatory / compliance requirements"); }
+          if (/\b(marketplace|two.sided|driver|rider|buyer|seller)\b/.test(ideaLower)) { score = Math.max(score, 6); factors.push("Two-sided marketplace dynamics"); }
+
+          const tier = score <= 3 ? "Easy" : score <= 6 ? "Moderate" : score <= 8 ? "Hard" : "Do Not Attempt";
+          const costMap: Record<string, string> = { Easy: "$500–$2,000", Moderate: "$2,000–$10,000", Hard: "$10,000–$50,000", "Do Not Attempt": "$50,000–$200,000" };
+          const timeMap: Record<string, string> = { Easy: "1–3 weeks", Moderate: "3–8 weeks", Hard: "6–16 weeks", "Do Not Attempt": "12–24+ weeks" };
+
+          reportData.buildComplexity = {
+            complexityScore: score,
+            vibeCoderFeasibility: tier,
+            complexityFactors: factors.length > 0 ? factors : ["Standard CRUD with API integrations"],
+            mvpTimeline: timeMap[tier],
+            estimatedCost: costMap[tier],
+            scorePenalty: 0,
+            _source: "programmatic_fallback",
+          };
+          console.warn(`[BUILD COMPLEXITY FALLBACK] AI didn't generate buildComplexity — constructed from heuristics: score=${score}/10 (${tier})`);
         }
 
         const scoreAfterComplexity = reportData.overallScore || 0;
@@ -1695,6 +1759,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           (card.competitors || []).forEach((c: any, ci2: number) => downgradeIfMissingUrl(c, `signalCards[${ci}].competitors[${ci2}]`));
         });
 
+        // ── Strip simulated chart data from signalCards ──
+        // sparkline and lineChart are ALWAYS AI-generated (simulated). Real data is in googleTrendsSparkline.
+        // Always delete them so "Simulated trend (illustrative only)" label never appears.
+        for (const card of reportData.signalCards || []) {
+          delete card.sparkline;
+          delete card.lineChart;
+        }
+
         // Scan top-level report sections
         for (const sectionKey of ["unitEconomics", "revenueBenchmark", "nicheAnalysis", "buildComplexity", "appStoreIntelligence", "keywordDemand", "proofDashboard"]) {
           if (reportData[sectionKey]) {
@@ -1879,7 +1951,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           if (m.status === "error" || m.signalCount === 0) {
             const section = sourceToCardMapping[sourceName];
             if (section) {
-              fallbackGaps.push({ section, failedSource: sourceName, status: m.status });
+              // "fallback" = source completed but returned 0 signals; "error"/"timeout" = source failed
+            fallbackGaps.push({ section, failedSource: sourceName, status: m.signalCount === 0 && m.status === "ok" ? "fallback" : m.status });
             }
           }
         }
@@ -1894,10 +1967,19 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
 
           for (const card of (reportData.signalCards || [])) {
-            const gaps = gapsBySection.get(card.title);
-            if (gaps && gaps.length > 0) {
-              card.fallbackWarning = `Primary source(s) unavailable: ${gaps.join(", ")}. Data in this section may be estimated from secondary sources.`;
-              console.log(`[FALLBACK GAP] ${card.title}: ${gaps.join(", ")} returned empty/error`);
+            const cardGaps = fallbackGaps.filter(g => g.section === card.title);
+            if (cardGaps.length > 0) {
+              const names = cardGaps.map(g => g.failedSource.replace(/_/g, " ")).join(", ");
+              const hasFallback = cardGaps.some(g => g.status === "fallback");
+              const hasError = cardGaps.some(g => g.status !== "fallback");
+              if (hasFallback && !hasError) {
+                card.fallbackWarning = `Primary source(s) returned no data (${names}). This section relies on estimated signals from secondary sources only.`;
+              } else if (!hasFallback && hasError) {
+                card.fallbackWarning = `Primary source(s) unavailable (${names}). Data in this section may be incomplete.`;
+              } else {
+                card.fallbackWarning = `Some primary sources failed or returned no data (${names}). This section may rely on estimated signals.`;
+              }
+              console.log(`[FALLBACK GAP] ${card.title}: ${names} → ${cardGaps.map(g => g.status).join(", ")}`);
             }
           }
 
@@ -1909,6 +1991,35 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         console.log(`[VALIDATION COMPLETE] Score: ${reportData.overallScore}, Verdict: ${reportData.founderDecision?.decision}, Signal: ${reportData.signalStrength}, Demand signals: ${demandSignalCount}, Pain signals: ${painSignalCount}, Evidence: ${totalEvidence}, Conflicts: ${conflictingSignals.length}, Perplexity%: ${perplexityPct}, FallbackGaps: ${fallbackGaps.length}`);
 
         // Final score and signal strength are read from reportData at save time (lines 4026-4027)
+
+        // ── Filter passive-label whyFactors; keep only behavioral items (Fix 11) ──
+        if (Array.isArray(reportData.founderDecision?.whyFactors)) {
+          const hasDash = (s: string) => s.includes(" — ") || s.includes(" -- ");
+          const isPassive = (f: string): boolean => {
+            const t = f.trim();
+            // Must have the behavioral separator
+            if (!hasDash(t)) return true;
+            // Starts with a passive signal label
+            if (/^(high |strong |positive |significant |growing |increasing |limited |low |there (is|are) |market |existing |potential |developer |user interest|lack of )/i.test(t)) return true;
+            // Ends with a demand label (the "X — indicates demand" pattern)
+            if (/ (demand|interest|indicates|suggests|shows|growth|adoption|activity|feasibility)\.?$/i.test(t)) return true;
+            return false;
+          };
+
+          const behavioral = reportData.founderDecision.whyFactors.filter((f: string) => !isPassive(f));
+          const passive = reportData.founderDecision.whyFactors.filter((f: string) => isPassive(f));
+
+          if (passive.length > 0) {
+            console.warn(`[WHYFACTORS] Removed ${passive.length} passive items: ${passive.join(" | ")}`);
+          }
+          // Keep behavioral items if we have at least 2; otherwise keep all (degraded fallback)
+          if (behavioral.length >= 2) {
+            reportData.founderDecision.whyFactors = behavioral;
+            reportData.founderDecision._whyFactorsQuality = "behavioral";
+          } else {
+            reportData.founderDecision._whyFactorsQuality = passive.length > 0 ? "passive" : "behavioral";
+          }
+        }
 
         // ── Populate githubRepos from rawData if AI didn't return them ──
         if (!reportData.githubRepos || !Array.isArray(reportData.githubRepos) || reportData.githubRepos.length === 0) {
@@ -1932,15 +2043,47 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         // ── Populate userQuotes from rawData if AI didn't return them ──
         if (!reportData.userQuotes || !Array.isArray(reportData.userQuotes) || reportData.userQuotes.length === 0) {
-          const tweets = (rawData.twitterSentiment?.tweets || []).slice(0, 3).map(
-            (t: any) => ({ text: t.text || t.content || "", source: "Twitter", sourceUrl: t.url || t.tweetUrl || null, upvotes: null, platform: "twitter" })
+          // Build keyword set from semantic queries for relevance filtering (Fix 4)
+          // Use length > 5 to exclude generic short words (app, dog, ai, note, tool, etc.)
+          const ideaKeywords = new Set<string>(
+            (rawData.semanticQueries || [idea]).flatMap((q: string) =>
+              q.toLowerCase().split(/\s+/).filter((w: string) => w.length > 5)
+            )
           );
+          const isRelevant = (text: string): boolean => {
+            const lower = text.toLowerCase();
+            const matches = Array.from(ideaKeywords).filter(kw => lower.includes(kw)).length;
+            // Require 2+ keyword matches to avoid single-word coincidences (e.g. "dog" in unrelated sports commentary)
+            return matches >= 2;
+          };
+
+          // Dedup + relevance-filter tweets; build URL from tweet ID (Fixes 4, 6, 7)
+          const seenTweetIds = new Set<string>();
+          const tweets = (rawData.twitterSentiment?.tweets || [])
+            .filter((t: any) => {
+              const text = t.text || t.content || "";
+              if (!text || text.length < 50) return false; // too short to be meaningful
+              if (text.trim().startsWith("@")) return false; // @-replies are usually off-topic context
+              if (t.id && seenTweetIds.has(t.id)) return false;
+              if (t.id) seenTweetIds.add(t.id);
+              return isRelevant(text);
+            })
+            .slice(0, 3)
+            .map((t: any) => ({
+              text: t.text || t.content || "",
+              source: "Twitter",
+              sourceUrl: t.url || t.tweetUrl || (t.id ? `https://x.com/i/web/status/${t.id}` : null),
+              upvotes: null,
+              platform: "twitter",
+            }));
+
+          // Reddit: prefer snippet/body text over title (Fix 5)
           const redditPosts = (rawData.firecrawlReddit?.results || rawData.serperReddit?.organic || []).slice(0, 3).map(
-            (r: any) => ({ text: r.title || r.snippet || r.text || "", source: "Reddit", sourceUrl: r.url || r.link || null, upvotes: r.upvotes || null, platform: "reddit" })
+            (r: any) => ({ text: r.snippet || r.text || r.title || "", source: "Reddit", sourceUrl: r.url || r.link || null, upvotes: r.upvotes || null, platform: "reddit" })
           );
           reportData.userQuotes = [...tweets, ...redditPosts].slice(0, 5);
           if (reportData.userQuotes.length > 0) {
-            console.log(`[FIELD POPULATION] userQuotes: populated ${reportData.userQuotes.length} quotes from rawData`);
+            console.log(`[FIELD POPULATION] userQuotes: populated ${reportData.userQuotes.length} quotes from rawData (${tweets.length} tweets, ${redditPosts.length} reddit)`);
           }
         }
 
@@ -2043,11 +2186,15 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
         if (!reportData.appStoreIntelligence) {
           const apps = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
+          const appstoreSignalCount = (pipelineMetrics as any)?.firecrawl_appstore?.signalCount ?? 1;
+          const appstoreEmpty = appstoreSignalCount === 0;
           reportData.appStoreIntelligence = {
             apps: apps.slice(0, 5).map((c: any) => ({ name: c.name, platform: "Both", rating: c.rating || "N/A", reviews: c.reviews || "N/A", downloads: c.downloads || "N/A", url: c.sourceUrl || null })),
-            insight: "Based on competitor data collected during analysis.",
-            confidence: apps.length > 0 ? "Medium" : "Low",
-            source: "Firecrawl + Perplexity Sonar",
+            insight: appstoreEmpty
+              ? "App Store scraping returned no results — data is estimated from Perplexity search signals."
+              : "Based on competitor data collected during analysis.",
+            confidence: appstoreEmpty ? "Low" : (apps.length > 0 ? "Medium" : "Low"),
+            source: appstoreEmpty ? "Perplexity Sonar (estimated)" : "Firecrawl + Perplexity Sonar",
           };
         }
         if (!reportData.recommendedStrategy) {
@@ -2074,14 +2221,15 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           };
         }
         if (!reportData.competitorMatrix) {
-          const competitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
+          const rawCompetitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
+          const cleanCompetitors = rawCompetitors.filter((c: any) => isUsableCompetitorName(c.name));
           const features = ["Pricing", "UX Quality", "Feature Depth", "Market Presence"];
           reportData.competitorMatrix = {
             _fallback: true,
             _fallbackWarning: "Insufficient competitor data — manual review required.",
             features,
             competitors: [
-              ...competitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, null])) })),
+              ...cleanCompetitors.slice(0, 3).map((c: any) => ({ name: c.name, isYou: false, scores: Object.fromEntries(features.map(f => [f, null])) })),
               { name: "Your Idea", isYou: true, scores: Object.fromEntries(features.map(f => [f, null])) },
             ],
             confidence: "Low",
@@ -2094,6 +2242,46 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             yourIdea.scores = Object.fromEntries(
               reportData.competitorMatrix.features.map((f: string) => [f, "Medium"])
             );
+          }
+        }
+
+        // Inject missing validated competitors into competitorMatrix (Fix 8)
+        // Clean bad competitor names before injecting (article titles, repo slugs, etc.)
+        const isUsableCompetitorName = (name: string): boolean => {
+          if (!name || name.length < 2 || name.length > 60) return false;
+          // Article/list-page titles
+          if (/^(the \d+|top \d+|best \d+|\d+ best|resources? for|how to|what is|guide to|alternatives? to|vs\.?\s|\d+ apps?)/i.test(name)) return false;
+          // GitHub repo slug pattern: all lowercase with hyphens, no spaces
+          if (/^[a-z][a-z0-9-]+$/.test(name) && name.includes("-") && !name.includes(" ")) return false;
+          // Generic placeholder names
+          if (/^competitor \d+$/i.test(name)) return false;
+          return true;
+        };
+
+        if (reportData.competitorMatrix?.competitors && Array.isArray(reportData.competitorMatrix.competitors) && !reportData.competitorMatrix._fallback) {
+          // Remove bad names already in the matrix
+          reportData.competitorMatrix.competitors = (reportData.competitorMatrix.competitors as any[]).filter(
+            c => c.isYou || isUsableCompetitorName(c.name)
+          );
+
+          const matrixNames = new Set<string>(
+            (reportData.competitorMatrix.competitors as any[])
+              .filter(c => !c.isYou)
+              .map(c => (c.name || "").toLowerCase())
+          );
+          const validatedCompetitors: any[] = rawData.validatedCompetitors || [];
+          const missing = validatedCompetitors.filter(c => c.name && isUsableCompetitorName(c.name) && !matrixNames.has(c.name.toLowerCase()));
+          if (missing.length > 0) {
+            const features = reportData.competitorMatrix.features as string[];
+            for (const comp of missing.slice(0, 5)) {
+              reportData.competitorMatrix.competitors.unshift({
+                name: comp.name,
+                classification: comp.type || "direct",
+                isYou: false,
+                scores: Object.fromEntries(features.map(f => [f, "Medium"])),
+              });
+            }
+            console.log(`[COMPETITOR MATRIX] Injected ${missing.length} clean competitor(s): ${missing.map((c: any) => c.name).join(", ")}`);
           }
         }
         if (!reportData.founderDecision) {
@@ -2215,6 +2403,16 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     // ── Step 3: Complete ──
     // CRITICAL FIX: Use computed values from reportData, not uninitialized locals
     const finalOverallScore = reportData?.overallScore ?? 0;
+    // Belt-and-suspenders signal strength cap (Fix 3): enforce before DB write
+    {
+      const _srcMap = (reportData?.pipelineMetrics as any)?.sources;
+      const _appEmpty = (_srcMap?.firecrawl_appstore?.signalCount ?? 1) === 0;
+      const _redEmpty = (_srcMap?.firecrawl_reddit?.signalCount ?? 1) === 0;
+      if (_appEmpty && _redEmpty && reportData?.signalStrength === "Strong") {
+        reportData.signalStrength = "Moderate";
+        console.warn(`[SIGNAL CAP FINAL] Strong → Moderate: both firecrawl sources empty (belt-and-suspenders)`);
+      }
+    }
     const finalSignalStrength = reportData?.signalStrength ?? "Weak";
     await supabase.from("analyses").update({
       status: isPartial ? "partial" : "complete",
