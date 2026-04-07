@@ -9,7 +9,7 @@ Gold Rush is a data-driven startup idea validation SaaS. Users submit an idea, t
 - **Backend**: Supabase (PostgreSQL + RLS + Auth + Edge Functions)
 - **Payments**: Stripe (subscriptions + credits)
 - **Email**: Resend API via pgmq queue
-- **Error tracking**: Sentry
+- **Error tracking**: Sentry (wired to `ErrorBoundary.componentDidCatch` — all uncaught React errors are captured)
 - **Deployment**: Vercel (frontend) + Supabase (edge functions)
 
 ## Local Development
@@ -53,7 +53,7 @@ RESEND_API_KEY
 src/
   pages/          # Route pages (Dashboard, Report, Processing, Admin, etc.)
   components/
-    report/       # Report display components (15+ files)
+    report/       # Report display components (14+ files)
     admin/        # Admin dashboard components
     ui/           # shadcn-ui primitives
   hooks/          # useAuth, useAdmin, usePageTracking
@@ -63,7 +63,7 @@ src/
   lib/            # subscriptionTiers, PDF generation, analytics
 supabase/
   config.toml     # verify_jwt = false for all functions
-  functions/      # 18 edge functions
+  functions/      # 18 edge functions (includes run-pipeline compatibility wrapper)
   migrations/     # 20+ DB migrations
 ```
 
@@ -75,14 +75,19 @@ User submits idea
   → start-pipeline        (creates DB record, triggers async)
   → run-pipeline-fetch    (collects market data, ~15-20s)
   → run-pipeline-analyze  (AI report generation, ~60-90s)
-  → status = "complete"
+  → status = "complete" or "partial" (AI truncation fallback)
 ```
 
-Processing page (`/processing/:id`) uses Supabase Realtime to watch `analyses` table for status changes.
+Processing page (`/processing/:id`) uses Supabase Realtime to watch `analyses` table for status changes. Both `"complete"` and `"partial"` statuses navigate to the report page — `"partial"` means the AI was truncated twice and a best-effort report was saved.
+
+**timeout-watchdog** runs every 10 minutes via pg_cron. It marks any analysis stuck in `"fetching"` or `"analyzing"` for >5 minutes as `"failed"`, preventing orphaned rows.
+
+**`_phase1Data` is stripped** from `report_data` before saving to DB. This prevents 50–100KB of raw API responses from bloating the `analyses` table per report.
 
 ### Key pipeline files
 - `supabase/functions/run-pipeline-fetch/index.ts` — **2600+ lines**, the data collection engine
-- `supabase/functions/run-pipeline-analyze/index.ts` — AI scoring and report structure
+- `supabase/functions/run-pipeline-analyze/index.ts` — AI scoring and report structure (~2500 lines)
+- `supabase/functions/timeout-watchdog/index.ts` — marks stuck analyses as failed (scheduled via pg_cron)
 - `src/pages/Processing.tsx` — realtime status UI + 5s fallback re-trigger if pipeline was never started
 
 ### Source timeouts (in run-pipeline-fetch)
