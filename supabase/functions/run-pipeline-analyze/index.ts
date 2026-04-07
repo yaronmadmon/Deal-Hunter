@@ -161,6 +161,14 @@ ${evidenceBlock.technicalSignals.length > 0
   ? evidenceBlock.technicalSignals.map((s: any) => `[${s.tier.toUpperCase()}] ${s.signal}: ${s.value.slice(0, 500)}\n  Source: ${s.source} | URL: ${s.sourceUrl || "none"}`).join("\n")
   : "NO TECHNICAL SIGNALS COLLECTED."}
 
+--- PERPLEXITY COMPETITOR RESEARCH (use to supplement VALIDATED COMPETITORS above) ---
+${rawData.perplexityCompetitors?.content
+  ? `[REPORTED] Perplexity identified these competitors:\n${rawData.perplexityCompetitors.content.slice(0, 1200)}`
+  : "No Perplexity competitor data available."}
+
+--- PERPLEXITY MARKET OVERVIEW ---
+${rawData.perplexityMarket?.content ? rawData.perplexityMarket.content.slice(0, 800) : "No data."}
+
 --- SEARCH QUERIES USED ---
 Primary keywords: "${primaryKeywords}"
 Semantic queries: ${JSON.stringify(semanticQueries)}
@@ -496,11 +504,26 @@ Produce the JSON report with this EXACT structure:
   ],
   "opportunity": {"featureGaps": ["specific gaps"], "underservedUsers": ["who and why"], "positioning": "string", "builderAngle": "one sentence on positioning", "noOpportunityFound": false},
   "revenueBenchmark": {"summary": "string", "range": "string", "basis": "string", "dataSource": "perplexity" or "ai_estimated", "sourceUrls": ["urls"]},
+  "buildComplexity": {
+    "complexityScore": 1-10,
+    "vibeCoderFeasibility": "Easy" or "Moderate" or "Hard" or "Do Not Attempt",
+    "complexityFactors": ["specific factor 1", "specific factor 2"],
+    "mvpTimeline": "e.g. 3-8 weeks",
+    "estimatedCost": "e.g. $2,000-$10,000",
+    "voiceApiCosts": "specific cost or N/A",
+    "onDeviceNote": "specific note or N/A",
+    "mvpScope": ["core feature 1", "core feature 2", "core feature 3"],
+    "techChallenges": ["challenge 1", "challenge 2", "challenge 3"],
+    "buildEstimateComparison": {
+      "traditional": {"timeRange": "e.g. 3-6 months", "costRange": "e.g. $30,000-$80,000", "skillsRequired": ["Backend Engineer", "Frontend Engineer", "DevOps"]},
+      "aiAssisted": {"timeRange": "e.g. 3-8 weeks", "costRange": "e.g. $2,000-$10,000", "skillsRequired": ["AI code generation", "Prompt engineering", "API integration"]}
+    }
+  },
   "recommendedStrategy": {"positioning": "specific", "suggestedPricing": "with reasoning", "differentiators": ["4-6 items"], "primaryTarget": "ONE segment and why", "channels": ["3-5 real channels"], "confidence": "Medium"},
   
   "marketExploitMap": {"competitorWeaknesses": ["4-6 concrete weaknesses"], "competitorStrengths": ["3-5 honest strengths"], "topComplaints": [{"complaint": "specific", "frequency": "High/Medium/Low"}], "topPraise": [{"praise": "specific", "frequency": "High/Medium/Low"}], "whereToWin": ["4-6 opportunities"], "attackAngle": "1-2 sentence positioning", "confidence": "High/Medium/Low"},
   "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "Competitor 1", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 2", "classification": "direct", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 3", "classification": "adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong/Medium/Weak/No", "Pricing": "Strong/Medium/Weak/No", "FILL ALL features with realistic assessments based on the idea's strengths": ""}}], "confidence": "Medium"},
-COMPETITOR MATRIX RULE: You MUST include ALL competitors found in the VALIDATED COMPETITORS section of the evidence block above. Do NOT reduce to 1 competitor — the matrix must show the full competitive landscape. Minimum 3 non-"Your Idea" rows. If the evidence shows 5 competitors, list all 5. Missing a validated competitor is an error.
+COMPETITOR MATRIX RULE: You MUST include ALL competitors found in the VALIDATED COMPETITORS section AND the PERPLEXITY COMPETITOR RESEARCH section of the evidence block. Do NOT reduce to 1 competitor — the matrix must show the full competitive landscape. Minimum 3 non-"Your Idea" rows. If the evidence shows 5 competitors, list all 5. Missing a validated competitor is an error. Competitors from Perplexity should be marked with dataTier "reported".
   "founderDecision": {"decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold", "whyFactors": ["FORMAT REQUIRED: '[specific user behavior or pain] — [what this means for the opportunity]'. EXAMPLE: 'Pet owners cannot find verified walkers on short notice — existing apps lack real-time availability, creating a clear trust and reliability gap to exploit'. DO NOT write: High demand for X / Strong interest in X / X indicates demand / Positive sentiment towards X. These passive labels will be REJECTED."], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
   "killShotAnalysis": {"risks": [{"risk": "specific risk referencing data", "severity": "High/Medium/Low", "mitigation": "one sentence — how to survive it"}], "riskLevel": "Low/Medium/High", "interpretation": "2-3 sentences — manageable or deal-breakers? Reference data.", "confidence": "Medium"},
   "scoreExplanationData": {"summary": "1-2 sentences", "factors": [{"category": "Demand Strength", "explanation": "narrative must match score"}, {"category": "Competition Density", "explanation": "string"}, {"category": "User Sentiment", "explanation": "string"}, {"category": "Market Growth", "explanation": "string"}, {"category": "Opportunity Gap", "explanation": "if <=10, explain weakness clearly"}], "confidence": "Medium"},
@@ -1234,7 +1257,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                 satEntry.value = 8;
               }
               if (satEntry) {
-                satEntry.explanation = `${satEntry.explanation || ""} ⚠️ LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned.`.trim();
+                satEntry.explanation = `${satEntry.explanation || ""} [WARNING] LOW COMPETITION ON A DEAD TREND: Only ${totalCompetitorEvidence} competitor(s) found for a "${matchedDecliningTrend}" idea. Low competition here does not signal opportunity — it means the market was tried and abandoned.`.trim();
               }
             }
             if (reportData.killShotAnalysis?.risks && Array.isArray(reportData.killShotAnalysis.risks)) {
@@ -1252,7 +1275,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             const saturationCard = (reportData.signalCards || []).find((c: any) => c.title === "Market Saturation");
             if (saturationCard) {
               saturationCard.confidence = "Low";
-              saturationCard.insight = `${saturationCard.insight || ""} ⚠️ Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
+              saturationCard.insight = `${saturationCard.insight || ""} [WARNING] Graveyard Signal: Low competition on a declining trend typically indicates an abandoned market, not an open one.`.trim();
             }
           }
 
@@ -1406,6 +1429,25 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
           // No penalty applied — complexity is advisory only
           reportData.buildComplexity.scorePenalty = 0;
+
+          // Ensure arrays are never null/undefined (would crash the UI)
+          if (!Array.isArray(reportData.buildComplexity.mvpScope) || reportData.buildComplexity.mvpScope.length === 0) {
+            reportData.buildComplexity.mvpScope = ["User auth and onboarding", "Core feature set", "Basic dashboard"];
+          }
+          if (!Array.isArray(reportData.buildComplexity.techChallenges) || reportData.buildComplexity.techChallenges.length === 0) {
+            reportData.buildComplexity.techChallenges = ["Third-party API reliability", "Keeping scope minimal for MVP"];
+          }
+          if (!reportData.buildComplexity.buildEstimateComparison) {
+            const tier = reportData.buildComplexity.vibeCoderFeasibility || "Moderate";
+            const aiCostMap: Record<string, string> = { Easy: "$500–$2,000", Moderate: "$2,000–$10,000", Hard: "$10,000–$50,000", "Do Not Attempt": "$50,000–$200,000" };
+            const aiTimeMap: Record<string, string> = { Easy: "1–3 weeks", Moderate: "3–8 weeks", Hard: "6–16 weeks", "Do Not Attempt": "12–24+ weeks" };
+            const tradCostMap: Record<string, string> = { Easy: "$5,000–$20,000", Moderate: "$20,000–$60,000", Hard: "$60,000–$200,000", "Do Not Attempt": "$200,000+" };
+            const tradTimeMap: Record<string, string> = { Easy: "1–3 months", Moderate: "3–6 months", Hard: "6–12 months", "Do Not Attempt": "12–24+ months" };
+            reportData.buildComplexity.buildEstimateComparison = {
+              traditional: { timeRange: tradTimeMap[tier] ?? "3–6 months", costRange: tradCostMap[tier] ?? "$20,000–$60,000", skillsRequired: ["Backend Engineer", "Frontend Engineer", "DevOps / Infra"] },
+              aiAssisted: { timeRange: aiTimeMap[tier] ?? "3–8 weeks", costRange: aiCostMap[tier] ?? "$2,000–$10,000", skillsRequired: ["AI code generation", "Prompt engineering", "API integration"] },
+            };
+          }
         } else {
           // AI didn't generate buildComplexity — construct from heuristics (Fix 10)
           const githubScore = (rawData.githubComplexityScore?.score ?? rawData.github?.complexityScore) || 3;
@@ -1424,6 +1466,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           const tier = score <= 3 ? "Easy" : score <= 6 ? "Moderate" : score <= 8 ? "Hard" : "Do Not Attempt";
           const costMap: Record<string, string> = { Easy: "$500–$2,000", Moderate: "$2,000–$10,000", Hard: "$10,000–$50,000", "Do Not Attempt": "$50,000–$200,000" };
           const timeMap: Record<string, string> = { Easy: "1–3 weeks", Moderate: "3–8 weeks", Hard: "6–16 weeks", "Do Not Attempt": "12–24+ weeks" };
+          const tradCostMap: Record<string, string> = { Easy: "$5,000–$20,000", Moderate: "$20,000–$60,000", Hard: "$60,000–$200,000", "Do Not Attempt": "$200,000+" };
+          const tradTimeMap: Record<string, string> = { Easy: "1–3 months", Moderate: "3–6 months", Hard: "6–12 months", "Do Not Attempt": "12–24+ months" };
+          const mvpScopeMap: Record<string, string[]> = {
+            Easy: ["User auth and onboarding", "Core feature set", "Basic dashboard"],
+            Moderate: ["User auth and onboarding", "Core feature set", "Third-party API integrations", "Basic dashboard and notifications"],
+            Hard: ["User auth and onboarding", "Core feature set", "Complex backend logic", "Third-party API integrations", "Admin dashboard"],
+            "Do Not Attempt": ["User auth and onboarding", "Core feature set", "Complex distributed backend", "Multiple third-party integrations", "Admin and ops dashboards", "Compliance and security layer"],
+          };
+          const techChallengesMap: Record<string, string[]> = {
+            Easy: ["Choosing the right tech stack", "Keeping scope minimal for MVP"],
+            Moderate: ["Third-party API reliability and rate limits", "Keeping scope minimal for MVP", "Data modeling for core workflows"],
+            Hard: ["Scalability under load", "Third-party API reliability and rate limits", "Security and data privacy requirements", "Complex state management"],
+            "Do Not Attempt": ["Enterprise-grade scalability", "Regulatory and compliance requirements", "Complex integrations with legacy systems", "Security, audit trails, and data residency"],
+          };
 
           reportData.buildComplexity = {
             complexityScore: score,
@@ -1431,6 +1487,14 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             complexityFactors: factors.length > 0 ? factors : ["Standard CRUD with API integrations"],
             mvpTimeline: timeMap[tier],
             estimatedCost: costMap[tier],
+            voiceApiCosts: "N/A",
+            onDeviceNote: "N/A",
+            mvpScope: mvpScopeMap[tier],
+            techChallenges: techChallengesMap[tier],
+            buildEstimateComparison: {
+              traditional: { timeRange: tradTimeMap[tier], costRange: tradCostMap[tier], skillsRequired: ["Backend Engineer", "Frontend Engineer", "DevOps / Infra"] },
+              aiAssisted: { timeRange: timeMap[tier], costRange: costMap[tier], skillsRequired: ["AI code generation", "Prompt engineering", "API integration"] },
+            },
             scorePenalty: 0,
             _source: "programmatic_fallback",
           };
@@ -2134,9 +2198,35 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ── Fill missing sections with safe defaults so UI always renders ──
+
+        // signalCards: AI may omit this on JSON truncation — default to empty array
+        if (!Array.isArray(reportData.signalCards)) {
+          console.warn("[FIELD POPULATION] signalCards missing — defaulting to empty array");
+          reportData.signalCards = [];
+        }
+        // Ensure every card has an evidence array (some AI responses omit it)
+        for (const card of reportData.signalCards) {
+          if (!Array.isArray(card.evidence)) card.evidence = [];
+        }
+
+        // revenueBenchmark: no backend fallback existed — add one
+        if (!reportData.revenueBenchmark) {
+          const pricingSignalCount = evidenceBlock.pricingSignals?.length ?? 0;
+          reportData.revenueBenchmark = {
+            summary: pricingSignalCount > 0
+              ? "Some pricing signals were found — see signal cards for details."
+              : "Insufficient pricing data collected to estimate revenue benchmarks.",
+            range: "Insufficient data",
+            basis: pricingSignalCount > 0 ? "Based on limited pricing signals" : "No verified pricing data",
+            dataSource: "ai_estimated",
+            sourceUrls: [],
+          };
+          console.warn("[FIELD POPULATION] revenueBenchmark missing — constructed safe fallback");
+        }
+
         if (!reportData.proofDashboard) {
           reportData.proofDashboard = {
-            searchDemand: { keyword: idea.split(" ").slice(0, 3).join(" "), monthlySearches: "Data unavailable", trend: "Stable", confidence: "Low", source: "AI Estimated", relatedKeywords: [] },
+            searchDemand: { keyword: primaryKeywords || idea.split(" ").slice(0, 3).join(" "), monthlySearches: "Data unavailable", trend: "Stable", confidence: "Low", source: "AI Estimated", relatedKeywords: [] },
             developerActivity: { repoCount: String(rawData.github?.repos?.length ?? 0), totalStars: String((rawData.github?.repos || []).reduce((s: number, r: any) => s + (r.stars || 0), 0)), recentCommits: "See GitHub data", trend: "Stable", confidence: rawData.github?.repos?.length > 0 ? "Medium" : "Low" },
             socialActivity: { twitterMentions: String(rawData.twitterCounts?.total_count ?? 0), redditThreads: String(rawData.serperReddit?.organic?.length ?? 0), sentimentScore: "Mixed", hnPhLaunches: String(rawData.productHunt?.products?.length ?? 0), confidence: "Low" },
             appStoreSignals: { relatedApps: String(rawData.firecrawlAppStore?.results?.length ?? 0), avgRating: "N/A", downloadEstimate: "N/A", marketGap: "Insufficient data to determine", confidence: "Low" },
@@ -2220,6 +2310,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             confidence: "Low",
           };
         }
+        // Inject missing validated competitors into competitorMatrix (Fix 8)
+        // Clean bad competitor names before injecting (article titles, repo slugs, etc.)
+        // MUST be declared before the !reportData.competitorMatrix block that uses it
+        const isUsableCompetitorName = (name: string): boolean => {
+          if (!name || name.length < 2 || name.length > 60) return false;
+          // Article/list-page titles
+          if (/^(the \d+|top \d+|best \d+|\d+ best|resources? for|how to|what is|guide to|alternatives? to|vs\.?\s|\d+ apps?)/i.test(name)) return false;
+          // GitHub repo slug pattern: all lowercase with hyphens, no spaces
+          if (/^[a-z][a-z0-9-]+$/.test(name) && name.includes("-") && !name.includes(" ")) return false;
+          // Generic placeholder names
+          if (/^competitor \d+$/i.test(name)) return false;
+          return true;
+        };
+
         if (!reportData.competitorMatrix) {
           const rawCompetitors = (reportData.signalCards || []).find((c: any) => c.title === "Competitor Snapshot")?.competitors || [];
           const cleanCompetitors = rawCompetitors.filter((c: any) => isUsableCompetitorName(c.name));
@@ -2244,19 +2348,6 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             );
           }
         }
-
-        // Inject missing validated competitors into competitorMatrix (Fix 8)
-        // Clean bad competitor names before injecting (article titles, repo slugs, etc.)
-        const isUsableCompetitorName = (name: string): boolean => {
-          if (!name || name.length < 2 || name.length > 60) return false;
-          // Article/list-page titles
-          if (/^(the \d+|top \d+|best \d+|\d+ best|resources? for|how to|what is|guide to|alternatives? to|vs\.?\s|\d+ apps?)/i.test(name)) return false;
-          // GitHub repo slug pattern: all lowercase with hyphens, no spaces
-          if (/^[a-z][a-z0-9-]+$/.test(name) && name.includes("-") && !name.includes(" ")) return false;
-          // Generic placeholder names
-          if (/^competitor \d+$/i.test(name)) return false;
-          return true;
-        };
 
         if (reportData.competitorMatrix?.competitors && Array.isArray(reportData.competitorMatrix.competitors) && !reportData.competitorMatrix._fallback) {
           // Remove bad names already in the matrix
@@ -2287,7 +2378,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (!reportData.founderDecision) {
           const score = reportData.overallScore || 65;
           reportData.founderDecision = {
-            decision: score >= 75 ? "Build Now" : score >= 55 ? "Build, But Niche Down" : score >= 40 ? "Validate Further" : "Proceed with Caution",
+            decision: score >= 75 ? "Build Now" : score >= 55 ? "Build, But Niche Down" : score >= 40 ? "Validate Further" : "Do Not Build Yet",
             reasoning: reportData.scoreExplanation || "See score breakdown for details.",
             whyFactors: ["Review the full report sections for detailed reasoning."],
             nextStep: "Validate with 10 potential users before building an MVP.",
@@ -2311,10 +2402,10 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           reportData.scoreExplanationData = {
             summary: reportData.scoreExplanation || "Score reflects the balance of demand signals, competition density, and market opportunity.",
             factors: [
-              { category: "Demand Strength", explanation: `Trend score: ${breakdown.find((b: any) => b.label === "Trend Momentum")?.value ?? "N/A"}/20` },
+              { category: "Demand Strength", explanation: `Trend score: ${breakdown.find((b: any) => b.label === "Trend Momentum")?.value ?? "N/A"}/25` },
               { category: "Competition Density", explanation: `Saturation score: ${breakdown.find((b: any) => b.label === "Market Saturation")?.value ?? "N/A"}/20` },
               { category: "User Sentiment", explanation: `Sentiment score: ${breakdown.find((b: any) => b.label === "Sentiment")?.value ?? "N/A"}/20` },
-              { category: "Market Growth", explanation: `Growth score: ${breakdown.find((b: any) => b.label === "Growth")?.value ?? "N/A"}/20` },
+              { category: "Market Growth", explanation: `Growth score: ${breakdown.find((b: any) => b.label === "Growth")?.value ?? "N/A"}/15` },
               { category: "Opportunity Gap", explanation: `Opportunity score: ${breakdown.find((b: any) => b.label === "Opportunity")?.value ?? "N/A"}/20` },
             ],
             confidence: "Low",
@@ -2401,6 +2492,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
     }
 
     // ── Step 3: Complete ──
+    // Strip raw Phase 1 API responses before saving — they are only needed during
+    // Phase 2 analysis and add 50–100 KB of dead data to every stored report.
+    if (reportData?._phase1Data !== undefined) {
+      delete reportData._phase1Data;
+    }
+
     // CRITICAL FIX: Use computed values from reportData, not uninitialized locals
     const finalOverallScore = reportData?.overallScore ?? 0;
     // Belt-and-suspenders signal strength cap (Fix 3): enforce before DB write

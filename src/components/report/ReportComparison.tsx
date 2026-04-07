@@ -25,7 +25,7 @@ export const ReportComparison = ({ currentReport, currentAnalysisId, userId }: R
   useEffect(() => {
     const fetchPrevious = async () => {
       // Find previous analyses for the same idea (fuzzy match: same first 30 chars)
-      const ideaPrefix = currentReport.idea.slice(0, 30).toLowerCase();
+      const ideaPrefix = (currentReport.idea || "").slice(0, 30).toLowerCase();
       const { data } = await supabase
         .from("analyses")
         .select("id, overall_score, created_at, report_data")

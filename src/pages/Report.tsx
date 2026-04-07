@@ -320,8 +320,8 @@ const Report = () => {
         <KeyStatsBar stats={r.keyStats || [
           { value: `${r.overallScore}/100`, label: "Market Signal Score", sentiment: r.overallScore >= 70 ? "positive" : r.overallScore >= 40 ? "neutral" : "negative" as any },
           { value: `${totalEvidence}+`, label: "Data Points Analyzed", sentiment: "neutral" as any },
-          { value: safeValue(r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value), label: "Interest Change (90d)", change: r.signalCards.find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
-          { value: safeValue(r.revenueBenchmark.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
+          { value: safeValue((r.signalCards || []).find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value), label: "Interest Change (90d)", change: (r.signalCards || []).find(c => c.title === "Trend Momentum")?.metrics?.[0]?.value, sentiment: "positive" as any },
+          { value: safeValue(r.revenueBenchmark?.range), label: "Revenue Potential (est.)", sentiment: "positive" as any },
         ]} />
 
         {/* Founder Insight — moved to top (verdict layer) */}
@@ -350,9 +350,9 @@ const Report = () => {
         </CollapsibleSection>
 
         {/* Signal Cards Grid */}
-        <CollapsibleSection title="Signal Cards" icon={<Search className="w-4 h-4 text-primary" />} summary={`${r.signalCards.length} market signals analyzed`}>
+        <CollapsibleSection title="Signal Cards" icon={<Search className="w-4 h-4 text-primary" />} summary={`${(r.signalCards || []).length} market signals analyzed`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {r.signalCards.map((card) => (
+            {(r.signalCards || []).map((card) => (
               <SignalCard key={card.title} card={card} subtitle={sectionSubtitles[card.title]} />
             ))}
           </div>
@@ -397,8 +397,8 @@ const Report = () => {
         <CollapsibleSection title="User Quotes" icon={<MessageSquare className="w-4 h-4 text-purple-400" />} summary="What real users are saying">
           <UserQuotesSection quotes={(() => {
             if (r.userQuotes && r.userQuotes.length > 0) return r.userQuotes.slice(0, 5);
-            const extracted = r.signalCards.flatMap(c =>
-              c.evidence.map(e => {
+            const extracted = (r.signalCards || []).flatMap(c =>
+              (c.evidence || []).map(e => {
                 const match = e.match(/"([^"]+)"\s*—\s*(.+)/);
                 if (!match) return null;
                 const src = match[2];
@@ -481,9 +481,11 @@ const Report = () => {
         )}
 
         {/* Revenue Benchmark */}
-        <CollapsibleSection title="Revenue Benchmark" icon={<BarChart3 className="w-4 h-4 text-green-500" />} summary={r.revenueBenchmark?.range || "Revenue estimates"}>
-          <RevenueBenchmark benchmark={r.revenueBenchmark} />
-        </CollapsibleSection>
+        {r.revenueBenchmark && (
+          <CollapsibleSection title="Revenue Benchmark" icon={<BarChart3 className="w-4 h-4 text-green-500" />} summary={r.revenueBenchmark.range || "Revenue estimates"}>
+            <RevenueBenchmark benchmark={r.revenueBenchmark} />
+          </CollapsibleSection>
+        )}
 
         {/* Build Complexity */}
         {r.buildComplexity && (

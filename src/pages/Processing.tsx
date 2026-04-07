@@ -88,7 +88,7 @@ const Processing = () => {
       .then(({ data }) => {
         if (data) {
           setStatus(data.status);
-          if (data.status === "complete") navigate(`/report/${id}`, { replace: true });
+          if (data.status === "complete" || data.status === "partial") navigate(`/report/${id}`, { replace: true });
           if (data.status === "failed") {
             const reportData = data.report_data as any;
             const message = reportData?.message || reportData?.error;
@@ -135,7 +135,7 @@ const Processing = () => {
       }, (payload) => {
         const newRow = payload.new as { status: string; report_data?: any };
         setStatus(newRow.status);
-        if (newRow.status === "complete") {
+        if (newRow.status === "complete" || newRow.status === "partial") {
           setTimeout(() => navigate(`/report/${id}`, { replace: true }), 800);
         }
         if (newRow.status === "failed") {

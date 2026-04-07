@@ -51,6 +51,10 @@ async function perplexitySearch(
       ...(options?.recency ? { search_recency_filter: options.recency } : {}),
     }),
   });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => res.status.toString());
+    throw new Error(`Perplexity ${res.status}: ${errBody.substring(0, 200)}`);
+  }
   const data = await res.json();
   return {
     content: data.choices?.[0]?.message?.content || "",
@@ -1549,6 +1553,9 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       perplexity_market: 15000,
       perplexity_revenue: 15000,
       perplexity_competitors: 15000,
+      perplexity_trends: 15000,
+      perplexity_vc: 15000,
+      perplexity_churn: 15000,
     };
     const DEFAULT_SOURCE_TIMEOUT = 8000;
 
@@ -2346,9 +2353,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     if (rawData.perplexityMarket?.content) {
       evidenceBlock.trendSignals.push({ signal: "Market Overview", value: rawData.perplexityMarket.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityMarket.citations?.[0] || null, tier: "reported" });
     }
-    if (rawData.perplexityCompetitors?.content) {
-      evidenceBlock.trendSignals.push({ signal: "Competitor Overview", value: rawData.perplexityCompetitors.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityCompetitors.citations?.[0] || null, tier: "reported" });
-    }
+    // perplexityCompetitors is passed directly to the analyzer as a dedicated section — not buried in trendSignals
 
     // ── Evidence coverage scoring ──
     const evidenceCoverage = {
@@ -2491,7 +2496,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
             const notifications = adminProfiles.map((p: any) => ({
               user_id: p.id,
-              title: `⚠️ Data Source Alert: ${statusSummary}`,
+              title: `[WARNING] Data Source Alert: ${statusSummary}`,
               message: `Pipeline for "${idea.slice(0, 40)}…" detected issues:\n${sourceDetails}\n\nTotal signals: ${totalSignals}. Check Admin → Data Sources.`,
             }));
             await supabase.from("notifications").insert(notifications);
