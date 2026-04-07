@@ -32,7 +32,6 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { MockReportData } from "@/data/mockReport";
-import { mockReport } from "@/data/mockReport";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/analytics";
 import { ReportNavigator } from "@/components/report/ReportNavigator";
