@@ -99,6 +99,42 @@ async function firecrawlSearch(
   return { results: data.data || [] };
 }
 
+// ── iTunes Search API helper (no API key required) ────────────────
+// Returns real App Store apps with names, ratings, review counts, and prices.
+async function fetchITunesApps(
+  query: string,
+  limit = 10
+): Promise<{ apps: { name: string; developer: string; rating: number; ratingCount: number; price: number; currency: string; url: string; bundleId: string; description: string }[] }> {
+  try {
+    const encodedQuery = encodeURIComponent(query);
+    const url = `https://itunes.apple.com/search?term=${encodedQuery}&entity=software&limit=${limit}&country=us`;
+    const res = await fetch(url, {
+      headers: { "Accept": "application/json" },
+    });
+    if (!res.ok) {
+      console.warn(`[ITUNES] Request failed: ${res.status}`);
+      return { apps: [] };
+    }
+    const data = await res.json();
+    const apps = (data.results || []).map((app: any) => ({
+      name: app.trackName || "",
+      developer: app.artistName || "",
+      rating: app.averageUserRating || 0,
+      ratingCount: app.userRatingCount || 0,
+      price: app.price || 0,
+      currency: app.currency || "USD",
+      url: app.trackViewUrl || "",
+      bundleId: app.bundleId || "",
+      description: (app.description || "").slice(0, 300),
+    })).filter((app: any) => app.name);
+    console.log(`[ITUNES] Query "${query}" → ${apps.length} apps`);
+    return { apps };
+  } catch (e) {
+    console.error("[ITUNES] Error:", e);
+    return { apps: [] };
+  }
+}
+
 // ── Serper helper ──────────────────────────────────────────────────
 async function serperSearch(
   apiKey: string,
@@ -744,12 +780,56 @@ function normalizeName(name: string): string {
 function extractCompetitorsFromSources(rawData: Record<string, any>): RawCompetitor[] {
   const competitors: RawCompetitor[] = [];
 
-  // From Serper competitor results — extract product names from titles
+  // From Serper competitor results — extract product names from domain (more reliable than title)
+  // Domains that are platforms/content sites, not products
+  const nonProductDomains = new Set([
+    "reddit", "quora", "medium", "youtube", "twitter", "facebook", "linkedin",
+    "instagram", "tiktok", "pinterest", "tumblr", "wordpress", "blogger",
+    "apple", "google", "microsoft", "amazon", "apps", "play", "blog",
+    "wikipedia", "wikia", "fandom", "stackoverflow", "github",
+    "techcrunch", "forbes", "inc", "entrepreneur", "wired", "mashable",
+    "thespruceeats", "allrecipes", "foodnetwork", "epicurious",
+  ]);
   (rawData.serperCompetitors?.allResults || []).forEach((r: any) => {
-    const title = (r.title || "").replace(/\s*[-|–—:].*/g, "").trim();
-    if (title && title.length > 1 && title.length < 80) {
+    let name = "";
+    let skipEntry = false;
+    if (r.link) {
+      try {
+        const hostname = new URL(r.link).hostname.replace(/^www\./, "");
+        const domain = hostname.split(".")[0].toLowerCase();
+        // Skip known non-product domains
+        if (nonProductDomains.has(domain)) {
+          skipEntry = true;
+        } else if (domain && domain.length > 1 && domain.length < 30 && !/^\d+$/.test(domain)) {
+          // Strip common domain affixes that aren't part of the brand name
+          // e.g., "withmoxie" → "moxie", "paymoapp" → "paymo", "getclickup" → "clickup"
+          let cleanDomain = domain
+            .replace(/^(with|get|try|use|go|my|the|hey|hi|hello|meet)/, "")
+            .replace(/(app|hq|hub|pro|labs?|software|platform|tools?|solutions?)$/, "");
+          if (!cleanDomain || cleanDomain.length < 2) cleanDomain = domain;
+          // Capitalize first letter
+          name = cleanDomain.charAt(0).toUpperCase() + cleanDomain.slice(1);
+        }
+      } catch {}
+    }
+    if (skipEntry) return;
+    // Fallback: try the segment AFTER the last separator in the title (often the brand name)
+    if (!name && r.title) {
+      const separatorMatch = (r.title || "").match(/[|–—]\s*(.+)$/);
+      if (separatorMatch) {
+        const candidate = separatorMatch[1].trim();
+        if (candidate.length > 1 && candidate.length < 40 && candidate.split(/\s+/).length <= 4) {
+          name = candidate;
+        }
+      }
+    }
+    // Last fallback: title before separator
+    if (!name && r.title) {
+      name = (r.title || "").replace(/\s*[-|–—:].*/g, "").trim();
+    }
+    if (name && name.length > 1 && name.length < 60) {
       competitors.push({
-        name: title,
+        name,
         sources: ["Serper"],
         url: r.link,
         description: r.snippet || "",
@@ -770,11 +850,24 @@ function extractCompetitorsFromSources(rawData: Record<string, any>): RawCompeti
     }
   });
 
-  // From Firecrawl App Store results
+  // From iTunes Search API — real App Store apps with verified ratings
+  (rawData.itunesApps?.apps || []).forEach((app: any) => {
+    if (app.name && app.name.length > 1 && app.name.length < 80) {
+      competitors.push({
+        name: app.name,
+        sources: ["App Store"],
+        url: app.url,
+        rating: app.rating > 0 ? String(app.rating.toFixed(1)) : undefined,
+        downloads: app.ratingCount > 0 ? `${(app.ratingCount / 1000).toFixed(0)}K+ ratings` : undefined,
+        evidenceType: "app_store" as const,
+      });
+    }
+  });
+
+  // From Firecrawl App Store results (legacy fallback)
   (rawData.firecrawlAppStore?.results || []).forEach((r: any) => {
     const title = (r.title || "").replace(/on the App Store.*$/i, "").replace(/- Apps on Google Play.*$/i, "").trim();
     if (title && title.length > 1 && title.length < 80) {
-      // Try to extract rating from markdown
       const ratingMatch = (r.markdown || "").match(/(\d\.\d)\s*(?:out of 5|★|stars?)/i);
       const downloadsMatch = (r.markdown || "").match(/([\d,.]+[KMB]?\+?)\s*(?:downloads|installs)/i);
       competitors.push({
@@ -914,9 +1007,11 @@ async function validateCompetitors(
 ): Promise<ValidatedCompetitor[]> {
   console.log(`[COMPETITOR VALIDATION] Candidates: ${competitors.length}`);
 
-  // Pre-filter: reject names that look like article titles, not product names
+  // Pre-filter: reject names that look like article titles, generic phrases, or search queries
   const articlePatterns = /^(the best |the top |best |top \d|\d+ \w|\d+ best|\d+ useful|\d+ great|\d+ free|\d+ apps?|\d+ tools?|\d+ ways?|how to |\d+ of the |a guide|ultimate guide|review:|comparison|guide to|list of|roundup|versus|things you|everything you|what is |what are |what's |why you|should you|complete guide|which |where to find)/i;
-  const maxNameWords = 8; // Real product names are rarely >8 words
+  // Generic category phrases that are not product names
+  const genericPhrases = /^(project management|task management|time tracking|productivity|collaboration|freelance|remote work|team management|work management|business management|alternative|software for|tools for|apps for|platform for|solution for|system for)\b/i;
+  const maxNameWords = 5; // Real product names are rarely >5 words
   const preFiltered = competitors.filter(c => {
     const words = c.name.trim().split(/\s+/);
     if (words.length > maxNameWords) {
@@ -925,6 +1020,10 @@ async function validateCompetitors(
     }
     if (articlePatterns.test(c.name)) {
       console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — matches article title pattern`);
+      return false;
+    }
+    if (genericPhrases.test(c.name)) {
+      console.log(`[COMPETITOR VALIDATION] Rejected "${c.name}" — matches generic category phrase`);
       return false;
     }
     return true;
@@ -1515,7 +1614,10 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       perplexityBuildCosts: null,
       perplexityCompetitors: null,
       firecrawlAppStore: null,
+      firecrawlCompetitorReviews: null,
+      itunesApps: null,
       firecrawlReddit: null,
+
       serperTrends: null,
       serperTrendsMonthly: null,
       serperNews: null,
@@ -1523,6 +1625,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       serperAutoComplete: null,
       serperKeywordIntel: null,
       serperCompetitors: null,
+      serperQuotaExhausted: false,
       productHunt: null,
       github: null,
       hackerNews: null,
@@ -1577,25 +1680,45 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       }
     }
 
-    // Run Perplexity searches in parallel
+    // ── SERPER QUOTA PROBE (runs first so perplexity_trends can be conditional) ──
+    // One cheap call to check if Serper quota is active before firing all Serper and Perplexity calls.
+    let serperActive = false;
+    if (serperKey) {
+      const probeStart = Date.now();
+      try {
+        const probeQuery = semanticQueries.length > 0
+          ? semanticQueries[0]
+          : primaryKeywords.split(/\s+/).slice(0, 4).join(" ");
+        const probe = await serperSearch(serperKey, probeQuery, "search", 5);
+        const probeDuration = Date.now() - probeStart;
+        if (probe.organic.length > 0) {
+          serperActive = true;
+          console.log(`[SERPER] Quota OK — probe returned ${probe.organic.length} results in ${probeDuration}ms`);
+        } else {
+          console.warn(`[SERPER] Quota likely exhausted — probe returned 0 results in ${probeDuration}ms. Skipping all Serper calls.`);
+          pipelineMetrics["serper_probe"] = { status: "quota_exhausted", durationMs: probeDuration, signalCount: 0 };
+        }
+      } catch (e) {
+        console.error("[SERPER] Probe failed:", e);
+      }
+    }
+
+    // Run Perplexity searches in parallel (5 calls, down from 7)
+    // perplexity_trends: only fires when Serper quota is exhausted (Serper gives real data when working)
+    // perplexity_market: merged into perplexity_competitors (overlapping questions, one combined prompt)
     const perplexityPromises: Promise<void>[] = [];
 
     if (perplexityKey) {
-      perplexityPromises.push(
-        trackSource("perplexity_trends", async () => {
-          const r = await perplexitySearch(perplexityKey, `What are the current search trends and growth data for "${idea}"? Include Google Trends data, YoY search volume changes, trending keywords, and social media discussion volume. Provide specific numbers and percentages.`, { recency: "month" });
-          rawData.perplexityTrends = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
-          return r.citations.length;
-        })
-      );
-
-      perplexityPromises.push(
-        trackSource("perplexity_market", async () => {
-          const r = await perplexitySearch(perplexityKey, `Market analysis for "${idea}": How many competitors exist? What is the market saturation? Who are the top 5 competitors by market share? What are their ratings, review counts, and approximate downloads on app stores? What are their main weaknesses according to user reviews?`);
-          rawData.perplexityMarket = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
-          return r.citations.length;
-        })
-      );
+      // ── Conditional: only run when Serper is down ──
+      if (!serperActive) {
+        perplexityPromises.push(
+          trackSource("perplexity_trends", async () => {
+            const r = await perplexitySearch(perplexityKey, `What are the current search trends and growth data for "${idea}"? Include Google Trends data, YoY search volume changes, trending keywords, and social media discussion volume. Provide specific numbers and percentages.`, { recency: "month" });
+            rawData.perplexityTrends = r; rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity" })));
+            return r.citations.length;
+          })
+        );
+      }
 
       perplexityPromises.push(
         trackSource("perplexity_vc", async () => {
@@ -1629,12 +1752,13 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         })
       );
 
-      // ── DEDICATED PERPLEXITY COMPETITOR QUERY ──
-      // Specifically ask Perplexity for a structured competitor list
+      // ── Combined competitor + market query (replaces separate perplexity_market + perplexity_competitors) ──
       perplexityPromises.push(
         trackSource("perplexity_competitors", async () => {
-          const r = await perplexitySearch(perplexityKey, `List the top 10 apps, tools, or products that directly compete with or are alternatives to "${idea}". For each competitor, provide: the exact product name, its app store rating (if applicable), approximate number of downloads or users, its primary weakness according to user reviews, and its pricing model. Focus on real, currently active products. If fewer than 10 exist, list all that you can find.`);
+          const r = await perplexitySearch(perplexityKey, `For the idea "${idea}": (1) List the top 10 directly competing apps or tools — for each give exact product name, app store rating, approximate users/downloads, primary weakness from user reviews, and pricing model. (2) Briefly summarize market saturation: how many competitors exist, rough market size, and whether this space is crowded or has clear gaps. Focus on real, currently active products.`);
           rawData.perplexityCompetitors = r;
+          // Also populate perplexityMarket from the same response so downstream scoring works
+          rawData.perplexityMarket = r;
           rawData.sources.push(...r.citations.map((c: string) => ({ url: c, type: "perplexity_competitors" })));
           return r.citations.length;
         })
@@ -1644,33 +1768,27 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     // Run Firecrawl searches in parallel
     const firecrawlPromises: Promise<void>[] = [];
 
-    if (firecrawlKey) {
-      // Use niche query (index 2) for specificity over broad category (index 0) (Fix 12)
-      const firecrawlQuery = semanticQueries.length > 2 ? semanticQueries[2] : (semanticQueries.length > 0 ? semanticQueries[0] : sanitizedIdea);
-      firecrawlPromises.push(
-        trackSource("firecrawl_appstore", async () => {
-          const r = await firecrawlSearch(firecrawlKey, `${firecrawlQuery} app site:apps.apple.com OR site:play.google.com`, 20);
-          rawData.firecrawlAppStore = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
-          return r.results.length;
-        })
-      );
+    // App Store data via iTunes Search API (free, no key) — replaces firecrawl_appstore
+    firecrawlPromises.push(
+      trackSource("itunes_appstore", async () => {
+        const itunesQuery = semanticQueries.length > 0 ? semanticQueries[0] : primaryKeywords.split(/\s+/).slice(0, 4).join(" ");
+        const r = await fetchITunesApps(itunesQuery, 10);
+        rawData.itunesApps = r;
+        rawData.sources.push(...r.apps.map((a: any) => ({ url: a.url, type: "appstore" })));
+        return r.apps.length;
+      })
+    );
 
-      firecrawlPromises.push(
-        trackSource("firecrawl_reddit", async () => {
-          const redditQuery = semanticQueries.length > 1 ? semanticQueries[1] : sanitizedIdea;
-          const r = await withRetry(() => firecrawlSearch(firecrawlKey, `${redditQuery} reviews complaints pain points site:reddit.com`, 15));
-          rawData.firecrawlReddit = r; rawData.sources.push(...r.results.map((x: any) => ({ url: x.url, type: "firecrawl" })));
-          return r.results.length;
-        })
-      );
+    if (firecrawlKey) {
+      // Firecrawl is reserved for competitor page scraping
     }
 
-    // Run Serper searches in parallel (Google Trends + Reddit fallback + Competitor Discovery)
+    // Run Serper searches in parallel (Google Trends + News + Reddit fallback + Competitor Discovery)
     const serperPromises: Promise<void>[] = [];
 
     let keywordIntelPromise: (() => Promise<void>) | null = null;
 
-    if (serperKey) {
+    if (serperKey && serperActive) {
       // Use SHORT semantic keywords for Serper queries (not full idea text which can be multi-line)
       const serperKeywords = semanticQueries.length > 0
         ? semanticQueries[0]
@@ -1685,15 +1803,6 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       );
 
       serperPromises.push(
-        trackSource("serper_trends_monthly", async () => {
-          const trendQuery = semanticQueries.length > 2 ? semanticQueries[2] : serperKeywords;
-          const r = await serperSearch(serperKey, `${trendQuery} market size demand`, "search", 30);
-          rawData.serperTrendsMonthly = r; rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
-          return r.organic.length;
-        })
-      );
-
-      serperPromises.push(
         trackSource("serper_news", async () => {
           // Use short keywords for news — news endpoint is strict about query length
           const newsQuery = semanticQueries.length > 0 ? semanticQueries[0] : serperKeywords;
@@ -1703,38 +1812,24 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         })
       );
 
-      // serper_reddit: Use BROAD queries for Reddit (site-scoped queries need generic terms)
+      // serper_reddit: Single broad query — fallback for when Reddit JSON endpoint returns nothing
       {
-        const redditQueries: string[] = [];
-        // Use the BROAD semantic queries (index 0) — these are generic category terms like "budgeting app"
-        if (semanticQueries.length > 0) redditQueries.push(semanticQueries[0]); // broad query
-        // Add problem-focused query — great for Reddit where people describe pain
-        if (rawData.queryStrategy?.problem?.[0]) redditQueries.push(rawData.queryStrategy.problem[0]);
-        // Add a broad keyword-only query as fallback
-        if (rawData.queryStrategy?.broad?.[1]) redditQueries.push(rawData.queryStrategy.broad[1]);
-        if (redditQueries.length === 0) redditQueries.push(serperKeywords);
-        // Deduplicate
-        const uniqueRedditQueries = [...new Set(redditQueries)].slice(0, 3);
-        console.log(`[SERPER REDDIT] Using ${uniqueRedditQueries.length} broad queries: ${JSON.stringify(uniqueRedditQueries)}`);
+        const redditQuery = rawData.queryStrategy?.problem?.[0]
+          || (semanticQueries.length > 0 ? semanticQueries[0] : serperKeywords);
+        console.log(`[SERPER REDDIT] Using single fallback query: "${redditQuery}"`);
 
         const redditAllResults: any[] = [];
-        for (let rqi = 0; rqi < uniqueRedditQueries.length; rqi++) {
-          const rq = uniqueRedditQueries[rqi];
-          serperPromises.push(
-            trackSource(rqi === 0 ? "serper_reddit" : `serper_reddit_${rqi}`, async () => {
-              // Use the query WITHOUT site: restriction first, then filter reddit URLs
-              // site:reddit.com with specific terms often returns 0
-              const r = await serperSearch(serperKey, `${rq} reddit`, "search", 30);
-              const redditOnly = r.organic.filter((o: any) => 
-                (o.link || "").toLowerCase().includes("reddit.com")
-              );
-              // Also keep non-reddit results as they may reference reddit discussions
-              const allRelevant = redditOnly.length > 0 ? redditOnly : r.organic.slice(0, 10);
-              redditAllResults.push(...allRelevant);
-              return allRelevant.length;
-            })
-          );
-        }
+        serperPromises.push(
+          trackSource("serper_reddit", async () => {
+            const r = await serperSearch(serperKey, `${redditQuery} reddit`, "search", 30);
+            const redditOnly = r.organic.filter((o: any) =>
+              (o.link || "").toLowerCase().includes("reddit.com")
+            );
+            const allRelevant = redditOnly.length > 0 ? redditOnly : r.organic.slice(0, 10);
+            redditAllResults.push(...allRelevant);
+            return allRelevant.length;
+          })
+        );
 
         rawData._redditAllResults = redditAllResults;
       }
@@ -1765,18 +1860,13 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         });
       };
 
-      // ── COMPETITOR DISCOVERY: Use semantic queries for targeted competitor search ──
+      // ── COMPETITOR DISCOVERY: 2 high-signal queries (down from 6 redundant variations) ──
       rawData.serperCompetitors = { allResults: [] as any[] };
 
-      // Build competitor queries from SEMANTIC keywords, not naive splits
       const competitorQueryTemplates = [
         `${serperKeywords} competitors alternatives`,
         `best ${serperKeywords} apps`,
-        `${serperKeywords} vs`,
-        `${serperKeywords} alternative 2024 2025`,
-        ...(semanticQueries.length > 1 ? [`${semanticQueries[1]} competitors`] : []),
-        ...(semanticQueries.length > 2 ? [`best ${semanticQueries[2]} apps`] : []),
-      ].slice(0, 6); // max 6 competitor queries
+      ];
 
       for (let i = 0; i < competitorQueryTemplates.length; i++) {
         const cq = competitorQueryTemplates[i];
@@ -1792,6 +1882,12 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
           })
         );
       }
+    }
+
+    // ── SERPER QUOTA EXHAUSTED: log clearly so it's visible in dashboard + report ──
+    if (serperKey && !serperActive) {
+      console.error("[SERPER] ⚠️  QUOTA EXHAUSTED — trend data, news, and competitor discovery from Google are unavailable for this report. Top up Serper credits at serper.dev to restore.");
+      rawData.serperQuotaExhausted = true;
     }
 
     // Run Product Hunt search — use SEMANTIC keywords + Serper site search
@@ -2162,7 +2258,9 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       productHunt: { before: pipelineMetrics.producthunt?.signalCount || 0, after: rawData.productHunt?.products?.length || 0 },
       twitter: { before: rawData.twitterSentiment?.total_fetched || 0, after: rawData.twitterSentiment?.tweets?.length || 0 },
       serperCompetitors: { before: Object.keys(pipelineMetrics).filter(k => k.startsWith('serper_competitor_')).reduce((s, k) => s + (pipelineMetrics[k]?.signalCount || 0), 0), after: rawData.serperCompetitors?.allResults?.length || 0 },
+      itunesAppStore: { before: pipelineMetrics.itunes_appstore?.signalCount || 0, after: rawData.itunesApps?.apps?.length || 0 },
       firecrawlAppStore: { before: pipelineMetrics.firecrawl_appstore?.signalCount || 0, after: rawData.firecrawlAppStore?.results?.length || 0 },
+
       firecrawlReddit: { before: pipelineMetrics.firecrawl_reddit?.signalCount || 0, after: rawData.firecrawlReddit?.results?.length || 0 },
       serperReddit: { before: pipelineMetrics.serper_reddit?.signalCount || 0, after: rawData.serperReddit?.organic?.length || 0 },
       serperNews: { before: pipelineMetrics.serper_news?.signalCount || 0, after: rawData.serperNews?.organic?.length || 0 },
@@ -2226,8 +2324,38 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
+    // ── Post-competitor: Firecrawl review scraping for top 3 competitors ──
+    // Now that we know competitor names, scrape G2/Capterra/review pages for real user complaints.
+    if (firecrawlKey && validatedCompetitors.length > 0) {
+      const topCompetitors = validatedCompetitors.slice(0, 3);
+      const reviewResults: { competitor: string; url: string; content: string }[] = [];
 
+      await Promise.all(topCompetitors.map(async (comp: any) => {
+        try {
+          const name = comp.name || "";
+          if (!name) return;
+          const reviewSearch = await firecrawlSearch(
+            firecrawlKey,
+            `"${name}" reviews complaints pricing alternatives`,
+            3
+          );
+          for (const result of reviewSearch.results) {
+            const content = (result.markdown || result.description || "").slice(0, 600);
+            if (content.length > 50) {
+              reviewResults.push({ competitor: name, url: result.url || "", content });
+            }
+          }
+          console.log(`[FIRECRAWL REVIEWS] ${name} → ${reviewSearch.results.length} pages`);
+        } catch (e) {
+          console.warn(`[FIRECRAWL REVIEWS] Failed for ${comp.name}:`, e);
+        }
+      }));
 
+      rawData.firecrawlCompetitorReviews = reviewResults;
+      rawData.sources.push(...reviewResults.map((r: any) => ({ url: r.url, type: "firecrawl_review" })));
+      console.log(`[FIRECRAWL REVIEWS] Total: ${reviewResults.length} review pages across ${topCompetitors.length} competitors`);
+      pipelineMetrics["firecrawl_competitor_reviews"] = { status: "ok", durationMs: 0, signalCount: reviewResults.length };
+    }
 
     // ══════════════════════════════════════════════════════════════════
     // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
@@ -2315,6 +2443,7 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
         sourceUrl: r.url, platform: "reddit", engagement: 0, tier: "verified",
       });
     });
+
     (rawData.serperReddit?.organic || []).forEach((r: any) => {
       evidenceBlock.sentimentSignals.push({
         text: r.snippet || "", source: r.title || "Reddit via Google",
@@ -2325,6 +2454,12 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       evidenceBlock.sentimentSignals.push({
         text: h.title, source: `HN (${h.points} points, ${h.comments} comments)`,
         sourceUrl: h.hnUrl, platform: "hackernews", engagement: (h.points || 0) + (h.comments || 0), tier: "verified",
+      });
+    });
+    (rawData.firecrawlCompetitorReviews || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: r.content, source: `Competitor review: ${r.competitor}`,
+        sourceUrl: r.url, platform: "review", engagement: 0, tier: "verified",
       });
     });
 

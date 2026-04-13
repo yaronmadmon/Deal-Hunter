@@ -177,8 +177,8 @@ Semantic queries: ${JSON.stringify(semanticQueries)}
     // ── PERPLEXITY DOMINANCE CHECK ──
     // Count how many Tier 1 sources returned data vs Perplexity-only
     const tier1SourcesWithData = [
-      rawData.firecrawlAppStore?.results?.length > 0,
-      rawData.firecrawlReddit?.results?.length > 0,
+      (rawData.itunesApps?.apps?.length > 0) || (rawData.firecrawlAppStore?.results?.length > 0),
+      (rawData.firecrawlReddit?.results?.length > 0) || (rawData.serperReddit?.organic?.length > 0),
       rawData.serperTrends?.organic?.length > 0,
       rawData.serperCompetitors?.allResults?.length > 0,
       rawData.github?.repos?.length > 0,
@@ -852,7 +852,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
 
         const countPainSignals = (): number => {
           let count = 0;
-          // Tier 1: Reddit scrapes
+          // Tier 1: Firecrawl Reddit scrapes
           count += rawData.firecrawlReddit?.results?.length ?? 0;
           // Tier 2: Reddit via Serper
           count += rawData.serperReddit?.organic?.length ?? 0;
@@ -1061,6 +1061,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.serperNews?.organic?.length ?? 0) +
             (rawData.perplexityTrends?.citations?.length ?? 0);
           const rawMarketSignals =
+            (rawData.itunesApps?.apps?.length ?? 0) +
             (rawData.firecrawlAppStore?.results?.length ?? 0) +
             (rawData.serperCompetitors?.allResults?.length ?? 0) +
             (rawData.validatedCompetitors?.length ?? 0) +
@@ -1069,7 +1070,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             (rawData.firecrawlReddit?.results?.length ?? 0) +
             (rawData.serperReddit?.organic?.length ?? 0) +
             (rawData.twitterSentiment?.tweets?.length ?? 0) +
-            (rawData.hackerNews?.hits?.length ?? 0);
+            (rawData.hackerNews?.hits?.length ?? 0) +
+            (rawData.firecrawlCompetitorReviews?.length ?? 0);
           const rawGrowthSignals =
             (rawData.productHunt?.products?.length ?? 0) +
             (rawData.github?.repos?.length ?? 0) +
@@ -2021,6 +2023,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
+        // ── SERPER QUOTA EXHAUSTED: inject as explicit report-level warning ──
+        if (rawData.serperQuotaExhausted) {
+          fallbackGaps.push({ section: "Trend Momentum", failedSource: "serper_quota_exhausted", status: "quota_exhausted" });
+          fallbackGaps.push({ section: "Competitor Snapshot", failedSource: "serper_quota_exhausted", status: "quota_exhausted" });
+          console.error("[SERPER QUOTA] ⚠️  Serper credits exhausted — Trend Momentum and Competitor Snapshot sections are missing Google search data. Top up at serper.dev.");
+        }
+
         // Inject fallback warnings into relevant signal cards
         if (fallbackGaps.length > 0) {
           const gapsBySection = new Map<string, string[]>();
@@ -2141,10 +2150,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
               platform: "twitter",
             }));
 
-          // Reddit: prefer snippet/body text over title (Fix 5)
-          const redditPosts = (rawData.firecrawlReddit?.results || rawData.serperReddit?.organic || []).slice(0, 3).map(
+          // Reddit: use firecrawl scrapes or serper results
+          const redditSource = (rawData.firecrawlReddit?.results || rawData.serperReddit?.organic || []).slice(0, 3).map(
             (r: any) => ({ text: r.snippet || r.text || r.title || "", source: "Reddit", sourceUrl: r.url || r.link || null, upvotes: r.upvotes || null, platform: "reddit" })
           );
+          const redditPosts = redditSource;
           reportData.userQuotes = [...tweets, ...redditPosts].slice(0, 5);
           if (reportData.userQuotes.length > 0) {
             console.log(`[FIELD POPULATION] userQuotes: populated ${reportData.userQuotes.length} quotes from rawData (${tweets.length} tweets, ${redditPosts.length} reddit)`);
