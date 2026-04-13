@@ -556,7 +556,7 @@ async function twitterSearch(
     if (!res.ok) {
       const errorBody = await res.text();
       console.error(`[TWITTER] Search error ${res.status}: ${errorBody}`);
-      return { tweets: [], total_fetched: 0 };
+      throw new Error(`Twitter API ${res.status}: ${errorBody.slice(0, 200)}`);
     }
     const data = await res.json();
     const usersMap: Record<string, any> = {};
@@ -2073,7 +2073,8 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
     }
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
-    if (twitterBearerToken && openaiKey && rawData.perplexityMarket?.content) {
+    const influencerContext = rawData.perplexityCompetitors?.content || rawData.perplexityMarket?.content || "";
+    if (twitterBearerToken && openaiKey && influencerContext) {
       await trackSource("twitter_influencers", async () => {
         const extractRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -2082,7 +2083,7 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Extract up to 3 X/Twitter usernames (handles without @) of founders, CEOs, or key people building products in the space described. Return ONLY a JSON array of strings like [\"username1\",\"username2\"]. If none found, return []." },
-              { role: "user", content: `Market data:\n${rawData.perplexityMarket.content}\n\nIdea: ${idea}` },
+              { role: "user", content: `Market data:\n${influencerContext}\n\nIdea: ${idea}` },
             ],
             temperature: 0,
             max_tokens: 200,
