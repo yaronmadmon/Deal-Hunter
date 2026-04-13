@@ -2617,80 +2617,78 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
     console.log(`[PIPELINE METRICS] Total fetch: ${totalFetchDurationMs}ms | Sources: ${Object.keys(pipelineMetrics).length} | Signals: ${totalSignals} | Failed: ${failedSources.length > 0 ? failedSources.join(", ") : "none"}`);
     console.log(`[PIPELINE METRICS DETAIL]`, JSON.stringify(pipelineMetrics));
 
-    // ── Source Failure & Degradation Alerting ──
-    // Categorize sources: down (error), degraded (ok but 0 signals)
-    const downSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error");
-    const degradedSources = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "ok" && m.signalCount === 0);
-    const alertSources: { name: string; status: string; detail: string }[] = [];
+    // ── Pipeline Health Alerting ──
+    // Fires on real API failures only (auth, billing, quota) — not on 0 signals.
+    // Sends one email per hour max to avoid spam.
+    const billingKeywords = ["401", "402", "403", "429", "quota", "unauthorized", "forbidden", "billing", "payment", "rate limit", "exhausted", "invalid_api_key", "insufficient"];
+    const criticalErrors = Object.entries(pipelineMetrics).filter(([, m]) => {
+      if (m.status === "quota_exhausted") return true;
+      if (m.status === "error" && m.error) {
+        const errLower = m.error.toLowerCase();
+        return billingKeywords.some(kw => errLower.includes(kw));
+      }
+      return false;
+    });
+    const hardErrors = Object.entries(pipelineMetrics).filter(([, m]) => m.status === "error");
 
-    for (const [name, m] of downSources) {
-      alertSources.push({ name, status: "🔴 Down", detail: m.error || "Unknown error" });
-    }
-    for (const [name] of degradedSources) {
-      alertSources.push({ name, status: "🟡 Degraded", detail: "Returned 0 signals" });
-    }
-
-    if (alertSources.length > 0) {
+    if (criticalErrors.length > 0 || hardErrors.length > 0) {
+      const allAlerts = [...new Map([...criticalErrors, ...hardErrors]).entries()];
       try {
-        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
-        if (adminEmails && adminEmails.length > 0) {
-          const adminEmailList = adminEmails.map((a: any) => a.email);
-          const { data: adminProfiles } = await supabase
-            .from("profiles")
+        // 1. In-app notification for admin
+        const { data: adminProfiles } = await supabase.from("profiles").select("id").eq("is_admin", true);
+        if (adminProfiles?.length > 0) {
+          await supabase.from("notifications").insert(adminProfiles.map((p: any) => ({
+            user_id: p.id,
+            title: `🔴 Pipeline alert: ${allAlerts.length} API issue(s)`,
+            message: allAlerts.map(([name, m]) => `${name}: ${m.error || m.status}`).join("\n"),
+          })));
+        }
+      } catch (e) { console.error("[ALERT] In-app notification failed:", e); }
+
+      // 2. Email alert via Resend — deduplicated to once per hour
+      try {
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        const emailFrom = Deno.env.get("EMAIL_FROM") ?? "Gold Rush <noreply@goldrushapp.live>";
+        if (resendKey) {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          const { data: recentAlert } = await supabase
+            .from("email_send_log")
             .select("id")
-            .in("email", adminEmailList);
+            .eq("template_name", "pipeline_alert")
+            .gte("created_at", oneHourAgo)
+            .limit(1)
+            .maybeSingle();
 
-          if (adminProfiles && adminProfiles.length > 0) {
-            const downCount = downSources.length;
-            const degradedCount = degradedSources.length;
-            const statusSummary = [
-              downCount > 0 ? `${downCount} down` : "",
-              degradedCount > 0 ? `${degradedCount} degraded` : "",
-            ].filter(Boolean).join(", ");
-
-            const sourceDetails = alertSources
-              .map(s => `${s.status} ${s.name}: ${s.detail}`)
-              .slice(0, 8) // limit detail length
-              .join("\n");
-
-            const notifications = adminProfiles.map((p: any) => ({
-              user_id: p.id,
-              title: `[WARNING] Data Source Alert: ${statusSummary}`,
-              message: `Pipeline for "${idea.slice(0, 40)}…" detected issues:\n${sourceDetails}\n\nTotal signals: ${totalSignals}. Check Admin → Data Sources.`,
-            }));
-            await supabase.from("notifications").insert(notifications);
-            console.log(`[ALERT] Notified ${adminProfiles.length} admin(s): ${statusSummary}`);
+          if (!recentAlert) {
+            const rows = allAlerts.map(([name, m]) =>
+              `<tr style="border-bottom:1px solid #333"><td style="padding:8px 12px;font-family:monospace;color:#f87171">${name}</td><td style="padding:8px 12px;color:#fbbf24">${m.status}</td><td style="padding:8px 12px;color:#9ca3af;max-width:360px;word-break:break-word">${(m.error || "no detail").slice(0, 300)}</td></tr>`
+            ).join("");
+            const html = `<div style="font-family:sans-serif;background:#0f0f0f;color:#e5e7eb;padding:32px;max-width:680px;margin:0 auto;border-radius:8px">
+  <h2 style="color:#f87171;margin:0 0 8px">🔴 Gold Rush — API Alert</h2>
+  <p style="color:#9ca3af;margin:0 0 24px">Pipeline for <strong style="color:#e5e7eb">"${idea.slice(0, 60)}"</strong> hit ${allAlerts.length} issue(s).</p>
+  <table style="width:100%;border-collapse:collapse;background:#1a1a1a;border-radius:6px;overflow:hidden">
+    <thead><tr style="background:#2a2a2a"><th style="padding:10px 12px;text-align:left;color:#9ca3af;font-weight:600">Source</th><th style="padding:10px 12px;text-align:left;color:#9ca3af;font-weight:600">Status</th><th style="padding:10px 12px;text-align:left;color:#9ca3af;font-weight:600">Error</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p style="color:#6b7280;font-size:12px;margin-top:24px">Total signals this run: ${totalSignals} &mdash; Analysis ID: ${analysisId}</p>
+  <p style="color:#6b7280;font-size:11px">You'll receive at most one alert email per hour.</p>
+</div>`;
+            const emailRes = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ from: emailFrom, to: "yaronmadmon@gmail.com", subject: `🔴 Gold Rush: ${allAlerts.length} API issue(s) — ${allAlerts.map(([n]) => n).join(", ")}`, html }),
+            });
+            if (emailRes.ok) {
+              await supabase.from("email_send_log").insert({ template_name: "pipeline_alert", recipient_email: "yaronmadmon@gmail.com", status: "sent", message_id: crypto.randomUUID() });
+              console.log(`[ALERT] Email sent for ${allAlerts.length} issue(s): ${allAlerts.map(([n]) => n).join(", ")}`);
+            } else {
+              console.error("[ALERT] Resend failed:", await emailRes.text());
+            }
+          } else {
+            console.log("[ALERT] Skipping email — alert already sent within last hour");
           }
         }
-      } catch (alertErr) {
-        console.error("[ALERT] Failed to send source health notification:", alertErr);
-      }
-    }
-
-    // ── Zero-signal warning: alert if total signals are critically low ──
-    if (totalSignals < 10) {
-      try {
-        const { data: adminEmails } = await supabase.from("admin_emails").select("email");
-        if (adminEmails && adminEmails.length > 0) {
-          const adminEmailList = adminEmails.map((a: any) => a.email);
-          const { data: adminProfiles } = await supabase
-            .from("profiles")
-            .select("id")
-            .in("email", adminEmailList);
-
-          if (adminProfiles && adminProfiles.length > 0) {
-            const notifications = adminProfiles.map((p: any) => ({
-              user_id: p.id,
-              title: `Low Signal Alert: only ${totalSignals} signals collected`,
-              message: `Analysis "${idea.slice(0, 50)}..." collected only ${totalSignals} signals across all sources. This may produce a low-quality report. Review in Admin > Pipeline.`,
-            }));
-            await supabase.from("notifications").insert(notifications);
-            console.log(`[ALERT] Notified admin(s) about low signal count: ${totalSignals}`);
-          }
-        }
-      } catch (alertErr) {
-        console.error("[ALERT] Failed to send low-signal notification:", alertErr);
-      }
+      } catch (e) { console.error("[ALERT] Email alert failed:", e); }
     }
 
     // ── Data sufficiency check ──
