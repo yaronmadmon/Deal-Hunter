@@ -783,12 +783,23 @@ function extractCompetitorsFromSources(rawData: Record<string, any>): RawCompeti
   // From Serper competitor results — extract product names from domain (more reliable than title)
   // Domains that are platforms/content sites, not products
   const nonProductDomains = new Set([
+    // Social / platforms
     "reddit", "quora", "medium", "youtube", "twitter", "facebook", "linkedin",
     "instagram", "tiktok", "pinterest", "tumblr", "wordpress", "blogger",
+    // Big tech (not competitors)
     "apple", "google", "microsoft", "amazon", "apps", "play", "blog",
+    // Reference / dev
     "wikipedia", "wikia", "fandom", "stackoverflow", "github",
+    // Tech publications
     "techcrunch", "forbes", "inc", "entrepreneur", "wired", "mashable",
+    "pcmag", "techradar", "zdnet", "cnet", "gizmodo", "engadget", "verge",
+    "businessinsider", "wsj", "nytimes", "theguardian", "huffpost",
+    // Review aggregators (not competitors themselves)
+    "g2", "capterra", "trustpilot", "getapp", "softwareadvice",
+    // Food / lifestyle content
     "thespruceeats", "allrecipes", "foodnetwork", "epicurious",
+    // Generic / catch-all
+    "research", "news", "blog", "docs", "help", "support",
   ]);
   (rawData.serperCompetitors?.allResults || []).forEach((r: any) => {
     let name = "";
@@ -2324,37 +2335,49 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
 
     console.log(`[COMPETITOR PIPELINE] Raw: ${rawCompetitors.length} → Normalized: ${normalizedCompetitors.length} → Validated: ${validatedCompetitors.length}`);
 
-    // ── Post-competitor: Firecrawl review scraping for top 3 competitors ──
-    // Now that we know competitor names, scrape G2/Capterra/review pages for real user complaints.
-    if (firecrawlKey && validatedCompetitors.length > 0) {
+    // ── Post-competitor: Serper review snippets for top 3 competitors ──
+    // Use Serper to search G2/Capterra for each competitor — the organic snippets
+    // contain real ratings, complaints, and pricing info without needing to scrape
+    // (G2/Capterra block scrapers; Serper indexes them reliably).
+    if (serperKey && serperActive && validatedCompetitors.length > 0) {
+      const reviewStart = Date.now();
       const topCompetitors = validatedCompetitors.slice(0, 3);
       const reviewResults: { competitor: string; url: string; content: string }[] = [];
 
       await Promise.all(topCompetitors.map(async (comp: any) => {
+        const name = comp.name || "";
+        if (!name) return;
         try {
-          const name = comp.name || "";
-          if (!name) return;
-          const reviewSearch = await firecrawlSearch(
-            firecrawlKey,
-            `"${name}" reviews complaints pricing alternatives`,
-            3
+          const reviewSearch = await serperSearch(
+            serperKey,
+            `"${name}" reviews site:g2.com OR site:capterra.com OR site:trustpilot.com`,
+            "search",
+            5
           );
-          for (const result of reviewSearch.results) {
-            const content = (result.markdown || result.description || "").slice(0, 600);
-            if (content.length > 50) {
-              reviewResults.push({ competitor: name, url: result.url || "", content });
+          for (const result of (reviewSearch.organic || [])) {
+            const url = result.link || "";
+            const snippet = result.snippet || "";
+            const title = result.title || "";
+            // Only use actual review pages from trusted review sites
+            if (!url || !(url.includes("g2.com") || url.includes("capterra.com") || url.includes("trustpilot.com"))) continue;
+            const content = `${title}: ${snippet}`.trim();
+            if (content.length > 40) {
+              reviewResults.push({ competitor: name, url, content });
             }
           }
-          console.log(`[FIRECRAWL REVIEWS] ${name} → ${reviewSearch.results.length} pages`);
+          console.log(`[COMPETITOR REVIEWS] "${name}" → ${reviewResults.filter(r => r.competitor === name).length} snippets`);
         } catch (e) {
-          console.warn(`[FIRECRAWL REVIEWS] Failed for ${comp.name}:`, e);
+          console.warn(`[COMPETITOR REVIEWS] Serper search failed for "${name}":`, e);
         }
       }));
 
       rawData.firecrawlCompetitorReviews = reviewResults;
-      rawData.sources.push(...reviewResults.map((r: any) => ({ url: r.url, type: "firecrawl_review" })));
-      console.log(`[FIRECRAWL REVIEWS] Total: ${reviewResults.length} review pages across ${topCompetitors.length} competitors`);
-      pipelineMetrics["firecrawl_competitor_reviews"] = { status: "ok", durationMs: 0, signalCount: reviewResults.length };
+      rawData.sources.push(...reviewResults.map((r: any) => ({ url: r.url, type: "competitor_review" })));
+      const reviewDuration = Date.now() - reviewStart;
+      console.log(`[COMPETITOR REVIEWS] Total: ${reviewResults.length} snippets across ${topCompetitors.length} competitors in ${reviewDuration}ms`);
+      pipelineMetrics["firecrawl_competitor_reviews"] = { status: "ok", durationMs: reviewDuration, signalCount: reviewResults.length };
+    } else {
+      pipelineMetrics["firecrawl_competitor_reviews"] = { status: "skipped", durationMs: 0, signalCount: 0 };
     }
 
     // ══════════════════════════════════════════════════════════════════
