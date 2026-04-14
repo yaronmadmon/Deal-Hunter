@@ -1,18 +1,24 @@
 import { Badge } from "@/components/ui/badge";
-import { Compass, ArrowRight, AlertTriangle, Zap, DollarSign } from "lucide-react";
+import { Compass, ArrowRight, AlertTriangle, Zap, DollarSign, ShieldAlert } from "lucide-react";
 import type { FounderDecisionData } from "@/data/mockReport";
 import { ConfidenceLabel } from "./ConfidenceLabel";
 
 interface Props {
   data: FounderDecisionData;
+  hardKillSignals?: Array<{ severity: string; type: string; finding: string; evidence: string }>;
+  adversarialContested?: boolean;
 }
 
 const decisionConfig: Record<string, { color: string; bgColor: string; borderColor: string; icon: string }> = {
-  "Build Now": { color: "text-success", bgColor: "bg-success/10", borderColor: "border-success/20", icon: "🚀" },
+  "Build Now":          { color: "text-success",     bgColor: "bg-success/10",     borderColor: "border-success/20",     icon: "🚀" },
+  "Strong Conditional": { color: "text-warning",     bgColor: "bg-warning/10",     borderColor: "border-warning/20",     icon: "🎯" },
+  "Validate Further":   { color: "text-primary",     bgColor: "bg-primary/10",     borderColor: "border-primary/20",     icon: "🔍" },
+  "Do Not Build Yet":   { color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20", icon: "🛑" },
+  "Insufficient Data":  { color: "text-muted-foreground", bgColor: "bg-secondary/30", borderColor: "border-border", icon: "❓" },
+  // Legacy labels kept for reports generated before this change
   "Build, But Niche Down": { color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning/20", icon: "🎯" },
-  "Validate Further": { color: "text-primary", bgColor: "bg-primary/10", borderColor: "border-primary/20", icon: "🔍" },
-  "Proceed with Caution": { color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning/20", icon: "⚠️" },
-  "Do Not Build": { color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20", icon: "🛑" },
+  "Proceed with Caution":  { color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning/20", icon: "⚠️" },
+  "Do Not Build":          { color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20", icon: "🛑" },
 };
 
 const RiskBadge = ({ level }: { level: string }) => {
@@ -21,8 +27,10 @@ const RiskBadge = ({ level }: { level: string }) => {
   return <Badge variant={variant} className="text-[13px] px-2.5 py-0.5">{level}</Badge>;
 };
 
-export const FounderDecision = ({ data }: Props) => {
+export const FounderDecision = ({ data, hardKillSignals = [], adversarialContested = false }: Props) => {
   const config = decisionConfig[data.decision] || decisionConfig["Validate Further"];
+  const hardKills = hardKillSignals.filter(k => k.severity === "Hard");
+  const softKills = hardKillSignals.filter(k => k.severity === "Soft");
 
   return (
     <div className="bg-card border-2 border-primary/20 rounded-2xl p-8 mb-8 shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -47,6 +55,42 @@ export const FounderDecision = ({ data }: Props) => {
         </div>
         <p className="text-[15px] text-foreground leading-relaxed">{data.reasoning}</p>
       </div>
+
+      {/* Adversarial Kill Signals — shown prominently when present */}
+      {(hardKills.length > 0 || softKills.length > 0) && (
+        <div className="mb-6 space-y-2">
+          {adversarialContested && (
+            <div className="flex items-center gap-2 text-xs text-warning font-semibold uppercase tracking-wide mb-2">
+              <ShieldAlert className="w-3.5 h-3.5" />
+              Contested — adversarial analysis conflicts with score
+            </div>
+          )}
+          {hardKills.map((k, i) => (
+            <div key={i} className="flex items-start gap-3 bg-destructive/8 border border-destructive/20 rounded-lg px-4 py-3">
+              <ShieldAlert className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+              <div>
+                <span className="text-xs font-semibold text-destructive uppercase tracking-wide mr-2">[HARD KILL]</span>
+                <span className="text-sm text-foreground">{k.finding}</span>
+                {k.evidence && (
+                  <p className="text-xs text-muted-foreground mt-1">Evidence: {k.evidence}</p>
+                )}
+              </div>
+            </div>
+          ))}
+          {softKills.map((k, i) => (
+            <div key={i} className="flex items-start gap-3 bg-warning/8 border border-warning/20 rounded-lg px-4 py-3">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+              <div>
+                <span className="text-xs font-semibold text-warning uppercase tracking-wide mr-2">[RISK]</span>
+                <span className="text-sm text-foreground">{k.finding}</span>
+                {k.evidence && (
+                  <p className="text-xs text-muted-foreground mt-1">Evidence: {k.evidence}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Why */}
       {data.whyFactors && data.whyFactors.length > 0 && (

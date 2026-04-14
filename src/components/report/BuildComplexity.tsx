@@ -8,7 +8,7 @@ interface Props {
 }
 
 const feasibilityConfig: Record<string, { variant: string; description: string }> = {
-  "Easy": { variant: "go", description: "Buildable with Lovable or Cursor in weeks" },
+  "Easy": { variant: "go", description: "Buildable with Cursor or Bolt in weeks" },
   "Moderate": { variant: "pivot", description: "Requires some custom backend work" },
   "Hard": { variant: "nogo", description: "Significant engineering required" },
   "Do Not Attempt": { variant: "nogo", description: "Enterprise-level complexity" },
@@ -32,7 +32,7 @@ const EstimateColumn = ({ estimate, icon, title }: { estimate: BuildEstimate; ic
       <div>
         <p className="text-[13px] text-muted-foreground mb-1">Skills Involved</p>
         <div className="flex flex-wrap gap-1.5">
-          {estimate.skillsRequired.map((skill, i) => (
+          {(estimate.skillsRequired ?? []).map((skill, i) => (
             <span key={i} className="text-xs bg-background border rounded-full px-2.5 py-1 text-muted-foreground">{skill}</span>
           ))}
         </div>
@@ -112,7 +112,7 @@ export const BuildComplexity = ({ data }: Props) => {
           </div>
           <p className="text-2xl font-bold text-foreground mb-2">{data.mvpTimeline}</p>
           <ul className="space-y-1.5">
-            {data.mvpScope.map((s, i) => (
+            {(data.mvpScope ?? []).map((s, i) => (
               <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                 <span className="text-accent mt-0.5 text-[13px]">●</span> {s}
               </li>
@@ -127,7 +127,7 @@ export const BuildComplexity = ({ data }: Props) => {
             <h3 className="font-semibold text-sm text-foreground">Technical Challenges</h3>
           </div>
           <ul className="space-y-2">
-            {data.techChallenges.map((c, i) => (
+            {(data.techChallenges ?? []).map((c, i) => (
               <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                 <span className="text-destructive mt-0.5 text-[13px]">⚠</span> {c}
               </li>

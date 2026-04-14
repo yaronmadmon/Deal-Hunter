@@ -1,6 +1,39 @@
 // Email sent via Resend (https://resend.com)
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
+async function sendEmail(resendApiKey: string, payload: {
+  to: string
+  from: string
+  subject: string
+  html?: string
+  text?: string
+}) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: payload.from,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    if (response.status === 429) {
+      const retryAfterSecs = parseInt(response.headers.get('Retry-After') || '60', 10)
+      const err = Object.assign(new Error(`Rate limited: ${body}`), { status: 429, retryAfterSeconds: retryAfterSecs })
+      throw err
+    }
+    throw new Error(`Resend API error ${response.status}: ${body}`)
+  }
+}
+
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
 const DEFAULT_SEND_DELAY_MS = 200
@@ -164,21 +197,13 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
-          {
-            run_id: payload.run_id,
+        await sendEmail(resendApiKey, {
             to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
+            from: payload.from || 'Gold Rush <noreply@goldrushapp.live>',
             subject: payload.subject,
             html: payload.html,
             text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            external_id: payload.external_id,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-          },)
+          })
 
         // Log success
         await supabase.from('email_send_log').insert({

@@ -327,7 +327,13 @@ const Report = () => {
         {r.founderInsight && <FounderInsight data={r.founderInsight} />}
 
         {/* Founder Decision — moved to top (verdict layer) */}
-        {r.founderDecision && <FounderDecision data={r.founderDecision} />}
+        {r.founderDecision && (
+          <FounderDecision
+            data={r.founderDecision}
+            hardKillSignals={(r as any)._hardKillSignals || []}
+            adversarialContested={(r as any)._adversarialContested === true}
+          />
+        )}
 
         {/* Data Quality & Integrity — collapsed group */}
         <DataQualityGroup report={r} userId={user?.id} analysisId={id} />

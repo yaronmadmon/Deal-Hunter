@@ -324,7 +324,9 @@ export interface ScoreExplanationData {
 }
 
 export interface FounderDecisionData {
-  decision: "Build Now" | "Build, But Niche Down" | "Validate Further" | "Proceed with Caution" | "Do Not Build";
+  decision: "Build Now" | "Strong Conditional" | "Validate Further" | "Do Not Build Yet" | "Insufficient Data"
+    // Legacy labels kept for backward compat with older reports
+    | "Build, But Niche Down" | "Proceed with Caution" | "Do Not Build";
   reasoning: string;
   whyFactors: string[];
   nextStep: string;

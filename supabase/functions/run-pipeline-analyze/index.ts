@@ -6,15 +6,16 @@ const debugLog = (...args: any[]) => { if (LOG_LEVEL === "debug") console.log(..
 
 // ── Shared verdict + signal strength helpers ───────────────────────
 function computeVerdict(score: number): string {
-  if (score >= 75) return "Build Now";
-  if (score >= 55) return "Build, But Niche Down";
+  if (score >= 80) return "Build Now";
+  if (score >= 70) return "Strong Conditional";   // Clear opportunity, specific condition required
+  if (score >= 55) return "Validate Further";     // Not enough confidence for a conditional
   if (score >= 40) return "Validate Further";
   return "Do Not Build Yet";
 }
 
 function computeSignalStrength(score: number): string {
-  // Aligned with verdict thresholds for consistency
-  if (score >= 75) return "Strong";
+  if (score >= 80) return "Strong";
+  if (score >= 70) return "Moderate";
   if (score >= 55) return "Moderate";
   return "Weak";
 }
@@ -32,6 +33,79 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+// ── Adversarial Pass ──────────────────────────────────────────────────
+// A separate, independent AI call whose only job is to find structural
+// reasons the idea will fail. It runs on the same evidence block as the
+// main analysis but with a hostile lens — it cannot recommend, it can
+// only kill. Its output is structural data, not narrative, so the main
+// synthesis cannot smooth it away.
+interface HardKillSignal {
+  severity: "Hard" | "Soft";
+  type: "unit_economics" | "platform_risk" | "no_pain_evidence" | "graveyard" |
+        "distribution_impossibility" | "timing_dead" | "feature_not_product" |
+        "willingness_to_pay_gap" | "founder_mismatch" | "other";
+  finding: string;
+  evidence: string;
+  survivable: boolean;
+}
+
+async function runAdversarialPass(
+  idea: string,
+  evidenceContext: string,
+  openaiApiKey: string
+): Promise<HardKillSignal[]> {
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.2,
+        max_tokens: 1200,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `You are a startup failure analyst. Your job is to find every structural reason this idea will fail. You are NOT a consultant. You do NOT balance positives against negatives. You do NOT suggest fixes or workarounds. You do NOT recommend niching down. You find hard structural kills.
+
+A "Hard" kill is a structural, likely-fatal flaw — impossible unit economics, platform absorption, zero evidence of willingness to pay, dead or abandoned market, feature that an incumbent already owns.
+A "Soft" kill is a real, evidence-backed risk that a well-executed startup could survive.
+
+RULES:
+- Only cite findings supported by evidence in the evidence block. Do not invent problems.
+- If you find nothing serious, return {"kills": []}
+- Do not generate more than 5 kill signals total.
+- Do not output silver linings, mitigations, or recommendations.
+- Each finding must cite specific evidence from the block.
+
+Return ONLY a JSON object: {"kills": [{"severity":"Hard"|"Soft","type":"unit_economics"|"platform_risk"|"no_pain_evidence"|"graveyard"|"distribution_impossibility"|"timing_dead"|"feature_not_product"|"willingness_to_pay_gap"|"founder_mismatch"|"other","finding":"one sentence — what specifically is structurally wrong","evidence":"specific signal from the evidence block that supports this finding","survivable":true|false}]}`
+          },
+          {
+            role: "user",
+            content: `Startup idea: "${idea}"\n\nEvidence block:\n${evidenceContext.slice(0, 8000)}`
+          }
+        ],
+      }),
+    });
+
+    if (!resp.ok) {
+      console.warn("[ADVERSARIAL] API error:", resp.status);
+      return [];
+    }
+
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || "{}";
+    const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || "{}");
+    const kills: HardKillSignal[] = parsed.kills || [];
+
+    // Safety: only accept kills that have evidence citations (non-empty evidence field)
+    return kills.filter((k: any) => k.evidence && k.evidence.length > 10 && k.finding && k.finding.length > 10);
+  } catch (e) {
+    console.warn("[ADVERSARIAL] Failed — skipping adversarial pass:", e);
+    return [];
+  }
+}
 
 
 Deno.serve(async (req) => {
@@ -107,6 +181,100 @@ Deno.serve(async (req) => {
       console.error("OPENAI_API_KEY not found");
       await supabase.from("analyses").update({ status: "failed" }).eq("id", analysisId);
       return new Response(JSON.stringify({ error: "AI key missing" }), { status: 500, headers: corsHeaders });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // EVIDENCE SUFFICIENCY GATE
+    // Before running the full AI analysis, check whether we have enough
+    // real data to make a meaningful judgment. If not, return "Insufficient
+    // Data" rather than generating a confident-sounding verdict from noise.
+    // ══════════════════════════════════════════════════════════════════
+    {
+      const tier1Sources: Set<string> = new Set();
+      let tier1Count = 0;
+
+      // Count Tier 1 signals across all categories
+      for (const s of (evidenceBlock.demandSignals || [])) {
+        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+      }
+      for (const s of (evidenceBlock.trendSignals || [])) {
+        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+      }
+      for (const c of (evidenceBlock.competitors || [])) {
+        if (c.tier === "tier1") { tier1Count++; tier1Sources.add("serper_competitors"); }
+      }
+      for (const p of (evidenceBlock.productLaunchSignals || [])) {
+        tier1Count++; tier1Sources.add("producthunt");
+      }
+      for (const d of (evidenceBlock.developerSignals || [])) {
+        tier1Count++; tier1Sources.add("github");
+      }
+      for (const s of (evidenceBlock.sentimentSignals || [])) {
+        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+      }
+
+      // Pioneer market exception: novel ideas may have thin signals by nature
+      const pioneerKeywords = ["pioneer", "first-of-its-kind", "novel", "unprecedented", "no existing"];
+      const isPioneerMarket = phase1Data.pipelineMetrics?.pioneer_market === true;
+
+      const minTier1 = isPioneerMarket ? 1 : 3;
+      const minSourceTypes = isPioneerMarket ? 1 : 2;
+
+      if (tier1Count < minTier1 || tier1Sources.size < minSourceTypes) {
+        console.warn(`[INSUFFICIENT DATA] tier1Count=${tier1Count}, sourceTypes=${tier1Sources.size}. Returning Insufficient Data verdict.`);
+
+        const insufficientReport = {
+          overallScore: 0,
+          verdict: "Insufficient Data",
+          signalStrength: "Weak",
+          founderDecision: {
+            decision: "Insufficient Data",
+            reasoning: `The pipeline collected fewer than ${minTier1} verified signals from independent sources. This is not enough evidence to evaluate this idea with confidence. The verdict reflects data availability, not idea quality.`,
+            whyFactors: [
+              `Only ${tier1Count} Tier 1 signal(s) collected from ${tier1Sources.size} source type(s) — minimum required is ${minTier1} signals from ${minSourceTypes} source types`,
+              "Perplexity AI summaries cannot substitute for verified primary evidence",
+            ],
+            nextStep: "Try a broader or more popular variation of the idea, or manually validate demand before using Gold Rush.",
+            riskLevel: "High",
+            speedToMvp: "Slow",
+            commercialClarity: "Weak",
+            confidence: "Low",
+          },
+          killShotAnalysis: {
+            risks: [{ risk: "Insufficient evidence collected to evaluate this idea", severity: "High", mitigation: "Manual validation required before using this tool" }],
+            riskLevel: "High",
+            interpretation: "The pipeline could not collect enough verified data to make a reliable judgment. This verdict is about data availability, not the inherent quality of the idea.",
+            confidence: "Low",
+          },
+          signalCards: [],
+          scoreBreakdown: [
+            { label: "Trend Momentum", value: 0, weight: "25%" },
+            { label: "Market Saturation", value: 0, weight: "20%" },
+            { label: "Sentiment", value: 0, weight: "20%" },
+            { label: "Growth", value: 0, weight: "15%" },
+            { label: "Opportunity", value: 0, weight: "20%" },
+          ],
+          opportunity: { featureGaps: [], underservedUsers: [], positioning: "Insufficient data", builderAngle: "Insufficient data", noOpportunityFound: true },
+          revenueBenchmark: { summary: "Insufficient data to estimate revenue", range: "N/A", basis: "N/A", dataSource: "ai_estimated", sourceUrls: [] },
+          dataQualitySummary: [{ sourceName: "All Sources", dataTier: "insufficient", signalCount: `${tier1Count} Tier 1 signals`, reliabilityNote: "Below minimum threshold for analysis" }],
+          pipelineMetrics,
+          _insufficientDataReason: `tier1Count=${tier1Count} (min ${minTier1}), sourceTypes=${tier1Sources.size} (min ${minSourceTypes})`,
+          _hardKillSignals: [],
+        };
+
+        await supabase.from("analyses").update({
+          status: "complete",
+          overall_score: 0,
+          signal_strength: "Weak",
+          report_data: insufficientReport,
+          idea_hash: ideaHash,
+          updated_at: new Date().toISOString(),
+        }).eq("id", analysisId);
+
+        return new Response(JSON.stringify({ success: true, analysisId, verdict: "Insufficient Data" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -320,8 +488,9 @@ CRITICAL RULE — NARRATIVE MUST MATCH SCORE: Your written explanation for each 
 
 Overall Score = sum of all categories (0-100)
 Verdict thresholds (non-negotiable):
->=75 -> Build Now
->=55 -> Build, But Niche Down
+>=80 -> Build Now
+>=70 -> Strong Conditional (clear opportunity exists, but a specific condition must be validated first)
+>=55 -> Validate Further (not enough confidence to commit — name what needs validation)
 >=40 -> Validate Further
 <40  -> Do Not Build Yet
 
@@ -524,7 +693,7 @@ Produce the JSON report with this EXACT structure:
   "marketExploitMap": {"competitorWeaknesses": ["4-6 concrete weaknesses"], "competitorStrengths": ["3-5 honest strengths"], "topComplaints": [{"complaint": "specific", "frequency": "High/Medium/Low"}], "topPraise": [{"praise": "specific", "frequency": "High/Medium/Low"}], "whereToWin": ["4-6 opportunities"], "attackAngle": "1-2 sentence positioning", "confidence": "High/Medium/Low"},
   "competitorMatrix": {"features": ["Speed", "Pricing", "App Store Data", "Search Demand Signals", "Social Sentiment", "Build Feasibility", "Report Depth", "Founder Actionability"], "competitors": [{"name": "Competitor 1", "classification": "direct/feature_overlap/adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 2", "classification": "direct", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Competitor 3", "classification": "adjacent", "isYou": false, "scores": {"Speed": "Strong/Medium/Weak/No"}}, {"name": "Your Idea", "isYou": true, "scores": {"Speed": "Strong/Medium/Weak/No", "Pricing": "Strong/Medium/Weak/No", "FILL ALL features with realistic assessments based on the idea's strengths": ""}}], "confidence": "Medium"},
 COMPETITOR MATRIX RULE: You MUST include ALL competitors found in the VALIDATED COMPETITORS section AND the PERPLEXITY COMPETITOR RESEARCH section of the evidence block. Do NOT reduce to 1 competitor — the matrix must show the full competitive landscape. Minimum 3 non-"Your Idea" rows. If the evidence shows 5 competitors, list all 5. Missing a validated competitor is an error. Competitors from Perplexity should be marked with dataTier "reported".
-  "founderDecision": {"decision": "Build Now" or "Build, But Niche Down" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold", "whyFactors": ["FORMAT REQUIRED: '[specific user behavior or pain] — [what this means for the opportunity]'. EXAMPLE: 'Pet owners cannot find verified walkers on short notice — existing apps lack real-time availability, creating a clear trust and reliability gap to exploit'. DO NOT write: High demand for X / Strong interest in X / X indicates demand / Positive sentiment towards X. These passive labels will be REJECTED."], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
+  "founderDecision": {"decision": "Build Now" or "Strong Conditional" or "Validate Further" or "Do Not Build Yet", "reasoning": "1-2 sentences — narrative MUST match verdict threshold. For 'Strong Conditional', name the SPECIFIC condition that must be validated before building.", "whyFactors": ["FORMAT REQUIRED: '[specific user behavior or pain] — [what this means for the opportunity]'. EXAMPLE: 'Pet owners cannot find verified walkers on short notice — existing apps lack real-time availability, creating a clear trust and reliability gap to exploit'. DO NOT write: High demand for X / Strong interest in X / X indicates demand / Positive sentiment towards X. These passive labels will be REJECTED."], "nextStep": "ONE concrete action achievable within five days — name a real channel or method. NOT 'do more research'", "riskLevel": "Low/Medium/High", "speedToMvp": "Fast/Medium/Slow", "commercialClarity": "Clear/Moderate/Weak", "confidence": "Medium"},
   "killShotAnalysis": {"risks": [{"risk": "specific risk referencing data", "severity": "High/Medium/Low", "mitigation": "one sentence — how to survive it"}], "riskLevel": "Low/Medium/High", "interpretation": "2-3 sentences — manageable or deal-breakers? Reference data.", "confidence": "Medium"},
   "scoreExplanationData": {"summary": "1-2 sentences", "factors": [{"category": "Demand Strength", "explanation": "narrative must match score"}, {"category": "Competition Density", "explanation": "string"}, {"category": "User Sentiment", "explanation": "string"}, {"category": "Market Growth", "explanation": "string"}, {"category": "Opportunity Gap", "explanation": "if <=10, explain weakness clearly"}], "confidence": "Medium"},
   "founderInsight": {
@@ -560,12 +729,12 @@ Do NOT generate the following fields — they are populated programmatically: me
 
 BUILD COMPLEXITY SCORING INSTRUCTIONS:
 - complexityScore (1-10): Evaluate based on third-party API dependencies, real-time features, hardware requirements, AI model training needs, two-sided marketplace dynamics, regulatory requirements (HIPAA, PCI, GDPR), and native mobile features.
-- vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Lovable or Cursor in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
+- vibeCoderFeasibility mapping: 1-3 = "Easy" (Buildable with Cursor or Bolt in weeks), 4-6 = "Moderate" (Requires some custom backend work), 7-8 = "Hard" (Significant engineering required), 9-10 = "Do Not Attempt" (Enterprise-level complexity).
 - complexityFactors: List the specific factors that increase complexity for THIS idea.
 - voiceApiCosts and onDeviceNote: Only provide real values if the idea actually involves voice APIs or on-device processing. Otherwise set to "N/A".
 
 BUILD ESTIMATE COMPARISON — AI-ASSISTED COST TIERS (CRITICAL):
-The AI-assisted build estimates MUST reflect realistic costs using modern AI coding tools (Lovable, Cursor, Bolt, Replit Agent). Use these tiers:
+The AI-assisted build estimates MUST reflect realistic costs using modern AI coding tools (Cursor, Bolt, Replit Agent, Windsurf). Use these tiers:
 - complexityScore 1-3 (Easy): AI-assisted cost $500-$2,000, time 1-3 weeks
 - complexityScore 4-6 (Moderate): AI-assisted cost $2,000-$10,000, time 3-8 weeks
 - complexityScore 7-8 (Hard): AI-assisted cost $10,000-$50,000, time 6-16 weeks
@@ -697,6 +866,9 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
       return { fullContent: content, finishReason: reason };
     };
 
+    // Run main analysis and adversarial pass in parallel
+    const adversarialPassPromise = runAdversarialPass(idea, fullContext, openaiApiKey);
+
     // First attempt
     let { fullContent, finishReason } = await executeAiCall(7000);
 
@@ -782,6 +954,20 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         }
 
         // ══════════════════════════════════════════════════════════════
+        // ADVERSARIAL PASS INTEGRATION
+        // Await the parallel adversarial pass and apply hard kill rules
+        // deterministically. These run BEFORE scoring enforcement so that
+        // any verdict corrections happen with the final adjusted score.
+        // ══════════════════════════════════════════════════════════════
+        const hardKillSignals: HardKillSignal[] = await adversarialPassPromise;
+        reportData._hardKillSignals = hardKillSignals;
+
+        const hardKills = hardKillSignals.filter((k) => k.severity === "Hard");
+        const softKills = hardKillSignals.filter((k) => k.severity === "Soft");
+
+        console.log(`[ADVERSARIAL] ${hardKills.length} hard kills, ${softKills.length} soft kills found`);
+
+        // ══════════════════════════════════════════════════════════════
         // DETERMINISTIC POST-AI VALIDATION
         // These checks enforce scoring rules in CODE, not just the prompt.
         // ══════════════════════════════════════════════════════════════
@@ -837,6 +1023,54 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
+        // ── ADVERSARIAL VERDICT DOWNGRADE RULES ──────────────────────
+        // Hard kills have structural veto power. They downgrade the verdict
+        // regardless of score. The synthesis cannot override these because
+        // they are applied deterministically after AI parsing.
+        {
+          const currentVerdict = reportData.founderDecision?.decision ?? "";
+          const verdictOrder = ["Build Now", "Strong Conditional", "Validate Further", "Do Not Build Yet"];
+
+          if (hardKills.length >= 2) {
+            // 2+ hard kills → force "Do Not Build Yet" regardless of score
+            if (currentVerdict !== "Do Not Build Yet") {
+              console.warn(`[ADVERSARIAL GATE] ${hardKills.length} hard kills → forcing "Do Not Build Yet". Was: "${currentVerdict}"`);
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = "Do Not Build Yet";
+                reportData.founderDecision.reasoning =
+                  `[Adversarial analysis found ${hardKills.length} structural kill signals: ${hardKills.map(k => k.type).join(", ")}] ` +
+                  (reportData.founderDecision.reasoning || "");
+              }
+              reportData._adversarialVerdictDowngrade = "forced_do_not_build";
+            }
+          } else if (hardKills.length === 1) {
+            // 1 hard kill → drop one verdict level (Build Now → Strong Conditional, etc.)
+            const currentIdx = verdictOrder.indexOf(currentVerdict);
+            if (currentIdx >= 0 && currentIdx < verdictOrder.length - 1) {
+              const downgradedVerdict = verdictOrder[currentIdx + 1];
+              console.warn(`[ADVERSARIAL GATE] 1 hard kill (${hardKills[0].type}) → downgrading verdict from "${currentVerdict}" to "${downgradedVerdict}"`);
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = downgradedVerdict;
+                reportData.founderDecision.reasoning =
+                  `[Adversarial analysis found a structural concern: ${hardKills[0].finding}] ` +
+                  (reportData.founderDecision.reasoning || "");
+              }
+              reportData._adversarialVerdictDowngrade = `downgraded_one_level`;
+            }
+          }
+
+          // "Contested" flag: adversarial found Hard kills but score is still ≥70
+          // This signals genuine tension between evidence quality and structural risk
+          if (hardKills.length >= 1 && (reportData.overallScore || 0) >= 70) {
+            reportData._adversarialContested = true;
+            if (reportData.founderDecision) {
+              reportData.founderDecision.reasoning =
+                (reportData.founderDecision.reasoning || "") +
+                " [Note: Score is high but adversarial analysis found structural concerns — treat this as contested.]";
+            }
+          }
+        }
+
         // 3. Demand Override Rule — code-level enforcement
         // If BOTH search demand AND user pain signals are weak (<5 signals combined),
         // cap Opportunity at 10/20
@@ -877,6 +1111,31 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           }
         }
 
+        // ── PAIN EVIDENCE HARD GATE ──────────────────────────────────
+        // If fewer than 3 independent Tier-1 pain signals exist, a "Build Now"
+        // or "Strong Conditional" verdict is not permitted. Perplexity summaries
+        // saying "users are frustrated" do NOT count as pain evidence.
+        // This blocks ideas where people complain loudly in AI summaries but
+        // no verified signal source actually confirms the pain.
+        {
+          const tier1PainCount = (rawData.serperReddit?.organic?.length ?? 0)
+            + (rawData.twitterSentiment?.tweets?.length ?? 0)
+            + (rawData.firecrawlReddit?.results?.length ?? 0)
+            + (rawData.serperNews?.organic?.length ?? 0);  // news also validates real pain
+
+          if (tier1PainCount < 3) {
+            const currentVerdict = reportData.founderDecision?.decision ?? computeVerdict(reportData.overallScore || 0);
+            if (currentVerdict === "Build Now" || currentVerdict === "Strong Conditional") {
+              console.warn(`[PAIN GATE] Only ${tier1PainCount} Tier-1 pain signals. Downgrading verdict from "${currentVerdict}" to "Validate Further".`);
+              if (reportData.founderDecision) {
+                reportData.founderDecision.decision = "Validate Further";
+                reportData.founderDecision.reasoning = (reportData.founderDecision.reasoning || "") +
+                  ` [Note: Verdict downgraded — fewer than 3 independent Tier-1 pain signals found (${tier1PainCount} detected). Perplexity summaries do not substitute for verified pain evidence.]`;
+              }
+              reportData._painGateTriggered = true;
+            }
+          }
+        }
 
         // ══════════════════════════════════════════════════════════════
         // CONCEPT VIABILITY CHECK (POST-AI ENFORCEMENT)
@@ -2388,7 +2647,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         if (!reportData.founderDecision) {
           const score = reportData.overallScore || 65;
           reportData.founderDecision = {
-            decision: score >= 75 ? "Build Now" : score >= 55 ? "Build, But Niche Down" : score >= 40 ? "Validate Further" : "Do Not Build Yet",
+            decision: computeVerdict(score),
             reasoning: reportData.scoreExplanation || "See score breakdown for details.",
             whyFactors: ["Review the full report sections for detailed reasoning."],
             nextStep: "Validate with 10 potential users before building an MVP.",
