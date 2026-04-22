@@ -10,10 +10,43 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_email: string | null
+          admin_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          target_email: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_email?: string | null
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_email?: string | null
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       admin_emails: {
         Row: {
           created_at: string
@@ -98,12 +131,51 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_log: {
+        Row: {
+          contact_type: string
+          created_at: string
+          id: string
+          notes: string | null
+          outcome: string | null
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          contact_type: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          contact_type?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credits_log: {
         Row: {
           amount: number
           analysis_id: string | null
           created_at: string
           id: string
+          property_id: string | null
           reason: string
           user_id: string
         }
@@ -112,6 +184,7 @@ export type Database = {
           analysis_id?: string | null
           created_at?: string
           id?: string
+          property_id?: string | null
           reason: string
           user_id: string
         }
@@ -120,6 +193,7 @@ export type Database = {
           analysis_id?: string | null
           created_at?: string
           id?: string
+          property_id?: string | null
           reason?: string
           user_id?: string
         }
@@ -129,6 +203,13 @@ export type Database = {
             columns: ["analysis_id"]
             isOneToOne: false
             referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credits_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -309,6 +390,94 @@ export type Database = {
           },
         ]
       }
+      owner_contacts: {
+        Row: {
+          created_at: string
+          emails: Json | null
+          id: string
+          mailing_address: Json | null
+          owner_name: string | null
+          phones: Json | null
+          property_id: string
+          skip_trace_source: string | null
+          traced_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emails?: Json | null
+          id?: string
+          mailing_address?: Json | null
+          owner_name?: string | null
+          phones?: Json | null
+          property_id: string
+          skip_trace_source?: string | null
+          traced_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emails?: Json | null
+          id?: string
+          mailing_address?: Json | null
+          owner_name?: string | null
+          phones?: Json | null
+          property_id?: string
+          skip_trace_source?: string | null
+          traced_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_contacts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_deals: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          priority: string
+          property_id: string
+          stage: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id: string
+          stage?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_deals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -336,6 +505,90 @@ export type Database = {
           id?: string
           suspended?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string | null
+          attom_id: string | null
+          baths: number | null
+          beds: number | null
+          city: string | null
+          created_at: string
+          deal_score: number | null
+          deal_verdict: string | null
+          distress_details: Json | null
+          distress_types: string[] | null
+          equity_pct: number | null
+          estimated_value: number | null
+          id: string
+          last_sale_date: string | null
+          last_sale_price: number | null
+          property_type: string | null
+          report_data: Json | null
+          search_batch_id: string | null
+          search_filters: Json | null
+          sqft: number | null
+          state: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          attom_id?: string | null
+          baths?: number | null
+          beds?: number | null
+          city?: string | null
+          created_at?: string
+          deal_score?: number | null
+          deal_verdict?: string | null
+          distress_details?: Json | null
+          distress_types?: string[] | null
+          equity_pct?: number | null
+          estimated_value?: number | null
+          id?: string
+          last_sale_date?: string | null
+          last_sale_price?: number | null
+          property_type?: string | null
+          report_data?: Json | null
+          search_batch_id?: string | null
+          search_filters?: Json | null
+          sqft?: number | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          attom_id?: string | null
+          baths?: number | null
+          beds?: number | null
+          city?: string | null
+          created_at?: string
+          deal_score?: number | null
+          deal_verdict?: string | null
+          distress_details?: Json | null
+          distress_types?: string[] | null
+          equity_pct?: number | null
+          estimated_value?: number | null
+          id?: string
+          last_sale_date?: string | null
+          last_sale_price?: number | null
+          property_type?: string | null
+          report_data?: Json | null
+          search_batch_id?: string | null
+          search_filters?: Json | null
+          sqft?: number | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          zip?: string | null
         }
         Relationships: []
       }
@@ -368,6 +621,30 @@ export type Database = {
           id?: string
           rating?: number
           title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          name?: string
           user_id?: string
         }
         Relationships: []
@@ -540,6 +817,10 @@ export type Database = {
     Functions: {
       analyses_count_last_hour: { Args: { _user_id: string }; Returns: number }
       deduct_credit: { Args: { analysis_id?: string }; Returns: boolean }
+      deduct_credit_for_property: {
+        Args: { p_property_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
