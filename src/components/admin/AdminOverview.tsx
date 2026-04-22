@@ -40,42 +40,44 @@ export const AdminOverview = () => {
     try {
       const today = subDays(new Date(), 1).toISOString();
 
-      const [profilesRes, analysesRes, creditsRes, watchlistRes, newUsersRes, todayAnalysesRes] = await Promise.all([
+      const [profilesRes, analysesRes, creditsRes, propertiesRes, pipelineRes, newUsersRes, todaySearchesRes] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('analyses').select('status'),
         supabase.from('credits_log').select('amount'),
-        supabase.from('watchlist').select('id', { count: 'exact', head: true }),
+        supabase.from('properties' as any).select('status'),
+        supabase.from('pipeline_deals' as any).select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', today),
-        supabase.from('analyses').select('id', { count: 'exact', head: true }).gte('created_at', today),
+        supabase.from('properties' as any).select('id', { count: 'exact', head: true }).gte('created_at', today),
       ]);
 
       const analyses = analysesRes.data || [];
       const credits = creditsRes.data || [];
+      const properties = (propertiesRes as any).data || [];
 
       setStats({
         totalUsers: profilesRes.count || 0,
-        totalAnalyses: analyses.length,
-        completedAnalyses: analyses.filter(a => a.status === 'complete' || a.status === 'completed' || a.status === 'partial').length,
-        failedAnalyses: analyses.filter(a => a.status === 'failed').length,
-        pendingAnalyses: analyses.filter(a => ['pending', 'processing', 'fetching', 'analyzing'].includes(a.status)).length,
+        totalAnalyses: properties.length,
+        completedAnalyses: properties.filter((p: any) => p.status === 'complete').length,
+        failedAnalyses: properties.filter((p: any) => p.status === 'failed').length,
+        pendingAnalyses: properties.filter((p: any) => ['searching', 'scoring'].includes(p.status)).length,
         totalCreditsIssued: credits.filter(c => c.amount > 0).reduce((s, c) => s + c.amount, 0),
         totalCreditsUsed: credits.filter(c => c.amount < 0).reduce((s, c) => s + Math.abs(c.amount), 0),
-        totalWatchlistItems: watchlistRes.count || 0,
+        totalWatchlistItems: (pipelineRes as any).count || 0,
         newUsersToday: newUsersRes.count || 0,
-        analysesToday: todayAnalysesRes.count || 0,
+        analysesToday: (todaySearchesRes as any).count || 0,
       });
 
       // Recent activity from multiple sources
       const [recentAnalyses, recentUsers, recentCredits] = await Promise.all([
-        supabase.from('analyses').select('idea, status, created_at').order('created_at', { ascending: false }).limit(5),
+        supabase.from('properties' as any).select('address, city, state, status, deal_verdict, created_at').order('created_at', { ascending: false }).limit(5),
         supabase.from('profiles').select('display_name, email, created_at').order('created_at', { ascending: false }).limit(5),
         supabase.from('credits_log').select('amount, reason, created_at').order('created_at', { ascending: false }).limit(5),
       ]);
 
       const activities: RecentActivity[] = [
-        ...(recentAnalyses.data || []).map(a => ({
+        ...((recentAnalyses as any).data || []).map((a: any) => ({
           type: 'analysis' as const,
-          description: `Analysis "${a.idea.slice(0, 40)}..." → ${a.status}`,
+          description: `Property "${a.address || ''}${a.city ? ', ' + a.city : ''}" → ${a.deal_verdict || a.status}`,
           time: a.created_at,
         })),
         ...(recentUsers.data || []).map(u => ({
@@ -103,11 +105,11 @@ export const AdminOverview = () => {
 
   const statCards = [
     { label: 'Total Users', value: stats.totalUsers, icon: Users, accent: 'text-blue-400', sub: `+${stats.newUsersToday} today` },
-    { label: 'Analyses', value: stats.totalAnalyses, icon: FileText, accent: 'text-purple-400', sub: `+${stats.analysesToday} today` },
-    { label: 'Completed', value: stats.completedAnalyses, icon: Activity, accent: 'text-green-400', sub: `${stats.failedAnalyses} failed` },
-    { label: 'Credits Issued', value: stats.totalCreditsIssued, icon: TrendingUp, accent: 'text-emerald-400', sub: `${stats.totalCreditsUsed} used` },
-    { label: 'Watchlist Items', value: stats.totalWatchlistItems, icon: Eye, accent: 'text-amber-400', sub: 'active monitors' },
-    { label: 'Pending', value: stats.pendingAnalyses, icon: BarChart3, accent: 'text-yellow-400', sub: 'in queue' },
+    { label: 'Properties Found', value: stats.totalAnalyses, icon: FileText, accent: 'text-purple-400', sub: `+${stats.analysesToday} today` },
+    { label: 'Deals Scored', value: stats.completedAnalyses, icon: Activity, accent: 'text-green-400', sub: `${stats.failedAnalyses} failed` },
+    { label: 'Skip Traces Used', value: stats.totalCreditsUsed, icon: TrendingUp, accent: 'text-emerald-400', sub: `${stats.totalCreditsIssued} issued` },
+    { label: 'Pipeline Deals', value: stats.totalWatchlistItems, icon: Eye, accent: 'text-amber-400', sub: 'being tracked' },
+    { label: 'Analyzing', value: stats.pendingAnalyses, icon: BarChart3, accent: 'text-yellow-400', sub: 'in queue' },
   ];
 
   const getActivityIcon = (type: string) => {
@@ -151,7 +153,7 @@ export const AdminOverview = () => {
         {/* Analysis Status Breakdown */}
         <Card className="border-border/50 bg-card/50">
           <CardHeader>
-            <CardTitle className="text-base">Analysis Status Breakdown</CardTitle>
+            <CardTitle className="text-base">Property Deal Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[

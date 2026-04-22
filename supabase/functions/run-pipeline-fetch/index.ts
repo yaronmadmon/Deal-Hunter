@@ -235,14 +235,28 @@ function formatVolume(vol: number): string {
 }
 
 function deriveTrendFromMonthly(monthly: number[]): string {
-  if (!monthly || monthly.length < 4) return "Stable";
-  const half = Math.floor(monthly.length / 2);
-  const firstHalf = monthly.slice(0, half).reduce((a, b) => a + b, 0) / half;
-  const secondHalf = monthly.slice(half).reduce((a, b) => a + b, 0) / (monthly.length - half);
-  if (firstHalf === 0 && secondHalf === 0) return "Stable";
-  const change = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : (secondHalf > 0 ? 100 : 0);
-  if (change > 15) return "Rising";
-  if (change < -15) return "Declining";
+  if (!monthly || monthly.length < 6) return "Stable";
+
+  const recent3 = monthly.slice(-3);
+  const mid6 = monthly.slice(-9, -3);
+  const old6 = monthly.slice(0, 6);
+
+  const recentAvg = recent3.reduce((a, b) => a + b, 0) / recent3.length;
+  const midAvg = mid6.length > 0 ? mid6.reduce((a, b) => a + b, 0) / mid6.length : recentAvg;
+  const oldAvg = old6.reduce((a, b) => a + b, 0) / old6.length;
+
+  if (oldAvg === 0 && recentAvg === 0) return "Stable";
+
+  // Peak-and-decline: was high, now significantly lower
+  if (oldAvg > 0 && recentAvg < oldAvg * 0.6) return "Declining (peaked)";
+
+  // Early rising: last 3 months significantly above mid-period
+  if (midAvg > 0 && recentAvg > midAvg * 1.3) return "Rising (accelerating)";
+
+  // Standard rise/decline vs historical baseline
+  if (oldAvg > 0 && recentAvg > oldAvg * 1.15) return "Rising";
+  if (oldAvg > 0 && recentAvg < oldAvg * 0.85) return "Declining";
+
   return "Stable";
 }
 
@@ -250,6 +264,69 @@ function deriveDifficultyFromCompetition(competition: number): string {
   if (competition >= 0.7) return "High";
   if (competition >= 0.3) return "Medium";
   return "Low";
+}
+
+// ── Pain Theme Extraction: GPT-4o-mini reads Reddit/review snippets, extracts structured patterns ──
+async function extractPainThemes(
+  idea: string,
+  redditSnippets: string[],
+  reviewSnippets: string[],
+  openaiKey: string
+): Promise<{
+  themes: { theme: string; frequency: number; sources: string[]; type: "complaint" | "switching_intent" | "praise" }[];
+  pricingMentions: { signal: string; source: string }[];
+  switchingSignals: number;
+}> {
+  const allSnippets = [
+    ...redditSnippets.slice(0, 20).map(s => `[Reddit] ${s}`),
+    ...reviewSnippets.slice(0, 15).map(s => `[Review] ${s}`),
+  ];
+  if (allSnippets.length === 0) {
+    return { themes: [], pricingMentions: [], switchingSignals: 0 };
+  }
+
+  const prompt = `You are analyzing user feedback snippets about startup idea: "${idea}"
+
+Snippets:
+${allSnippets.join("\n")}
+
+Extract:
+1. Recurring complaint themes (name each theme, count how many snippets mention it, classify as complaint/switching_intent/praise)
+2. Pricing sensitivity mentions (cost, subscription, "too expensive", "free alternative")
+3. Switching intent signals (looking for alternatives, quit a tool, searching for replacement)
+
+Only extract what is actually present. Do not invent themes.
+Return JSON only, no other text:
+{
+  "themes": [{"theme": "string", "frequency": number, "sources": ["Reddit"|"Review"], "type": "complaint"|"switching_intent"|"praise"}],
+  "pricingMentions": [{"signal": "string", "source": "Reddit"|"Review"}],
+  "switchingSignals": number
+}`;
+
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 600,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!resp.ok) throw new Error(`OpenAI ${resp.status}`);
+    const data = await resp.json();
+    const parsed = JSON.parse(data.choices[0].message.content);
+    return {
+      themes: parsed.themes || [],
+      pricingMentions: parsed.pricingMentions || [],
+      switchingSignals: typeof parsed.switchingSignals === "number" ? parsed.switchingSignals : 0,
+    };
+  } catch (e) {
+    console.warn("[PAIN THEMES] Extraction failed:", e);
+    return { themes: [], pricingMentions: [], switchingSignals: 0 };
+  }
 }
 
 // ── Keyword Intelligence: KE primary, Serper/Perplexity fallback ──
@@ -1433,6 +1510,21 @@ Deno.serve(async (req) => {
     const sanitizedIdea = trimmedIdea.replace(/<[^>]*>/g, '').replace(/javascript:/gi, '');
     console.log(`[INPUT SANITIZATION] Original: "${idea.slice(0, 100)}" → Sanitized: "${sanitizedIdea.slice(0, 100)}"`);
 
+    // ── Vague idea detection ──
+    // Flag ideas too generic to evaluate reliably. Vague inputs like "AI fitness app" or
+    // "project management tool" get treated identically to specific validated ideas,
+    // but the pipeline produces much weaker signal specificity for them.
+    {
+      const ideaWords = sanitizedIdea.trim().split(/\s+/).length;
+      const endsGeneric = /\b(app|tool|platform|software|service|product|system|solution)\s*$/i.test(sanitizedIdea.trim());
+      const hasNoContext = !/\b(that|which|for|to|helps?|lets?|allows?|enables?|builds?|tracks?|connects?|manages?|automates?|where|when)\b/i.test(sanitizedIdea);
+      const isVagueIdea = ideaWords < 7 && endsGeneric && hasNoContext;
+      if (isVagueIdea) {
+        console.warn(`[VAGUE IDEA] Input "${sanitizedIdea}" may be too generic for reliable analysis (${ideaWords} words, ends generic, no context clause)`);
+        await supabase.from("analyses").update({ _vague_idea_flag: true } as any).eq("id", analysisId);
+      }
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // 24-HOUR REPORT CACHE CHECK (must run BEFORE any external API call)
     // Uses SHA-256 hash of the sanitized idea to find matching reports.
@@ -1526,7 +1618,14 @@ Deno.serve(async (req) => {
     // ══════════════════════════════════════════════════════════════════
     let semanticQueries: string[] = [];
     let primaryKeywords = sanitizedIdea; // fallback
-    let pendingQueryStrategy: { broad: string[]; niche: string[]; problem: string[] } | null = null;
+    let pendingQueryStrategy: {
+      broad: string[];
+      niche: string[];
+      problem: string[];
+      competitor_pain: string[];
+      alternatives: string[];
+      differentiator: string[];
+    } | null = null;
 
     if (openaiKey) {
       try {
@@ -1539,31 +1638,34 @@ Deno.serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: `You generate search queries for market research. Given a startup idea, return a JSON object with 3 query categories to maximize discovery from different angles.
+                content: `You generate search queries for startup market research. Given a startup idea, return a JSON object with 6 query categories to find real market signals — not just category existence, but pain, switching intent, and specific demand.
 
 Rules:
-- Each query should be 2-5 words, using natural language people actually search
+- Each query should be 2-6 words, using natural language people actually type into Google
 - Do NOT just split the idea into words — generate semantically meaningful queries
-- Think about what a user looking for this type of product would actually type into Google
+- "competitor_pain" and "alternatives" MUST name a specific likely incumbent if one exists (e.g. "Notion", "MyFitnessPal", "Slack") — do not use generic placeholders
+- "differentiator" must reflect what makes THIS idea specifically different, not the general category
 
 Categories:
 1. "broad" (2 queries): General product category searches. Cast a wide net. Example: "fitness tracking app", "workout planner tool"
-2. "niche" (2 queries): Specific sub-category or feature-focused searches. Example: "AI voice workout coach", "hands-free gym assistant"
-3. "problem" (1 query): Focus on the user problem, NOT the solution. What pain would someone search for? Example: "can't stay motivated at gym"
+2. "niche" (2 queries): Specific feature searches for THIS idea's exact differentiator. NOT the general category. Example for HRV fitness app: "HRV workout recovery app", "heart rate variability fitness tracking"
+3. "problem" (1 query): The user pain, NOT the solution. What frustration would someone search? Example: "can't stay motivated at gym"
+4. "competitor_pain" (2 queries): Queries to find real complaints and churn about the likely incumbent. Example: "why I quit MyFitnessPal", "MyFitnessPal problems reddit"
+5. "alternatives" (2 queries): Queries people use when actively looking to switch from the incumbent. Example: "alternatives to MyFitnessPal", "best fitness app not MyFitnessPal"
+6. "differentiator" (1 query): The single most specific phrase that represents what this idea does, as someone would search for it. Example: "AI personal trainer recovery optimization"
 
-Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "problem": ["q5"]}`
+Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "problem": ["q5"], "competitor_pain": ["q6", "q7"], "alternatives": ["q8", "q9"], "differentiator": ["q10"]}`
               },
               { role: "user", content: `Startup idea: "${sanitizedIdea}"` }
             ],
             temperature: 0.3,
-            max_tokens: 400,
+            max_tokens: 600,
           }),
         });
 
         if (semanticRes.ok) {
           const semanticData = await semanticRes.json();
           const semanticContent = semanticData.choices?.[0]?.message?.content || "{}";
-          // Try to parse as structured object first, fallback to array
           const objMatch = semanticContent.match(/\{[\s\S]*\}/);
           const arrMatch = semanticContent.match(/\[[\s\S]*?\]/);
           if (objMatch) {
@@ -1573,15 +1675,17 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
                 const broad = (parsed.broad || []).map((q: any) => String(q).trim()).filter(Boolean);
                 const niche = (parsed.niche || []).map((q: any) => String(q).trim()).filter(Boolean);
                 const problem = (parsed.problem || []).map((q: any) => String(q).trim()).filter(Boolean);
+                const competitor_pain = (parsed.competitor_pain || []).map((q: any) => String(q).trim()).filter(Boolean);
+                const alternatives = (parsed.alternatives || []).map((q: any) => String(q).trim()).filter(Boolean);
+                const differentiator = (parsed.differentiator || []).map((q: any) => String(q).trim()).filter(Boolean);
                 semanticQueries = [...broad, ...niche, ...problem].slice(0, 5);
                 primaryKeywords = broad[0] || semanticQueries[0] || primaryKeywords;
-                pendingQueryStrategy = { broad, niche, problem };
-                console.log(`[SEMANTIC KEYWORDS] Multi-query strategy in ${Date.now() - semanticStart}ms: broad=${JSON.stringify(broad)}, niche=${JSON.stringify(niche)}, problem=${JSON.stringify(problem)}`);
+                pendingQueryStrategy = { broad, niche, problem, competitor_pain, alternatives, differentiator };
+                console.log(`[SEMANTIC KEYWORDS] Extended query strategy in ${Date.now() - semanticStart}ms: broad=${JSON.stringify(broad)}, niche=${JSON.stringify(niche)}, problem=${JSON.stringify(problem)}, competitor_pain=${JSON.stringify(competitor_pain)}, alternatives=${JSON.stringify(alternatives)}, differentiator=${JSON.stringify(differentiator)}`);
               } else {
                 throw new Error("Missing categories");
               }
             } catch {
-              // Fallback to flat array
               if (arrMatch) {
                 const parsed = JSON.parse(arrMatch[0]);
                 if (Array.isArray(parsed) && parsed.length >= 3) {
@@ -1855,18 +1959,78 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
         })
       );
 
+      // ── DEEP SIGNAL QUERIES: Idea-specific targeting (alternatives, pain, differentiator) ──
+      serperPromises.push(
+        trackSource("serper_alternatives", async () => {
+          const altQuery = rawData.queryStrategy?.alternatives?.[0]
+            || `alternatives to ${serperKeywords}`;
+          const r = await serperSearch(serperKey, altQuery, "search", 30);
+          rawData.serperAlternatives = r;
+          rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
+      );
+
+      serperPromises.push(
+        trackSource("serper_pain", async () => {
+          const painQuery = rawData.queryStrategy?.competitor_pain?.[0]
+            || `${serperKeywords} complaints problems`;
+          const r = await serperSearch(serperKey, `${painQuery} site:reddit.com`, "search", 30);
+          rawData.serperPain = r;
+          rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
+      );
+
+      serperPromises.push(
+        trackSource("serper_differentiator", async () => {
+          const diffQuery = rawData.queryStrategy?.differentiator?.[0]
+            || rawData.queryStrategy?.niche?.[0]
+            || serperKeywords;
+          const r = await serperSearch(serperKey, diffQuery, "search", 30);
+          rawData.serperDifferentiator = r;
+          rawData.sources.push(...r.organic.map((o: any) => ({ url: o.link, type: "serper" })));
+          return r.organic.length;
+        })
+      );
+
       // ── KEYWORD INTELLIGENCE: Real volume + trend data via Serper + Perplexity ──
       // This runs after serper promises resolve (added to a separate phase below)
       keywordIntelPromise = async () => {
         await Promise.all(serperPromises);
         await trackSource("serper_keyword_intel", async () => {
+          // Prioritize idea-specific phrases for KE: differentiator, alternatives, pain, then autocomplete
           const suggestions = rawData.serperAutoComplete?.suggestions || [];
-          const allKeywords = [...new Set([...suggestions.slice(0, 5), ...semanticQueries.slice(0, 3)])];
+          const allKeywords = [...new Set([
+            rawData.queryStrategy?.differentiator?.[0],
+            rawData.queryStrategy?.alternatives?.[0],
+            rawData.queryStrategy?.competitor_pain?.[0],
+            rawData.queryStrategy?.niche?.[0],
+            ...suggestions.slice(0, 3),
+          ].filter(Boolean) as string[])].slice(0, 10);
           if (allKeywords.length === 0) {
             allKeywords.push(primaryKeywords.split(/\s+/).slice(0, 4).join(" "));
           }
           const r = await fetchKeywordIntelligence(serperKey, perplexityKey || "", allKeywords);
           rawData.serperKeywordIntel = r;
+
+          // CPC as commercial intent signal (Change D)
+          const kwData = r.keywords || [];
+          const cpcValues = kwData
+            .map((k: any) => parseFloat((k.cpc || "0").replace("$", "")))
+            .filter((v: number) => v > 0);
+          const maxCpc = cpcValues.length > 0 ? Math.max(...cpcValues) : 0;
+          const avgCpc = cpcValues.length > 0
+            ? cpcValues.reduce((a: number, b: number) => a + b, 0) / cpcValues.length : 0;
+          rawData.keywordCpcSignal = {
+            maxCpc,
+            avgCpc,
+            commercialIntent: maxCpc >= 3 ? "High" : maxCpc >= 1 ? "Medium" : maxCpc > 0 ? "Low" : "None",
+            zeroVolumeCount: kwData.filter((k: any) => k.volume === "0" || k.volume === "N/A").length,
+            totalKeywords: kwData.length,
+          };
+          console.log(`[KE CPC] maxCpc=$${maxCpc.toFixed(2)} avgCpc=$${avgCpc.toFixed(2)} commercialIntent=${rawData.keywordCpcSignal.commercialIntent}`);
+
           return r.keywords.length;
         });
       };
@@ -2070,6 +2234,42 @@ Return ONLY a JSON object like: {"broad": ["q1", "q2"], "niche": ["q3", "q4"], "
       delete rawData._redditAllResults;
     } else if (!rawData.serperReddit) {
       rawData.serperReddit = { organic: [], searchParameters: {}, knowledgeGraph: null };
+    }
+
+    // ── Post-fetch: Second targeted pain search using competitor_pain[1] for additional depth ──
+    // Reddit blocks Supabase cloud IPs — Firecrawl scraping of Reddit threads does not work.
+    // Instead, run a second pain query (different angle) to multiply snippet coverage.
+    if (serperKey && serperActive) {
+      const painQuery2 = rawData.queryStrategy?.competitor_pain?.[1]
+        || rawData.queryStrategy?.alternatives?.[1]
+        || null;
+      if (painQuery2) {
+        await trackSource("reddit_scrape", async () => {
+          // Named "reddit_scrape" to preserve pipelineMetrics key used downstream
+          const r = await serperSearch(serperKey, `${painQuery2} site:reddit.com`, "search", 30);
+          const redditOnly = (r.organic || []).filter((o: any) =>
+            (o.link || "").toLowerCase().includes("reddit.com")
+          );
+          // Merge into serperPain (deduplicated by URL)
+          const existingUrls = new Set((rawData.serperPain?.organic || []).map((o: any) => o.link));
+          const newResults = redditOnly.filter((o: any) => !existingUrls.has(o.link));
+          if (rawData.serperPain?.organic) {
+            rawData.serperPain.organic.push(...newResults);
+          }
+          rawData.redditScrapedThreads = newResults.map((o: any) => ({
+            url: o.link,
+            content: `${o.title}: ${o.snippet || ""}`,
+            wordCount: (o.snippet || "").split(/\s+/).length,
+          }));
+          rawData.sources.push(...newResults.map((o: any) => ({ url: o.link, type: "serper" })));
+          console.log(`[PAIN DEPTH] Second pain query "${painQuery2}" → ${newResults.length} new Reddit results`);
+          return newResults.length;
+        });
+      } else {
+        rawData.redditScrapedThreads = [];
+      }
+    } else {
+      rawData.redditScrapedThreads = [];
     }
 
     // ── Post-fetch: Extract founder X handles from competitor data and look them up ──
@@ -2381,6 +2581,27 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       pipelineMetrics["firecrawl_competitor_reviews"] = { status: "skipped", durationMs: 0, signalCount: 0 };
     }
 
+    // ── Pain Theme Extraction: Read all pain-related snippets for structured analysis ──
+    // serperPain now contains results from both competitor_pain queries (merged, deduped).
+    if (openaiKey) {
+      const redditContent: string[] = [
+        ...(rawData.serperPain?.organic || []).map((o: any) => `${o.title}: ${o.snippet || ""}`),
+        ...(rawData.serperReddit?.organic || []).map((o: any) => `${o.title}: ${o.snippet || ""}`),
+      ].filter(Boolean).slice(0, 30);
+
+      const reviewSnippets = ((rawData.firecrawlCompetitorReviews as any[] | undefined) || [])
+        .map((r: any) => r.content || "").filter(Boolean).slice(0, 15);
+
+      console.log(`[PAIN THEMES] Input: ${redditContent.length} pain snippets + ${reviewSnippets.length} review snippets`);
+
+      try {
+        rawData._extractedPainThemes = await extractPainThemes(idea, redditContent, reviewSnippets, openaiKey);
+        console.log(`[PAIN THEMES] themes=${rawData._extractedPainThemes.themes.length} switchingSignals=${rawData._extractedPainThemes.switchingSignals} pricingMentions=${rawData._extractedPainThemes.pricingMentions.length}`);
+      } catch (e) {
+        console.warn("[PAIN THEMES] Failed:", e);
+      }
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // EVIDENCE-LOCKED ANALYSIS: Build structured evidence block
     // Only verified, categorized signals reach the AI — no narratives.
@@ -2467,12 +2688,24 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
         sourceUrl: r.url, platform: "reddit", engagement: 0, tier: "verified",
       });
     });
+    // Scraped Reddit threads: full content (up to 500 chars shown, but full content fed to pain analysis)
+    ((rawData.redditScrapedThreads as any[] | undefined) || []).forEach((t: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: t.content.slice(0, 500),
+        source: `Reddit thread (scraped ${t.wordCount} words)`,
+        sourceUrl: t.url, platform: "reddit", engagement: 0, tier: "verified",
+      });
+    });
 
     (rawData.serperReddit?.organic || []).forEach((r: any) => {
-      evidenceBlock.sentimentSignals.push({
-        text: r.snippet || "", source: r.title || "Reddit via Google",
-        sourceUrl: r.link, platform: "reddit", engagement: 0, tier: "reported",
-      });
+      // Only add as snippet if we didn't scrape this URL already
+      const alreadyScraped = ((rawData.redditScrapedThreads as any[] | undefined) || []).some((t: any) => t.url === r.link);
+      if (!alreadyScraped) {
+        evidenceBlock.sentimentSignals.push({
+          text: r.snippet || "", source: r.title || "Reddit via Google",
+          sourceUrl: r.link, platform: "reddit", engagement: 0, tier: "reported",
+        });
+      }
     });
     (rawData.hackerNews?.hits || []).forEach((h: any) => {
       evidenceBlock.sentimentSignals.push({
@@ -2487,7 +2720,61 @@ Return ONLY a JSON array of numbers, one score per item, in the same order. Exam
       });
     });
 
+    // ── Populate deep signal sources (Change G) ──
+    // serper_alternatives: switching intent demand signals
+    (rawData.serperAlternatives?.organic || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Alternatives Search", sourceUrl: r.link, tier: "verified" });
+    });
+    // serper_differentiator: specific positioning demand signals
+    (rawData.serperDifferentiator?.organic || []).forEach((r: any) => {
+      evidenceBlock.demandSignals.push({ signal: r.title, value: r.snippet || "", source: "Serper Differentiator Search", sourceUrl: r.link, tier: "verified" });
+    });
+    // serper_pain: targeted competitor complaint signals
+    (rawData.serperPain?.organic || []).forEach((r: any) => {
+      evidenceBlock.sentimentSignals.push({
+        text: r.snippet || "", source: r.title || "Targeted Pain Search",
+        sourceUrl: r.link, platform: "reddit", engagement: 0, tier: "reported",
+      });
+    });
+    // Extracted pain themes from GPT-4o-mini content analysis
+    if (rawData._extractedPainThemes) {
+      const pt = rawData._extractedPainThemes;
+      if (pt.themes.length > 0) {
+        const themesSummary = pt.themes
+          .map((t: any) => `${t.theme} (×${t.frequency}, ${t.type})`)
+          .join("; ");
+        evidenceBlock.sentimentSignals.push({
+          text: `Pain themes: ${themesSummary}`,
+          source: "GPT-4o-mini content analysis",
+          sourceUrl: null, platform: "analysis", engagement: pt.switchingSignals, tier: "reported",
+        });
+      }
+      if (pt.pricingMentions.length > 0) {
+        pt.pricingMentions.forEach((m: any) => {
+          evidenceBlock.pricingSignals.push({ signal: "User Pricing Mention", value: m.signal, source: `GPT analysis (${m.source})`, sourceUrl: null, tier: "reported" });
+        });
+      }
+    }
+
     // ── Populate pricing/revenue signals (from Perplexity — tier: reported) ──
+    // CPC commercial intent signal
+    if (rawData.keywordCpcSignal && rawData.keywordCpcSignal.maxCpc > 0) {
+      evidenceBlock.pricingSignals.push({
+        signal: "Keyword CPC (Commercial Intent)",
+        value: `Max CPC: $${rawData.keywordCpcSignal.maxCpc.toFixed(2)}, Avg: $${rawData.keywordCpcSignal.avgCpc.toFixed(2)} — Intent: ${rawData.keywordCpcSignal.commercialIntent}`,
+        source: "Keywords Everywhere",
+        sourceUrl: null,
+        tier: "verified",
+      });
+    } else if (rawData.keywordCpcSignal && rawData.keywordCpcSignal.totalKeywords > 0) {
+      evidenceBlock.pricingSignals.push({
+        signal: "Keyword CPC (Commercial Intent)",
+        value: `No advertiser spend detected across ${rawData.keywordCpcSignal.totalKeywords} keywords — weak commercial intent signal`,
+        source: "Keywords Everywhere",
+        sourceUrl: null,
+        tier: "verified",
+      });
+    }
     if (rawData.perplexityRevenue?.content) {
       evidenceBlock.pricingSignals.push({ signal: "Revenue Benchmarks", value: rawData.perplexityRevenue.content.slice(0, 800), source: "Perplexity Sonar", sourceUrl: rawData.perplexityRevenue.citations?.[0] || null, tier: "reported" });
     }

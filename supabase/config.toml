@@ -53,3 +53,18 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+[functions.start-property-search]
+verify_jwt = false
+
+[functions.run-property-fetch]
+verify_jwt = false
+
+[functions.run-deal-analyze]
+verify_jwt = false
+
+[functions.skip-trace]
+verify_jwt = false
+
+[functions.refresh-auction-feed]
+verify_jwt = false

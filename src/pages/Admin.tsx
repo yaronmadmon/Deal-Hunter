@@ -5,9 +5,9 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { AnalysisManagement } from "@/components/admin/AnalysisManagement";
 import { CreditsManagement } from "@/components/admin/CreditsManagement";
 import { RevenueManagement } from "@/components/admin/RevenueManagement";
-import { LiveFeedControl } from "@/components/admin/LiveFeedControl";
 import { NotificationsManagement } from "@/components/admin/NotificationsManagement";
 import { WatchlistManagement } from "@/components/admin/WatchlistManagement";
+import { PropertyManagement } from "@/components/admin/PropertyManagement";
 import { PipelineMetricsPanel } from "@/components/admin/PipelineMetrics";
 import { DataSourceHealth } from "@/components/admin/DataSourceHealth";
 import { EmailLogs } from "@/components/admin/EmailLogs";
@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, Shield, Users, FileText, CreditCard, Flame,
+  ArrowLeft, Shield, Users, FileText, CreditCard,
   LayoutDashboard, Bell, Eye, Activity, DollarSign, Mail,
   ChevronLeft, ChevronRight, Pickaxe, MessageSquare, Star, HeartPulse,
   Menu, BarChart3,
@@ -39,9 +39,10 @@ const navSections = [
   {
     label: "Content",
     items: [
-      { id: "analyses", label: "Analyses", icon: FileText },
+      { id: "properties", label: "Properties", icon: FileText },
+      { id: "watchlist", label: "Pipeline CRM", icon: Eye },
       { id: "credits", label: "Credits", icon: CreditCard },
-      { id: "watchlist", label: "Watchlist", icon: Eye },
+      { id: "analyses", label: "Legacy Analyses", icon: Pickaxe },
     ],
   },
   {
@@ -56,8 +57,7 @@ const navSections = [
   {
     label: "System",
     items: [
-      { id: "live-feed", label: "Live Feed", icon: Flame },
-      { id: "pipeline", label: "Pipeline", icon: Activity },
+      { id: "pipeline", label: "AI Pipeline", icon: Activity },
       { id: "data-health", label: "Data Sources", icon: HeartPulse },
     ],
   },
@@ -76,6 +76,7 @@ const AdminPage = () => {
       case "analytics": return <AnalyticsDashboard />;
       case "users": return <UserManagement />;
       case "revenue": return <RevenueManagement />;
+      case "properties": return <PropertyManagement />;
       case "analyses": return <AnalysisManagement />;
       case "credits": return <CreditsManagement />;
       case "watchlist": return <WatchlistManagement />;
@@ -83,7 +84,6 @@ const AdminPage = () => {
       case "emails": return <EmailLogs />;
       case "feedback": return <FeedbackManagement />;
       case "reviews": return <ReviewsManagement />;
-      case "live-feed": return <LiveFeedControl />;
       case "pipeline": return <PipelineMetricsPanel />;
       case "data-health": return <DataSourceHealth />;
       default: return <AdminOverview />;

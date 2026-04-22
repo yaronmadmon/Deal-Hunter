@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Coins, LogOut, Flame, Shield, Bookmark, Menu, X, LayoutDashboard, Settings } from "lucide-react";
+import { LogOut, Gavel, Shield, Menu, X, LayoutDashboard, Settings, Kanban, Phone } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -24,12 +24,10 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
 
   const navItems = [
     ...(location.pathname !== "/dashboard"
-      ? [{ label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" }]
+      ? [{ label: "Deal Search", icon: LayoutDashboard, path: "/dashboard" }]
       : []),
-    { label: "Live", icon: Flame, path: "/live" },
-    ...(location.pathname !== "/watchlist"
-      ? [{ label: "Watchlist", icon: Bookmark, path: "/watchlist" }]
-      : []),
+    { label: "Pipeline", icon: Kanban, path: "/pipeline" },
+    { label: "Auctions", icon: Gavel, path: "/auctions" },
     { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin
       ? [{ label: "Admin", icon: Shield, path: "/admin" }]
@@ -42,16 +40,22 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-3.5 max-w-5xl mx-auto border-b border-border relative z-50">
-      <span className="font-heading text-[15px] font-bold tracking-[-0.02em] text-foreground">Gold Rush</span>
+    <nav className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto border-b border-border relative z-50">
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="flex items-center gap-2 font-heading text-[15px] font-bold tracking-[-0.02em] text-foreground"
+      >
+        <Phone className="h-4 w-4 text-primary" />
+        Deal Hunter
+      </button>
 
       {/* Desktop nav */}
       <div className="hidden md:flex items-center gap-3">
         {showCredits && credits !== undefined && (
           <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-sm">
-            <Coins className="w-4 h-4 text-muted-foreground" />
+            <Phone className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
-            <span className="text-muted-foreground">credits</span>
+            <span className="text-muted-foreground">skip traces</span>
           </div>
         )}
         {navItems.map((item) => (
@@ -80,7 +84,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
       <div className="flex md:hidden items-center gap-2">
         {showCredits && credits !== undefined && (
           <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2.5 py-1 text-xs">
-            <Coins className="w-3.5 h-3.5 text-muted-foreground" />
+            <Phone className="w-3 h-3 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
           </div>
         )}

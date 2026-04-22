@@ -20,10 +20,30 @@ function computeSignalStrength(score: number): string {
   return "Weak";
 }
 
+const VERDICT_ORDER = ["Build Now", "Strong Conditional", "Validate Further", "Do Not Build Yet", "Insufficient Data"];
+
 function applyVerdictToReport(reportData: any) {
   const score = reportData.overallScore || 0;
+  const scoreVerdict = computeVerdict(score);
+
   if (reportData.founderDecision) {
-    reportData.founderDecision.decision = computeVerdict(score);
+    // If the adversarial gate locked a verdict, never allow a subsequent score
+    // recalculation to produce a BETTER (lower-index) verdict. Score adjustments
+    // can still worsen the verdict further (higher index), but cannot undo
+    // what the adversarial gate determined.
+    if (reportData._adversarialVerdictLocked) {
+      const lockedIdx = VERDICT_ORDER.indexOf(reportData._adversarialVerdictLocked);
+      const scoreIdx = VERDICT_ORDER.indexOf(scoreVerdict);
+      if (scoreIdx <= lockedIdx) {
+        // Score-derived verdict is equal or better than locked — keep the lock
+        reportData.founderDecision.decision = reportData._adversarialVerdictLocked;
+        reportData.signalStrength = computeSignalStrength(score);
+        return;
+      }
+      // Score-derived verdict is worse than locked — allow it (update the lock too)
+      reportData._adversarialVerdictLocked = scoreVerdict;
+    }
+    reportData.founderDecision.decision = scoreVerdict;
   }
   reportData.signalStrength = computeSignalStrength(score);
 }
@@ -67,19 +87,28 @@ async function runAdversarialPass(
         messages: [
           {
             role: "system",
-            content: `You are a startup failure analyst. Your job is to find every structural reason this idea will fail. You are NOT a consultant. You do NOT balance positives against negatives. You do NOT suggest fixes or workarounds. You do NOT recommend niching down. You find hard structural kills.
+            content: `You are a startup failure analyst. Your ONLY job is to find structural reasons this idea will fail or has already failed. You are NOT a balanced advisor. You do NOT find silver linings. You find hard kills — but ONLY when the evidence block contains specific proof.
 
-A "Hard" kill is a structural, likely-fatal flaw — impossible unit economics, platform absorption, zero evidence of willingness to pay, dead or abandoned market, feature that an incumbent already owns.
-A "Soft" kill is a real, evidence-backed risk that a well-executed startup could survive.
+WHAT COUNTS AS A "HARD" KILL — exact structural criteria with required evidence:
+- unit_economics: Price required to acquire customers structurally exceeds what market will pay. EVIDENCE MUST cite a specific CPC, CAC estimate, or pricing data point from the block.
+- platform_risk: Core functionality already natively built into a dominant platform. EVIDENCE MUST name the specific platform AND the specific native feature (e.g. "Slack AI already summarizes threads natively as of 2023").
+- feature_not_product: This is a single feature of an established tool. EVIDENCE MUST name the specific incumbent tool that owns this feature.
+- willingness_to_pay_gap: ALL keyword volume for this exact idea is 0/mo with zero CPC. EVIDENCE MUST cite the actual keyword and volume number from the block.
+- graveyard: Specific named products attempted this and shut down/stagnated. EVIDENCE MUST name at least one specific failed product (not "the market has seen failures").
+- timing_dead: Trend data shows "Declining (peaked)" pattern. EVIDENCE MUST cite the actual trend signal from the block showing the peak and decline.
+- distribution_impossibility: The ONE specific channel that matters is owned by a direct competitor. EVIDENCE MUST name the channel AND the competitor controlling it.
 
-RULES:
-- Only cite findings supported by evidence in the evidence block. Do not invent problems.
-- If you find nothing serious, return {"kills": []}
-- Do not generate more than 5 kill signals total.
-- Do not output silver linings, mitigations, or recommendations.
-- Each finding must cite specific evidence from the block.
+WHAT COUNTS AS A "SOFT" KILL:
+- Real risks a funded startup could survive. EVIDENCE MUST come from the evidence block, not general knowledge.
 
-Return ONLY a JSON object: {"kills": [{"severity":"Hard"|"Soft","type":"unit_economics"|"platform_risk"|"no_pain_evidence"|"graveyard"|"distribution_impossibility"|"timing_dead"|"feature_not_product"|"willingness_to_pay_gap"|"founder_mismatch"|"other","finding":"one sentence — what specifically is structurally wrong","evidence":"specific signal from the evidence block that supports this finding","survivable":true|false}]}`
+STRICT RULES:
+- If you cannot quote a specific data point from the evidence block, do NOT raise a kill. Return {"kills": []} if no kills have real evidence.
+- "The market is competitive" is NOT evidence. "The fitness app market has failures" is NOT evidence. General statements are NOT evidence.
+- Perplexity summaries ("the market is large/competitive/growing") are NOT evidence for any kill.
+- Return fewer kills if the evidence does not support them. 0 kills is a valid answer.
+- Zero silver linings. Zero mitigations. Just kills with specific proof.
+
+Return ONLY a JSON object: {"kills": [{"severity":"Hard"|"Soft","type":"unit_economics"|"platform_risk"|"no_pain_evidence"|"graveyard"|"distribution_impossibility"|"timing_dead"|"feature_not_product"|"willingness_to_pay_gap"|"founder_mismatch"|"other","finding":"one sentence naming the specific structural problem","evidence":"quote the exact data point from the evidence block (keyword volume number, specific competitor name, specific platform feature, etc.)","survivable":true|false}]}`
           },
           {
             role: "user",
@@ -193,15 +222,17 @@ Deno.serve(async (req) => {
       const tier1Sources: Set<string> = new Set();
       let tier1Count = 0;
 
-      // Count Tier 1 signals across all categories
+      // Count Tier 1 signals across all categories.
+      // Evidence block uses "verified"/"reported"/"estimated" tiers (not "tier1"/"tier2").
+      // "verified" = real API data = Tier 1. "reported" = AI summaries = Tier 2/3 (not counted here).
       for (const s of (evidenceBlock.demandSignals || [])) {
-        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+        if (s.tier === "verified") { tier1Count++; tier1Sources.add(s.source); }
       }
       for (const s of (evidenceBlock.trendSignals || [])) {
-        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+        if (s.tier === "verified") { tier1Count++; tier1Sources.add(s.source); }
       }
       for (const c of (evidenceBlock.competitors || [])) {
-        if (c.tier === "tier1") { tier1Count++; tier1Sources.add("serper_competitors"); }
+        if (c.tier === "verified") { tier1Count++; tier1Sources.add("serper_competitors"); }
       }
       for (const p of (evidenceBlock.productLaunchSignals || [])) {
         tier1Count++; tier1Sources.add("producthunt");
@@ -210,7 +241,7 @@ Deno.serve(async (req) => {
         tier1Count++; tier1Sources.add("github");
       }
       for (const s of (evidenceBlock.sentimentSignals || [])) {
-        if (s.tier === "tier1") { tier1Count++; tier1Sources.add(s.source); }
+        if (s.tier === "verified") { tier1Count++; tier1Sources.add(s.source); }
       }
 
       // Pioneer market exception: novel ideas may have thin signals by nature
@@ -716,14 +747,43 @@ You MUST include a "scoreBreakdown" field in your JSON. This is the ONLY place s
   {"label": "Opportunity", "value": 0-20, "weight": "20%"}
 ]
 
-SCORING RULES (mandatory):
-- Trend Momentum (max 25): 0-5 = no demand signals; 6-12 = weak/thin signals; 13-19 = moderate demand evidence; 20-25 = strong verified search demand.
-- Market Saturation (max 20): INVERTED — 0-5 = extremely crowded (bad); 6-12 = saturated but gaps exist; 13-19 = moderate competition; 20 = blue ocean with little competition. COMPETITOR COUNT OVERRIDE: If the evidence block shows 5+ validated competitors, Market Saturation CANNOT exceed 12. If 3–4 validated competitors, maximum is 15. Only ≤2 validated competitors may score 16+. This overrides the general range above.
-- Sentiment (max 20): 0-5 = no sentiment data; 6-10 = mixed/negative; 11-15 = mostly positive with pain points; 16-20 = strong validated pain with clear demand.
-- Growth (max 15): 0-3 = no growth signals; 4-7 = some PH/GitHub activity; 8-11 = clear growth indicators; 12-15 = multiple strong growth signals.
-- Opportunity (max 20): 0-5 = no gaps found; 6-10 = minor gaps; 11-15 = clear underserved segments; 16-20 = strong unmet demand with weak competition.
-- If evidence for a category is INSUFFICIENT (0 signals), assign 0-3 only. NEVER assign a neutral mid-range value (like 10-12) when you have no evidence — that is dishonest. Low evidence = low score.
-- The sum of all 5 values becomes the overallScore. A sum of exactly 50 when evidence is thin is a sign you are hedging — do not hedge, score honestly based on what the evidence shows.
+SCORING RULES (mandatory — anchored to Tier-1 sources):
+SOURCE HIERARCHY for scoring purposes:
+  Tier-1 (counts fully): Serper organic results, Reddit threads, Twitter tweets, Firecrawl reviews, App Store apps, ProductHunt posts, GitHub repos
+  Tier-2 (counts at half): HackerNews posts, VC funding citations with named companies
+  Tier-3 (DOES NOT COUNT toward scoring ranges below): Perplexity summaries, AI-synthesized statements, estimated values, vague market size claims
+
+- Trend Momentum (max 25):
+  0 Tier-1 demand signals → score 0-3 ONLY. DO NOT score above 3.
+  1-2 Tier-1 demand signals → score 4-8 range only.
+  3-5 Tier-1 demand signals → score 9-14 range only.
+  6-8 Tier-1 demand signals → score 15-19 range only.
+  9+ Tier-1 demand signals with verified search volume → score 20-25.
+  WARNING: A Perplexity summary saying "the market is large" is Tier-3. It provides ZERO evidence for scoring above 3.
+
+- Market Saturation (max 20): INVERTED — higher score = less competition.
+  COMPETITOR COUNT OVERRIDE: If the evidence block shows 5+ validated competitors, Market Saturation CANNOT exceed 12. If 3–4 validated competitors, maximum is 15. Only ≤2 validated competitors may score 16+. This overrides all other ranges.
+
+- Sentiment (max 20):
+  0 Tier-1 pain signals (Reddit/Twitter/reviews with actual user complaints) → score 0-4 ONLY.
+  1-2 Tier-1 pain signals → score 5-9 range only.
+  3-5 Tier-1 pain signals → score 10-14 range only.
+  6+ Tier-1 pain signals with clear recurring themes → score 15-20.
+  WARNING: "Users are frustrated with X" from a Perplexity summary is Tier-3. It does NOT count toward these ranges.
+
+- Growth (max 15):
+  0 ProductHunt/GitHub/App Store signals → score 0-3 ONLY.
+  1-3 growth signals → score 4-7 range only.
+  4-7 growth signals → score 8-11 range only.
+  8+ growth signals with verified traction → score 12-15.
+
+- Opportunity (max 20):
+  No Tier-1 gap evidence → score 0-5 ONLY.
+  Soft gaps only (competitor has low reviews, no recent updates) → score 6-10.
+  Clear Tier-1 gaps (competitors have 30%+ 1-star reviews citing specific pain) → score 11-15.
+  Strong proof of unmet demand + weak competition from Tier-1 sources → score 16-20.
+
+ANTI-HEDGING RULE: A sum of exactly 45-55 when evidence is thin is a sign you are assigning mid-range values to avoid commitment. Do not hedge. Score what the Tier-1 evidence actually shows. If Trend Momentum has 0 Tier-1 signals, it scores 0-3, not 10. If Sentiment has 1 Reddit thread, it scores 5-9, not 13.
 
 Do NOT generate the following fields — they are populated programmatically: methodology, githubRepos, userQuotes, keywordDemand, appStoreIntelligence, proofDashboard, blueprint, overallScore, verdict, signalStrength, dataSources, idea, scoreExplanation. Omit them entirely from your JSON output.
 
@@ -1042,6 +1102,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                   (reportData.founderDecision.reasoning || "");
               }
               reportData._adversarialVerdictDowngrade = "forced_do_not_build";
+              // Lock this verdict so subsequent applyVerdictToReport calls cannot improve it
+              reportData._adversarialVerdictLocked = "Do Not Build Yet";
             }
           } else if (hardKills.length === 1) {
             // 1 hard kill → drop one verdict level (Build Now → Strong Conditional, etc.)
@@ -1056,6 +1118,8 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
                   (reportData.founderDecision.reasoning || "");
               }
               reportData._adversarialVerdictDowngrade = `downgraded_one_level`;
+              // Lock this verdict so subsequent applyVerdictToReport calls cannot improve it
+              reportData._adversarialVerdictLocked = downgradedVerdict;
             }
           }
 
@@ -1081,6 +1145,11 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
           count += rawData.serperAutoComplete?.suggestions?.length ?? 0;
           // Tier 1: App Store results
           count += rawData.firecrawlAppStore?.results?.length ?? 0;
+          // Deep signal: switching intent (alternatives) and specific positioning demand
+          count += rawData.serperAlternatives?.organic?.length ?? 0;
+          count += rawData.serperDifferentiator?.organic?.length ?? 0;
+          // iTunes App Store
+          count += rawData.itunesApps?.apps?.length ?? 0;
           return count;
         };
 
@@ -1119,9 +1188,12 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // no verified signal source actually confirms the pain.
         {
           const tier1PainCount = (rawData.serperReddit?.organic?.length ?? 0)
+            + (rawData.serperPain?.organic?.length ?? 0)              // targeted competitor pain search
             + (rawData.twitterSentiment?.tweets?.length ?? 0)
             + (rawData.firecrawlReddit?.results?.length ?? 0)
-            + (rawData.serperNews?.organic?.length ?? 0);  // news also validates real pain
+            + (rawData.redditScrapedThreads?.length ?? 0)             // fully scraped Reddit threads
+            + (rawData._extractedPainThemes?.switchingSignals ?? 0);  // extracted switching intent
+            // serperNews removed: news articles confirm category attention, not user pain.
 
           if (tier1PainCount < 3) {
             const currentVerdict = reportData.founderDecision?.decision ?? computeVerdict(reportData.overallScore || 0);
@@ -1305,11 +1377,13 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // signals from inflating ceilings/floors.
         // Tier 1 (Firecrawl, Serper verified) = 0.9 weight per signal
         // Tier 2 (ProductHunt, GitHub, Twitter) = 0.7 weight per signal
-        // Tier 3 (Perplexity, HN) = 0.4 weight per signal
+        // Tier 3 (Perplexity, HN) = 0.15 weight per signal
+        // Perplexity weight reduced from 0.4 → 0.15: AI summaries confirm a topic exists,
+        // not that a specific idea has demand. Real sources earn full weight.
         // ══════════════════════════════════════════════════════════════
         if (reportData.scoreBreakdown && Array.isArray(reportData.scoreBreakdown)) {
           const w = (count: number, tier: number): number => {
-            const weight = tier === 1 ? 0.9 : tier === 2 ? 0.7 : 0.4;
+            const weight = tier === 1 ? 0.9 : tier === 2 ? 0.7 : 0.15;
             return count * weight;
           };
 
@@ -1372,18 +1446,25 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
             w(rawData.perplexityBuildCosts?.citations?.length ?? 0, 3)
           );
 
-          // Ceiling rules: 0 signals → max 5, 1-2 → max 10, 3-4 → max 15, 5+ → no cap (uses category max)
+          // Ceiling rules: more signals required to unlock higher score ranges.
+          // Tightened from: 0→5, 1-2→10, 3-4→15, 5+→max
+          // to:             0→3, 1-2→7, 3-5→12, 6-9→16, 10+→max
+          // Rationale: Perplexity at 0.15 weight means 3 citations = 0.45 effective signals.
+          // Real Tier-1 sources are required to unlock high ceilings.
           const computeCeiling = (signalCount: number, maxScore: number): number => {
-            if (signalCount === 0) return Math.min(5, maxScore);
-            if (signalCount <= 2) return Math.min(10, maxScore);
-            if (signalCount <= 4) return Math.min(15, maxScore);
+            if (signalCount === 0) return Math.min(3, maxScore);
+            if (signalCount <= 2) return Math.min(7, maxScore);
+            if (signalCount <= 5) return Math.min(12, maxScore);
+            if (signalCount <= 9) return Math.min(16, maxScore);
             return maxScore;
           };
 
-          // Floor rules: 5-9 signals → min 8, 10+ signals → min 12 (capped to category max)
+          // Floor rules: removed almost entirely.
+          // Previous floors (8 at 5+ signals, 12 at 10+ signals) gave every mainstream category
+          // a ~48-52pt guaranteed baseline — Serper always returns 5-10+ organics for broad queries.
+          // Now only extraordinary signal depth (20+) earns a minimal floor.
           const computeFloor = (signalCount: number, maxScore: number): number => {
-            if (signalCount >= 10) return Math.min(12, maxScore);
-            if (signalCount >= 5) return Math.min(8, maxScore);
+            if (signalCount >= 20) return Math.min(5, maxScore);
             return 0;
           };
 
@@ -2225,7 +2306,7 @@ Never let Perplexity summaries override contradicting Tier 1 evidence. If Perple
         // If >50% of signals are Perplexity-derived, cap final score at 75
         // This runs AFTER all scoring steps including ECM.
         // ══════════════════════════════════════════════════════════════
-        if (perplexityPct > 50 && reportData.overallScore > 75 && !pioneerMarketFlag) {
+        if (perplexityPct > 40 && reportData.overallScore > 75 && !pioneerMarketFlag) {
           console.warn(`[PERPLEXITY HARD CAP] ${perplexityPct}% Perplexity dominance. Capping overallScore from ${reportData.overallScore} to 75.`);
           reportData.overallScore = 75;
           reportData._perplexityHardCap = true;
