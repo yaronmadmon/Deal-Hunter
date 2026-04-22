@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  LogOut, Gavel, Shield, Menu, X, LayoutDashboard, Settings,
-  Kanban, Phone, Coins, Flame, Bookmark,
-} from "lucide-react";
+import { LogOut, Gavel, Shield, Menu, X, LayoutDashboard, Settings, Kanban, Phone } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -17,33 +14,18 @@ interface AppNavProps {
   showCredits?: boolean;
 }
 
-const DEAL_HUNTER_PATHS = ["/deals", "/deal-batch", "/property", "/pipeline", "/auctions"];
-
-function isDealHunterRoute(pathname: string) {
-  return DEAL_HUNTER_PATHS.some((p) => pathname.startsWith(p));
-}
-
 export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useAdmin();
 
-  const onDealHunter = isDealHunterRoute(location.pathname);
-
-  const goldRushItems = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Live", icon: Flame, path: "/live" },
-    { label: "Watchlist", icon: Bookmark, path: "/watchlist" },
-  ];
-
-  const dealHunterItems = [
-    { label: "Deals", icon: Phone, path: "/deals" },
+  const navItems = [
+    ...(location.pathname !== "/dashboard"
+      ? [{ label: "Deal Search", icon: LayoutDashboard, path: "/dashboard" }]
+      : []),
     { label: "Pipeline", icon: Kanban, path: "/pipeline" },
     { label: "Auctions", icon: Gavel, path: "/auctions" },
-  ];
-
-  const sharedItems = [
     { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin ? [{ label: "Admin", icon: Shield, path: "/admin" }] : []),
   ];
@@ -53,64 +35,26 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
     setOpen(false);
   };
 
-  const brand = onDealHunter
-    ? { label: "Deal Hunter", icon: Phone, home: "/deals" }
-    : { label: "Gold Rush", icon: Coins, home: "/dashboard" };
-
-  const primaryItems = onDealHunter ? dealHunterItems : goldRushItems;
-  const switchItem = onDealHunter
-    ? { label: "Gold Rush", icon: Coins, path: "/dashboard" }
-    : { label: "Deal Hunter", icon: Phone, path: "/deals" };
-
   return (
     <nav className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto border-b border-border relative z-50">
-      {/* Brand */}
       <button
-        onClick={() => navigate(brand.home)}
+        onClick={() => navigate("/dashboard")}
         className="flex items-center gap-2 font-heading text-[15px] font-bold tracking-[-0.02em] text-foreground"
       >
-        <brand.icon className="h-4 w-4 text-primary" />
-        {brand.label}
+        <Phone className="h-4 w-4 text-primary" />
+        Deal Hunter
       </button>
 
       {/* Desktop nav */}
-      <div className="hidden md:flex items-center gap-1">
+      <div className="hidden md:flex items-center gap-3">
         {showCredits && credits !== undefined && (
-          <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-sm mr-2">
-            <Coins className="w-3.5 h-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-sm">
+            <Phone className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
-            <span className="text-muted-foreground">{onDealHunter ? "skip traces" : "credits"}</span>
+            <span className="text-muted-foreground">skip traces</span>
           </div>
         )}
-
-        {primaryItems.map((item) => (
-          <Button
-            key={item.path}
-            variant={location.pathname === item.path ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => go(item.path)}
-            className="text-muted-foreground hover:text-foreground hover:bg-secondary"
-          >
-            <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
-          </Button>
-        ))}
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        {/* Switch to other app */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => go(switchItem.path)}
-          className="text-muted-foreground hover:text-foreground hover:bg-secondary text-xs"
-        >
-          <switchItem.icon className="w-3.5 h-3.5 mr-1" />
-          {switchItem.label}
-        </Button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        {sharedItems.map((item) => (
+        {navItems.map((item) => (
           <Button
             key={item.path}
             variant="ghost"
@@ -121,7 +65,6 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
             <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
           </Button>
         ))}
-
         <FeedbackDialog />
         <ReviewDialog />
         <NotificationBell />
@@ -137,7 +80,7 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
       <div className="flex md:hidden items-center gap-2">
         {showCredits && credits !== undefined && (
           <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2.5 py-1 text-xs">
-            <Coins className="w-3 h-3 text-muted-foreground" />
+            <Phone className="w-3 h-3 text-muted-foreground" />
             <span className="font-semibold text-foreground">{credits}</span>
           </div>
         )}
@@ -149,13 +92,13 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
 
       {open && (
         <div
-          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
           onClick={() => setOpen(false)}
         />
       )}
 
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-background border-l border-border z-50 p-6 flex flex-col gap-2 md:hidden transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 h-full w-72 bg-background border-l border-border z-50 p-6 flex flex-col gap-3 md:hidden transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -166,26 +109,14 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
           </Button>
         </div>
 
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">
-          {onDealHunter ? "Deal Hunter" : "Gold Rush"}
-        </p>
-        {primaryItems.map((item) => (
-          <Button key={item.path} variant="ghost" className="justify-start h-10 text-muted-foreground hover:text-foreground" onClick={() => go(item.path)}>
-            <item.icon className="w-4 h-4 mr-3" /> {item.label}
-          </Button>
-        ))}
-
-        <div className="border-t border-border my-1" />
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">
-          Switch to
-        </p>
-        <Button variant="ghost" className="justify-start h-10 text-muted-foreground hover:text-foreground" onClick={() => go(switchItem.path)}>
-          <switchItem.icon className="w-4 h-4 mr-3" /> {switchItem.label}
-        </Button>
-
-        <div className="border-t border-border my-1" />
-        {sharedItems.map((item) => (
-          <Button key={item.path} variant="ghost" className="justify-start h-10 text-muted-foreground hover:text-foreground" onClick={() => go(item.path)}>
+        {navItems.map((item, i) => (
+          <Button
+            key={item.path}
+            variant="ghost"
+            className="justify-start h-11 text-base text-muted-foreground hover:text-foreground"
+            style={{ animationDelay: `${i * 50}ms` }}
+            onClick={() => go(item.path)}
+          >
             <item.icon className="w-4 h-4 mr-3" /> {item.label}
           </Button>
         ))}

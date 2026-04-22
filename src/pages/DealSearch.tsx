@@ -103,7 +103,7 @@ const DealSearch = () => {
         toast.error("Search failed. Please try again.");
         return;
       }
-      navigate(`/deal-batch/${data.searchBatchId}`);
+      navigate(`/processing/${data.searchBatchId}`);
     } catch {
       toast.error("Search failed. Please try again.");
     } finally {
