@@ -4,138 +4,166 @@ import { CheckCircle2, Loader2, Circle, AlertTriangle, RotateCcw } from "lucide-
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const steps = [
-  { label: "Querying ATTOM for distressed properties...", statusMatch: "searching" },
-  { label: "Mapping equity positions and lien amounts...", statusMatch: "searching" },
-  { label: "Gathering market heat signals...", statusMatch: "scoring" },
-  { label: "Running adversarial deal killer check...", statusMatch: "scoring" },
-  { label: "Scoring deals with AI...", statusMatch: "scoring" },
-  { label: "Finalizing your results...", statusMatch: "complete" },
+  { label: "Finding competitors in the App Store...", statusMatch: "fetching" },
+  { label: "Reading what real users are saying on Reddit...", statusMatch: "fetching" },
+  { label: "Checking Google search trends...", statusMatch: "fetching" },
+  { label: "Analyzing X/Twitter buzz...", statusMatch: "analyzing" },
+  { label: "Calculating your market score...", statusMatch: "analyzing" },
+  { label: "Almost done — writing your report...", statusMatch: "complete" },
 ];
 
-const statusOrder = ["searching", "scoring", "complete"];
+const statusOrder = ["pending", "fetching", "analyzing", "complete"];
 
-const TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes
+const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 const Processing = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const [currentStatus, setCurrentStatus] = useState("searching");
+  const [status, setStatus] = useState("pending");
   const [activeStep, setActiveStep] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const doneRef = useRef(false);
+  const pipelineTriggered = useRef(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
 
-  // Global timeout
+  // Timeout watchdog
   useEffect(() => {
-    timeoutRef.current = setTimeout(() => setTimedOut(true), TIMEOUT_MS);
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+    timeoutRef.current = setTimeout(() => {
+      setTimedOut(true);
+    }, TIMEOUT_MS);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
+
+  // Clear timeout if we reach a terminal state
+  useEffect(() => {
+    if (status === "complete" || status === "failed") {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setTimedOut(false);
+    }
+  }, [status]);
 
   // Animate steps within the same status
   useEffect(() => {
+    if (status === "pending") return;
+
     const interval = setInterval(() => {
       setActiveStep((prev) => {
-        const currentIdx = statusOrder.indexOf(currentStatus);
-        const ceiling = steps.findIndex((s, i) => {
+        const currentIdx = statusOrder.indexOf(status);
+        const maxStep = steps.findIndex((s, i) => {
           const stepIdx = statusOrder.indexOf(s.statusMatch);
           return stepIdx > currentIdx && i > prev;
         });
-        const max = ceiling === -1 ? steps.length - 1 : ceiling - 1;
-        return prev < max ? prev + 1 : prev;
+        const ceiling = maxStep === -1 ? steps.length - 1 : maxStep - 1;
+        if (prev < ceiling) return prev + 1;
+        return prev;
       });
     }, 2500);
-    return () => clearInterval(interval);
-  }, [currentStatus]);
 
-  // Advance active step when status changes
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // Update active step when status changes
   useEffect(() => {
-    const currentIdx = statusOrder.indexOf(currentStatus);
+    const currentIdx = statusOrder.indexOf(status);
     if (currentIdx >= 0) {
-      const firstStep = steps.findIndex((s) => statusOrder.indexOf(s.statusMatch) >= currentIdx);
+      const firstStep = steps.findIndex(s => statusOrder.indexOf(s.statusMatch) >= currentIdx);
       if (firstStep >= 0 && firstStep > activeStep) setActiveStep(firstStep);
     }
-  }, [currentStatus]);
+  }, [status]);
 
-  // Poll the batch status every 8 seconds as a fallback
+  // Initial fetch + pipeline fallback trigger
   useEffect(() => {
-    if (!id || !user) return;
-    const interval = setInterval(async () => {
-      if (doneRef.current) return;
-      const { data } = await supabase
-        .from("properties" as any)
-        .select("status")
-        .eq("search_batch_id", id)
-        .eq("user_id", user.id);
-      if (!data || data.length === 0) return;
-      const statuses = data.map((r: any) => r.status);
-      const hasScoring = statuses.some((s: string) => s === "scoring");
-      const allDone = statuses.every((s: string) => s === "complete" || s === "failed");
-      if (hasScoring || statuses.some((s: string) => s === "searching")) {
-        setCurrentStatus(hasScoring ? "scoring" : "searching");
-      }
-      if (allDone && data.length > 0) {
-        doneRef.current = true;
-        clearInterval(interval);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setCurrentStatus("complete");
-        setActiveStep(steps.length - 1);
-        setTimeout(() => navigate("/dashboard", { replace: true }), 1200);
-      }
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [id, user, navigate]);
+    if (!id) return;
+    supabase.from("analyses").select("status, report_data, idea").eq("id", id).single()
+      .then(({ data }) => {
+        if (data) {
+          setStatus(data.status);
+          if (data.status === "complete" || data.status === "partial") navigate(`/report/${id}`, { replace: true });
+          if (data.status === "failed") {
+            const reportData = data.report_data as any;
+            const message = reportData?.message || reportData?.error;
+            if (message) toast.error(message);
+            else toast.error("Analysis failed. Please try again.");
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+          // If still pending after 5s, the pipeline was never triggered (e.g. browser closed
+          // on the dashboard). Re-invoke it here so the analysis can still complete.
+          if (data.status === "pending" && !pipelineTriggered.current) {
+            pipelineTriggered.current = true;
+            setTimeout(() => {
+              supabase.from("analyses").select("status").eq("id", id).single()
+                .then(({ data: fresh }) => {
+                  if (fresh?.status === "pending") {
+                    supabase.functions.invoke("start-pipeline", {
+                      body: { analysisId: id, idea: data.idea },
+                    }).then(({ error }) => {
+                      if (error) {
+                        supabase.from("analyses").update({ status: "failed" }).eq("id", id!);
+                      }
+                    }).catch(() => {
+                      supabase.from("analyses").update({ status: "failed" }).eq("id", id!);
+                    });
+                  }
+                });
+            }, 5000);
+          }
+        }
+      });
+  }, [id, navigate]);
 
-  // Realtime: watch properties in this batch
+  // Realtime subscription
   useEffect(() => {
-    if (!id || !user) return;
+    if (!id) return;
     const channel = supabase
-      .channel(`batch-${id}`)
+      .channel(`analysis-${id}`)
       .on("postgres_changes", {
-        event: "*",
+        event: "UPDATE",
         schema: "public",
-        table: "properties",
-        filter: `search_batch_id=eq.${id}`,
-      }, async (payload) => {
-        if (doneRef.current) return;
-        const row = payload.new as any;
-        if (row.status === "scoring") setCurrentStatus("scoring");
-
-        // Check if all properties in this batch are done
-        const { data } = await supabase
-          .from("properties" as any)
-          .select("status")
-          .eq("search_batch_id", id)
-          .eq("user_id", user.id);
-        if (!data || data.length === 0) return;
-        const allDone = data.every((r: any) => r.status === "complete" || r.status === "failed");
-        if (allDone) {
-          doneRef.current = true;
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setCurrentStatus("complete");
-          setActiveStep(steps.length - 1);
-          setTimeout(() => navigate("/dashboard", { replace: true }), 1200);
+        table: "analyses",
+        filter: `id=eq.${id}`,
+      }, (payload) => {
+        const newRow = payload.new as { status: string; report_data?: any };
+        setStatus(newRow.status);
+        if (newRow.status === "complete" || newRow.status === "partial") {
+          setTimeout(() => navigate(`/report/${id}`, { replace: true }), 800);
+        }
+        if (newRow.status === "failed") {
+          const message = newRow.report_data?.message || newRow.report_data?.error;
+          if (message) toast.error(message);
+          else toast.error("Analysis failed. Please try again.");
+          setTimeout(() => navigate("/dashboard", { replace: true }), 1000);
         }
       })
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
-  }, [id, user, navigate]);
+  }, [id, navigate]);
+
+  const handleRetry = () => {
+    navigate("/dashboard");
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-      <span className="font-heading text-xl font-bold text-foreground mb-1">Deal Hunter</span>
-      <p className="text-sm text-muted-foreground mb-10">Searching for distressed deals in your market…</p>
+      <span className="font-heading text-xl font-bold text-foreground mb-1">Gold Rush</span>
+      <p className="text-sm text-muted-foreground mb-10">Scanning the market for your idea...</p>
 
       <div className="w-full max-w-sm space-y-4">
         {steps.map((step, i) => {
           const isDone = i < activeStep;
           const isActive = i === activeStep;
+
           return (
             <div key={i} className={`flex items-center gap-3 transition-opacity duration-300 ${isDone || isActive ? "opacity-100" : "opacity-30"}`}>
               {isDone ? (
@@ -153,15 +181,19 @@ const Processing = () => {
         })}
       </div>
 
+      {/* Timeout warning */}
       {timedOut && (
         <div className="mt-10 w-full max-w-sm rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 text-center animate-in fade-in slide-in-from-bottom-2">
           <AlertTriangle className="w-6 h-6 text-amber-400 mx-auto mb-3" />
-          <p className="text-sm font-medium text-foreground mb-1">Taking longer than expected</p>
-          <p className="text-xs text-muted-foreground mb-4">
-            The search may still be running. You can wait or return to see results so far.
+          <p className="text-sm font-medium text-foreground mb-1">
+            This is taking longer than expected
           </p>
-          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
-            <RotateCcw className="w-3.5 h-3.5 mr-1" />Back to Dashboard
+          <p className="text-xs text-muted-foreground mb-4">
+            The analysis may still be processing, or it may have encountered an issue. You can wait or go back and retry.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleRetry}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Back to Dashboard
           </Button>
         </div>
       )}
