@@ -28,68 +28,94 @@ function computeEquityPct(estimatedValue: number | null, lienAmount: number | nu
 }
 
 // ─── Map ATTOM property to our schema ────────────────────────────────────────
+// Field names use ATTOM's actual casing from allevents/detail responses
 function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<string, unknown>, searchBatchId: string, userId: string) {
   const identifier = (attomProp.identifier as Record<string, unknown>) ?? {};
-  const address = (attomProp.address as Record<string, unknown>) ?? {};
-  const building = (attomProp.building as Record<string, unknown>) ?? {};
-  const rooms = (building.rooms as Record<string, unknown>) ?? {};
-  const size = (building.size as Record<string, unknown>) ?? {};
-  const avm = (attomProp.avm as Record<string, unknown>) ?? {};
-  const sale = (attomProp.sale as Record<string, unknown>) ?? {};
-  const saleAmount = (sale.amount as Record<string, unknown>) ?? {};
-  const events = (attomProp.eventHistory as unknown[]) ?? [];
+  const address    = (attomProp.address   as Record<string, unknown>) ?? {};
+  const building   = (attomProp.building  as Record<string, unknown>) ?? {};
+  const rooms      = (building.rooms      as Record<string, unknown>) ?? {};
+  const size       = (building.size       as Record<string, unknown>) ?? {};
+  const summary    = (attomProp.summary   as Record<string, unknown>) ?? {};
+  const avm        = (attomProp.avm       as Record<string, unknown>) ?? {};
+  const avmAmount  = (avm.amount          as Record<string, unknown>) ?? {};
+  const sale       = (attomProp.sale      as Record<string, unknown>) ?? {};
+  const saleAmount = (sale.amount         as Record<string, unknown>) ?? {};
+  const assessment = (attomProp.assessment as Record<string, unknown>) ?? {};
+  const assessmentCalc   = (assessment.calculations as Record<string, unknown>) ?? {};
+  const assessmentMarket = (assessment.market       as Record<string, unknown>) ?? {};
+  const assessmentTax    = (assessment.tax          as Record<string, unknown>) ?? {};
 
-  // Derive distress types from event history
+  // ── Estimated value: prefer AVM, fall back to assessment market / assessed value
+  const estimatedValue: number | null =
+    (typeof avmAmount.scr === "number" && (avmAmount.scr as number) > 0 ? avmAmount.scr as number : null) ??
+    (typeof assessmentMarket.mktttlvalue === "number" && (assessmentMarket.mktttlvalue as number) > 0 ? assessmentMarket.mktttlvalue as number : null) ??
+    (typeof assessmentCalc.calcttlvalue === "number" && (assessmentCalc.calcttlvalue as number) > 0 ? assessmentCalc.calcttlvalue as number : null) ??
+    (typeof saleAmount.saleamt === "number" && (saleAmount.saleamt as number) > 0 ? saleAmount.saleamt as number : null) ??
+    null;
+
+  // ── Lien / tax amount (used for equity calc)
+  const lienAmount: number | null =
+    (typeof assessmentTax.taxamt === "number" && (assessmentTax.taxamt as number) > 0
+      ? assessmentTax.taxamt as number * 10   // rough proxy: annual tax × 10 as lien estimate
+      : null);
+
+  // ── Distress type detection from available ATTOM fields
   const distressTypes: string[] = [];
+
+  // Foreclosure: sale.foreclosure = "O" (Open), "F" (Filed), "P" (Pending), etc.
+  const foreclosureStatus = String(sale.foreclosure ?? "").trim().toUpperCase();
+  if (foreclosureStatus && foreclosureStatus !== "N" && foreclosureStatus !== "0" && foreclosureStatus !== "") {
+    distressTypes.push("foreclosure");
+  }
+
+  // Tax delinquency: property with non-zero tax and absentee owner is a candidate
+  const absenteeInd = String(summary.absenteeInd ?? "").toUpperCase();
+  if (absenteeInd.includes("ABSENTEE") && assessmentTax.taxamt) {
+    distressTypes.push("delinquency");
+  }
+
+  // Also check legacy eventHistory if present (some ATTOM plans include it)
+  const events = (attomProp.eventHistory as unknown[]) ?? [];
   for (const event of events) {
     const ev = event as Record<string, unknown>;
     const mapped = mapAttomDistressType(String(ev.eventType ?? ev.type ?? ""));
-    if (mapped && !distressTypes.includes(mapped)) {
-      distressTypes.push(mapped);
-    }
-  }
-
-  // If ATTOM returned top-level event fields, also check those
-  const topLevelEventType = String(attomProp.eventType ?? attomProp.type ?? "");
-  if (topLevelEventType) {
-    const mapped = mapAttomDistressType(topLevelEventType);
     if (mapped && !distressTypes.includes(mapped)) distressTypes.push(mapped);
   }
 
-  const estimatedValue =
-    (avm.amount as number) ??
-    (avm.value as number) ??
-    (saleAmount.saleAmt as number) ??
-    null;
-
-  // Lien amount: ATTOM may provide this in event data
-  let lienAmount: number | null = null;
-  for (const event of events) {
-    const ev = event as Record<string, unknown>;
-    const amount = ev.lienAmount ?? ev.amount ?? ev.taxAmount;
-    if (typeof amount === "number" && amount > 0) {
-      lienAmount = amount;
-      break;
+  // Fallback: if no distress type detected but user is searching for them,
+  // include property with a generic indicator so the AI can evaluate it.
+  if (distressTypes.length === 0) {
+    const filterTypes = (filters.distressTypes as string[]) ?? [];
+    if (filterTypes.length > 0) {
+      distressTypes.push(filterTypes[0]);   // tag with first requested type; AI will verify
     }
   }
+
+  // ── Property type from summary
+  const propType = String(summary.proptype ?? summary.propsubtype ?? summary.propertyType ?? "SFR");
+
+  // ── Beds/baths: ATTOM uses lowercase keys
+  const beds  = (rooms.beds as number) ?? (rooms.bedscount as number) ?? (rooms.bedsTotal as number) ?? null;
+  const baths = (rooms.bathstotal as number) ?? (rooms.bathsfull as number) ?? null;
+  const sqft  = (size.universalsize as number) ?? (size.livingsize as number) ?? (size.bldgsize as number) ?? null;
 
   return {
     user_id: userId,
     search_batch_id: searchBatchId,
     attom_id: String(identifier.attomId ?? identifier.Id ?? attomProp.id ?? ""),
-    address: String(address.line1 ?? address.oneLine ?? ""),
-    city: String(address.cityName ?? address.locality ?? ""),
-    state: String(address.stateName ?? address.state ?? address.countrySubd ?? ""),
-    zip: String(address.postal1 ?? address.zipCode ?? ""),
-    property_type: String(attomProp.lotSize ?? building.buildingType ?? "SFR"),
-    beds: (rooms.beds as number) ?? (rooms.bedsCount as number) ?? null,
-    baths: (rooms.bathsTotal as number) ?? null,
-    sqft: (size.universalSize as number) ?? (size.livingSize as number) ?? null,
+    address:  String(address.line1 ?? address.oneLine ?? ""),
+    city:     String(address.locality ?? address.cityName ?? ""),
+    state:    String(address.countrySubd ?? address.stateName ?? address.state ?? ""),
+    zip:      String(address.postal1 ?? address.zipCode ?? ""),
+    property_type: propType,
+    beds,
+    baths,
+    sqft,
     estimated_value: estimatedValue,
-    last_sale_price: (saleAmount.saleAmt as number) ?? null,
-    last_sale_date: (sale.saleTransDate as string) ?? null,
-    distress_types: distressTypes,
-    distress_details: { events, rawAttom: attomProp },
+    last_sale_price: (saleAmount.saleamt as number) ?? null,
+    last_sale_date:  (sale.saleTransDate as string) ?? null,
+    distress_types:  distressTypes,
+    distress_details: { foreclosureStatus, absenteeInd, events, assessmentTax, rawSale: sale },
     equity_pct: computeEquityPct(estimatedValue, lienAmount),
     status: "scoring" as const,
     search_filters: filters,
@@ -345,37 +371,48 @@ Deno.serve(async (req) => {
     const inserted = insertedRows ?? [];
     console.log(`[run-property-fetch] Inserted/updated ${inserted.length} properties`);
 
-    // Trigger run-deal-analyze for each property (sequential with 150ms gap to avoid overwhelming APIs)
-    const authHeader = req.headers.get("Authorization") ?? `Bearer ${serviceRoleKey}`;
-    for (const prop of inserted) {
-      try {
-        await fetch(`${supabaseUrl}/functions/v1/run-deal-analyze`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: authHeader,
-            apikey: anonKey,
-          },
-          body: JSON.stringify({ propertyId: prop.id }),
-        });
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      } catch (analyzeError) {
-        console.error(`[run-property-fetch] Failed to trigger analyze for ${prop.id}:`, analyzeError);
-        // Mark this property as failed but continue with others
-        await supabase
-          .from("properties")
-          .update({ status: "failed", report_data: { error: "Analyze trigger failed" } })
-          .eq("id", prop.id);
-      }
-    }
+    // Trigger run-deal-analyze for each property IN PARALLEL — do NOT await sequentially
+    // (sequential + await caused edge function timeout with >3 properties)
+    const analyzeAll = Promise.all(
+      inserted.map(async (prop, i) => {
+        // Stagger starts by 200ms to avoid hammering APIs simultaneously
+        await new Promise((resolve) => setTimeout(resolve, i * 200));
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/run-deal-analyze`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceRoleKey}`,
+              apikey: anonKey,
+            },
+            body: JSON.stringify({ propertyId: prop.id }),
+          });
+        } catch (analyzeError) {
+          console.error(`[run-property-fetch] analyze failed for ${prop.id}:`, analyzeError);
+          await supabase
+            .from("properties")
+            .update({ status: "failed", report_data: { error: "Analyze trigger failed" } })
+            .eq("id", prop.id);
+        }
+      })
+    );
 
-    // Check saved search alerts (non-blocking)
-    await checkSavedSearchAlerts(
+    // Check saved search alerts in parallel with analyzes (non-blocking)
+    const alertsAll = checkSavedSearchAlerts(
       supabase,
       inserted as Array<{ id: string; zip: string; city: string; state: string; distress_types: string[]; estimated_value: number | null; equity_pct: number | null; deal_score: number | null; deal_verdict: string | null; address: string }>,
       supabaseUrl,
       anonKey,
     );
+
+    // Return success immediately — use waitUntil to keep function alive for background work
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(Promise.all([analyzeAll, alertsAll]));
+    } else {
+      // Fallback: await (slower but safe for local dev)
+      await Promise.all([analyzeAll, alertsAll]);
+    }
 
     return new Response(JSON.stringify({ queued: true, count: inserted.length }), {
       status: 200,
