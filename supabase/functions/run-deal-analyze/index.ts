@@ -317,9 +317,9 @@ If no kill signals, return: { "killSignals": [] }`;
   }
 }
 
-// ─── Main Claude scoring call ─────────────────────────────────────────────────
+// ─── Main GPT-4o scoring call ────────────────────────────────────────────────
 
-async function scoreDealWithClaude(
+async function scoreDealWithGPT(
   property: Record<string, unknown>,
   intelligence: Record<string, unknown>,
   hardKillSignals: Array<{ type: string; severity: string; evidence: string }>,
@@ -333,15 +333,17 @@ async function scoreDealWithClaude(
   risks: string[];
   opportunities: string[];
 }> {
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY not set");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) throw new Error("OPENAI_API_KEY not set");
 
   const marketHeat = intelligence.marketHeat as Record<string, unknown> ?? {};
   const neighborhoodSentiment = intelligence.neighborhoodSentiment as Record<string, unknown> ?? {};
   const ownerResearch = intelligence.ownerResearch as Record<string, unknown> ?? {};
   const publicRecords = intelligence.publicRecordsConfirm as Record<string, unknown> ?? {};
 
-  const prompt = `You are a professional real estate investment analyst. Score this distressed property as a deal opportunity using ALL provided data.
+  const systemPrompt = `You are a professional real estate investment analyst. Score distressed properties as deal opportunities using all provided data. Return only valid JSON.`;
+
+  const userPrompt = `Score this distressed property as a deal opportunity using ALL provided data.
 
 ## Property Data (ATTOM — Layer 1, verified)
 Address: ${property.address}, ${property.city}, ${property.state} ${property.zip}
@@ -372,7 +374,7 @@ Score 0-100 based on:
 
 Thresholds: ≥70 = Strong Deal, 40-69 = Investigate, <40 = Pass
 
-Return ONLY valid JSON (no markdown):
+Return ONLY valid JSON:
 {
   "deal_score": <0-100>,
   "deal_verdict": "Strong Deal|Investigate|Pass",
@@ -385,38 +387,39 @@ Return ONLY valid JSON (no markdown):
 }`;
 
   const response = await withTimeout(
-    fetch("https://api.anthropic.com/v1/messages", {
+    fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${openaiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
         max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
       }),
     }),
     60000,
-    "Claude deal scoring"
+    "GPT-4o deal scoring"
   );
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`Claude API ${response.status}: ${body.slice(0, 500)}`);
+    throw new Error(`OpenAI API ${response.status}: ${body.slice(0, 500)}`);
   }
 
   const data = await response.json();
-  const raw = data.content?.[0]?.text ?? "{}";
+  const raw = data.choices?.[0]?.message?.content ?? "{}";
 
   try {
     return JSON.parse(raw);
   } catch {
-    // Attempt to extract JSON from markdown block
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("Claude returned non-JSON response");
+    throw new Error("GPT-4o returned non-JSON response");
   }
 }
 
@@ -599,13 +602,13 @@ Deno.serve(async (req) => {
       finalVerdict = "Pass";
       finalScore = 20;
     } else {
-      // ── Main Claude scoring ──────────────────────────────────────────────
+      // ── Main GPT-4o scoring ──────────────────────────────────────────────
       const claudeCall = await safeCall(
-        () => scoreDealWithClaude(property, intelligence, hardKillSignals),
-        "claude_scoring",
+        () => scoreDealWithGPT(property, intelligence, hardKillSignals),
+        "gpt_scoring",
         null
       );
-      pipelineMetrics.claude_scoring = { status: claudeCall.status, durationMs: claudeCall.durationMs, error: claudeCall.error };
+      pipelineMetrics.gpt_scoring = { status: claudeCall.status, durationMs: claudeCall.durationMs, error: claudeCall.error };
 
       if (claudeCall.result) {
         claudeResult = claudeCall.result;
