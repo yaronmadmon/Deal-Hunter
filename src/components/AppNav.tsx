@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, Gavel, Shield, Menu, X, LayoutDashboard, Settings, Kanban, Phone } from "lucide-react";
+import { LogOut, Gavel, Shield, Menu, X, LayoutDashboard, Settings, Kanban, Target, Zap } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -21,14 +21,14 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   const { isAdmin } = useAdmin();
 
   const navItems = [
-    ...(location.pathname !== "/dashboard"
-      ? [{ label: "Deal Search", icon: LayoutDashboard, path: "/dashboard" }]
-      : []),
+    { label: "Search", icon: LayoutDashboard, path: "/dashboard" },
     { label: "Pipeline", icon: Kanban, path: "/pipeline" },
     { label: "Auctions", icon: Gavel, path: "/auctions" },
     { label: "Settings", icon: Settings, path: "/settings" },
     ...(isAdmin ? [{ label: "Admin", icon: Shield, path: "/admin" }] : []),
   ];
+
+  const isActive = (path: string) => location.pathname === path;
 
   const go = (path: string) => {
     navigate(path);
@@ -36,100 +36,119 @@ export const AppNav = ({ credits, onSignOut, showCredits = true }: AppNavProps) 
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-3.5 max-w-7xl mx-auto border-b border-border relative z-50">
-      <button
-        onClick={() => navigate("/dashboard")}
-        className="flex items-center gap-2 font-heading text-[15px] font-bold tracking-[-0.02em] text-foreground"
-      >
-        <Phone className="h-4 w-4 text-primary" />
-        Deal Hunter
-      </button>
+    <>
+      <nav className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          {/* Logo */}
+          <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 shrink-0">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+              <Target className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-heading text-sm font-bold tracking-tight text-foreground hidden sm:block">Deal Hunter</span>
+          </button>
 
-      {/* Desktop nav */}
-      <div className="hidden md:flex items-center gap-3">
-        {showCredits && credits !== undefined && (
-          <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3 py-1.5 text-sm">
-            <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="font-semibold text-foreground">{credits}</span>
-            <span className="text-muted-foreground">skip traces</span>
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map(item => (
+              <button
+                key={item.path}
+                onClick={() => go(item.path)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isActive(item.path)
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                }`}
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </button>
+            ))}
           </div>
-        )}
-        {navItems.map((item) => (
-          <Button
-            key={item.path}
-            variant="ghost"
-            size="sm"
-            onClick={() => go(item.path)}
-            className="text-muted-foreground hover:text-foreground hover:bg-secondary"
-          >
-            <item.icon className="w-3.5 h-3.5 mr-1" /> {item.label}
-          </Button>
-        ))}
-        <FeedbackDialog />
-        <ReviewDialog />
-        <NotificationBell />
-        <ThemeToggle />
-        {onSignOut && (
-          <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground hover:text-foreground">
-            <LogOut className="w-4 h-4" />
-          </Button>
-        )}
-      </div>
 
-      {/* Mobile */}
-      <div className="flex md:hidden items-center gap-2">
-        {showCredits && credits !== undefined && (
-          <div className="flex items-center gap-1 bg-card border border-border rounded-full px-2.5 py-1 text-xs">
-            <Phone className="w-3 h-3 text-muted-foreground" />
-            <span className="font-semibold text-foreground">{credits}</span>
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
+            {showCredits && credits !== undefined && (
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-xs">
+                <Zap className="h-3 w-3 text-primary" />
+                <span className="font-semibold text-foreground">{credits}</span>
+                <span className="text-muted-foreground hidden md:inline">traces</span>
+              </div>
+            )}
+            <div className="hidden md:flex items-center gap-1">
+              <FeedbackDialog />
+              <ReviewDialog />
+              <NotificationBell />
+              <ThemeToggle />
+              {onSignOut && (
+                <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground hover:text-foreground h-8 w-8">
+                  <LogOut className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+
+            {/* Mobile: credits pill + bell + hamburger */}
+            <div className="flex md:hidden items-center gap-2">
+              {showCredits && credits !== undefined && (
+                <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/60 px-2.5 py-1 text-xs">
+                  <Zap className="h-3 w-3 text-primary" />
+                  <span className="font-semibold text-foreground">{credits}</span>
+                </div>
+              )}
+              <NotificationBell />
+              <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="h-8 w-8">
+                {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
-        )}
-        <NotificationBell />
-        <Button variant="ghost" size="icon" onClick={() => setOpen(!open)}>
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </Button>
-      </div>
+        </div>
+      </nav>
 
+      {/* Mobile drawer overlay */}
       {open && (
-        <div
-          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} />
       )}
 
-      <div
-        className={`fixed top-0 right-0 h-full w-72 bg-background border-l border-border z-50 p-6 flex flex-col gap-3 md:hidden transition-transform duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-heading text-lg font-bold text-foreground">Menu</span>
-          <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
-            <X className="w-5 h-5" />
+      {/* Mobile drawer */}
+      <div className={`fixed top-0 right-0 z-50 h-full w-72 border-l border-border bg-background flex flex-col md:hidden transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
+              <Target className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-heading font-bold text-foreground">Deal Hunter</span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8">
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {navItems.map((item, i) => (
-          <Button
-            key={item.path}
-            variant="ghost"
-            className="justify-start h-11 text-base text-muted-foreground hover:text-foreground"
-            style={{ animationDelay: `${i * 50}ms` }}
-            onClick={() => go(item.path)}
-          >
-            <item.icon className="w-4 h-4 mr-3" /> {item.label}
-          </Button>
-        ))}
+        <div className="flex flex-col gap-1 p-3 flex-1">
+          {navItems.map((item, i) => (
+            <button
+              key={item.path}
+              onClick={() => go(item.path)}
+              style={{ animationDelay: `${i * 40}ms` }}
+              className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                isActive(item.path)
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-border">
+        <div className="border-t border-border p-4 flex items-center justify-between">
           <ThemeToggle />
           {onSignOut && (
-            <Button variant="ghost" size="sm" onClick={() => { onSignOut(); setOpen(false); }} className="text-muted-foreground">
-              <LogOut className="w-4 h-4 mr-1" /> Sign Out
+            <Button variant="ghost" size="sm" onClick={() => { onSignOut(); setOpen(false); }} className="text-muted-foreground gap-1.5">
+              <LogOut className="h-3.5 w-3.5" /> Sign Out
             </Button>
           )}
         </div>
       </div>
-    </nav>
+    </>
   );
 };
