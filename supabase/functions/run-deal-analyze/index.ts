@@ -595,7 +595,7 @@ Deno.serve(async (req) => {
     const hardKills = hardKillSignals.filter((k) => k.severity === "Hard");
     let finalVerdict: "Strong Deal" | "Investigate" | "Pass" = "Investigate";
     let finalScore = 50;
-    let claudeResult: Awaited<ReturnType<typeof scoreDealWithClaude>> | null = null;
+    let claudeResult: Awaited<ReturnType<typeof scoreDealWithGPT>> | null = null;
 
     if (hardKills.length >= 2) {
       // Skip Claude — deterministically fail
