@@ -300,7 +300,7 @@ const Settings = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Appearance</CardTitle>
-                <CardDescription>Customize the look of Gold Rush.</CardDescription>
+                <CardDescription>Customize the look of Deal Hunter.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">

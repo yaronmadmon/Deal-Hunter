@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">1. Who We Are</h2>
             <p>
-              Gold Rush ("we", "us", "our") is a startup idea validation platform. Our service helps founders
+              Deal Hunter ("we", "us", "our") is a startup idea validation platform. Our service helps founders
               validate business ideas using real market data from public sources. We are the data controller
               for the personal data we process.
             </p>
@@ -43,7 +43,7 @@ const PrivacyPolicy = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">3. How We Use Your Data</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>To provide and improve the Gold Rush service</li>
+              <li>To provide and improve the Deal Hunter service</li>
               <li>To send transactional emails (account confirmation, analysis results, receipts)</li>
               <li>To process payments via Stripe</li>
               <li>To detect and prevent abuse or fraud</li>

@@ -51,7 +51,7 @@ const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <span className="font-heading text-2xl font-bold text-foreground">⛏️ Gold Rush</span>
+          <span className="font-heading text-2xl font-bold text-foreground">Deal Hunter</span>
           <p className="text-muted-foreground mt-2">Set your new password</p>
         </div>
         <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-6 space-y-4">

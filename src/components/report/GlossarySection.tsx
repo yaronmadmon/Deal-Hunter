@@ -21,7 +21,7 @@ const glossaryTerms: GlossaryTerm[] = [
   { term: "CPL — Cost Per Lead", definition: "How much it costs to get one interested prospect." },
   { term: "Conversion Rate", definition: "What percentage of visitors become paying customers." },
   { term: "Market Saturation", definition: "How crowded this market is with competitors. High saturation = harder to stand out." },
-  { term: "Signal Strength", definition: "How confident Gold Rush is in this market data. Strong = multiple real data sources agree." },
+  { term: "Signal Strength", definition: "How confident Deal Hunter is in this market data. Strong = multiple real data sources agree." },
   { term: "Blue Ocean", definition: "A market with real demand but very few competitors. The best place to launch a new product." },
   { term: "PMF — Product Market Fit", definition: "When your product perfectly solves a real problem people are willing to pay for." },
   { term: "MVP — Minimum Viable Product", definition: "The simplest version of your app that still works and can be tested with real users." },

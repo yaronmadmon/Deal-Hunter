@@ -103,7 +103,7 @@ const Auth = () => {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <button onClick={() => navigate("/")} className="font-heading text-xl font-bold text-foreground tracking-[-0.02em] hover:text-muted-foreground transition-colors">
-            Gold Rush
+            Deal Hunter
           </button>
           <p className="text-sm text-muted-foreground mt-2">
             {mode === "login" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset your password"}

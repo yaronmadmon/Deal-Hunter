@@ -22,7 +22,7 @@ const Terms = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">1. Acceptance of Terms</h2>
             <p>
-              By creating an account or using Gold Rush, you agree to these Terms of Service. If you do not
+              By creating an account or using Deal Hunter, you agree to these Terms of Service. If you do not
               agree, do not use the service.
             </p>
           </section>
@@ -30,7 +30,7 @@ const Terms = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">2. Description of Service</h2>
             <p>
-              Gold Rush is an AI-powered startup idea validation platform. We aggregate publicly available market
+              Deal Hunter is an AI-powered startup idea validation platform. We aggregate publicly available market
               data and apply AI analysis to produce reports. Our reports are informational only — they are not
               financial, legal, or investment advice. Use them as one input among many in your decision-making.
             </p>
@@ -62,7 +62,7 @@ const Terms = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">5. Intellectual Property</h2>
             <p>
-              The Gold Rush platform, branding, and underlying software are our intellectual property.
+              The Deal Hunter platform, branding, and underlying software are our intellectual property.
               Reports generated for you are yours to use for your own business purposes. We retain a
               license to use anonymized, aggregated report data to improve the service.
             </p>
