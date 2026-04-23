@@ -84,7 +84,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <button
@@ -160,14 +160,14 @@ const Index = () => {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-6xl gap-16 px-6 pb-24 pt-20 md:grid-cols-[minmax(0,1.1fr)_360px] md:items-end md:pt-28">
+        <section className="mx-auto grid max-w-6xl gap-8 px-4 pb-12 pt-10 sm:px-6 md:gap-16 md:grid-cols-[minmax(0,1.1fr)_360px] md:items-end md:pb-24 md:pt-28">
           <div className="max-w-3xl">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground sm:mb-8">
               <Zap className="h-3.5 w-3.5" />
               AI-powered deal intelligence
             </div>
 
-            <h1 className="max-w-4xl font-heading text-5xl font-bold leading-[0.95] tracking-[-0.06em] text-foreground sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-4xl font-heading text-3xl font-bold leading-[1.05] tracking-[-0.04em] text-foreground sm:text-5xl sm:leading-[0.95] sm:tracking-[-0.06em] lg:text-7xl">
               Find distressed
               <br />
               <span className="text-foreground">deals before anyone else.</span>
@@ -207,7 +207,7 @@ const Index = () => {
               <p className="mt-2 text-sm leading-6 text-muted-foreground">Tax lien + 42% equity + motivated seller confirmed by Serper court records.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-4">
               <div className="rounded-xl border border-border bg-card p-5">
                 <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Data Source</div>
                 <div className="mt-3 font-mono text-3xl font-semibold text-foreground">ATTOM</div>
@@ -225,7 +225,7 @@ const Index = () => {
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
         {/* Three core signals */}
-        <section className="mx-auto max-w-6xl px-6 py-24" id="proof">
+        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-24" id="proof">
           <div className="mb-12 max-w-2xl">
             <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">What we give you</p>
             <h2 className="font-heading text-3xl font-bold tracking-[-0.05em] text-foreground md:text-4xl">
@@ -257,7 +257,7 @@ const Index = () => {
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
         {/* Sample deal preview */}
-        <section id="deal-preview" className="mx-auto max-w-6xl px-6 py-24">
+        <section id="deal-preview" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-24">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_320px] lg:items-end">
             <div>
               <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Sample deal analysis</p>
@@ -279,10 +279,10 @@ const Index = () => {
                   </span>
                 </div>
 
-                <div className="grid gap-6 p-5 md:grid-cols-[160px_minmax(0,1fr)] md:p-6">
+                <div className="grid gap-4 p-4 sm:gap-6 sm:p-5 md:grid-cols-[160px_minmax(0,1fr)] md:p-6">
                   <div className="rounded-xl border border-border bg-background p-5">
                     <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Score</div>
-                    <div className="mt-4 font-mono text-6xl font-semibold tracking-[-0.06em] text-foreground">84</div>
+                    <div className="mt-4 font-mono text-4xl font-semibold tracking-[-0.06em] text-foreground sm:text-6xl">84</div>
                     <div className="mt-2 text-xs text-muted-foreground">Strong deal signal</div>
                   </div>
 
@@ -355,7 +355,7 @@ const Index = () => {
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
         {/* How it works */}
-        <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-24">
+        <section id="how-it-works" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-24">
           <div className="mb-12 max-w-2xl">
             <p className="mb-4 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">How it works</p>
             <h2 className="font-heading text-3xl font-bold tracking-[-0.05em] text-foreground md:text-4xl">
@@ -385,7 +385,7 @@ const Index = () => {
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
         {/* Value props */}
-        <section className="mx-auto max-w-6xl px-6 py-24">
+        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-24">
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="rounded-xl border border-border bg-card p-8">
               <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -416,8 +416,8 @@ const Index = () => {
         <div className="mx-auto h-px max-w-6xl bg-border" />
 
         {/* Final CTA */}
-        <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <h2 className="font-heading text-4xl font-bold tracking-[-0.06em] text-foreground sm:text-5xl">
+        <section className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 md:py-24">
+          <h2 className="font-heading text-2xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl sm:tracking-[-0.06em] md:text-5xl">
             Your next deal is already out there.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
@@ -445,7 +445,7 @@ const Index = () => {
       </main>
 
       <footer className="border-t border-border py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground md:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:px-6 md:flex-row">
           <span className="font-heading font-semibold text-foreground">Deal Hunter</span>
           <p>© 2026 Deal Hunter. Find the deal. Close the deal.</p>
           <div className="flex items-center gap-5">
