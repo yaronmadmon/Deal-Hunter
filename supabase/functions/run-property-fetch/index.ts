@@ -38,12 +38,40 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
   const summary    = (attomProp.summary   as Record<string, unknown>) ?? {};
   const avm        = (attomProp.avm       as Record<string, unknown>) ?? {};
   const avmAmount  = (avm.amount          as Record<string, unknown>) ?? {};
+  const avmHigh    = (avmAmount.high      as number) ?? null;
+  const avmLow     = (avmAmount.low       as number) ?? null;
   const sale       = (attomProp.sale      as Record<string, unknown>) ?? {};
   const saleAmount = (sale.amount         as Record<string, unknown>) ?? {};
   const assessment = (attomProp.assessment as Record<string, unknown>) ?? {};
   const assessmentCalc   = (assessment.calculations as Record<string, unknown>) ?? {};
   const assessmentMarket = (assessment.market       as Record<string, unknown>) ?? {};
   const assessmentTax    = (assessment.tax          as Record<string, unknown>) ?? {};
+  const assessmentLand   = (assessment.market       as Record<string, unknown>) ?? {};
+
+  // ── Mortgage / deed (ATTOM includes these on allevents/detail)
+  const mortgage       = (attomProp.mortgage as Record<string, unknown>) ?? {};
+  const mortgageAmount = (mortgage.amount    as Record<string, unknown>) ?? {};
+  const mortgageLender = (mortgage.lender    as Record<string, unknown>) ?? {};
+  const mortgageTerm   = (mortgage.term      as Record<string, unknown>) ?? {};
+  const deed           = (attomProp.deed     as Record<string, unknown>) ?? {};
+  const deedAmount     = (deed.amount        as Record<string, unknown>) ?? {};
+
+  const loanAmount: number | null = (mortgageAmount.loanamt as number) > 0 ? (mortgageAmount.loanamt as number) : null;
+  const lenderName: string | null = String(mortgageLender.name ?? mortgageLender.lendername ?? "").trim() || null;
+  const loanType: string | null   = String(mortgageTerm.termtype ?? mortgage.loantype ?? "").trim() || null;
+  const deedSaleAmt: number | null = (deedAmount.saleamt as number) > 0 ? (deedAmount.saleamt as number) : null;
+  // Cash purchase: last sale had no associated mortgage, or ATTOM flags it
+  const isCashPurchase: boolean =
+    (saleAmount.saledisclosuretype as string ?? "").toUpperCase().includes("CASH") ||
+    (saleAmount.cashpurchase as boolean) === true ||
+    (!loanAmount && !!(saleAmount.saleamt as number));
+
+  const yearBuilt: number | null = (summary.yearbuilt as number) ?? (summary.yearBuilt as number) ?? null;
+  const ownerName: string | null = String(
+    (deed as Record<string, unknown>).buyer
+      ? ((deed.buyer as Record<string, unknown>).name1full ?? "")
+      : (summary.owner1fullname ?? summary.ownerfullname ?? "")
+  ).trim() || null;
 
   // ── Estimated value: prefer AVM, fall back to assessment market / assessed value
   const estimatedValue: number | null =
@@ -53,11 +81,12 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
     (typeof saleAmount.saleamt === "number" && (saleAmount.saleamt as number) > 0 ? saleAmount.saleamt as number : null) ??
     null;
 
-  // ── Lien / tax amount (used for equity calc)
+  // ── Lien amount for equity calc: prefer actual mortgage loan amount over tax proxy
+  const taxAmt: number | null = (typeof assessmentTax.taxamt === "number" && (assessmentTax.taxamt as number) > 0)
+    ? assessmentTax.taxamt as number : null;
   const lienAmount: number | null =
-    (typeof assessmentTax.taxamt === "number" && (assessmentTax.taxamt as number) > 0
-      ? assessmentTax.taxamt as number * 10   // rough proxy: annual tax × 10 as lien estimate
-      : null);
+    loanAmount ??
+    (taxAmt !== null ? taxAmt * 10 : null); // fallback: annual tax × 10
 
   // ── Distress type detection from available ATTOM fields
   const distressTypes: string[] = [];
@@ -115,7 +144,26 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
     last_sale_price: (saleAmount.saleamt as number) ?? null,
     last_sale_date:  (sale.saleTransDate as string) ?? null,
     distress_types:  distressTypes,
-    distress_details: { foreclosureStatus, absenteeInd, events, assessmentTax, rawSale: sale },
+    distress_details: {
+      foreclosureStatus,
+      absenteeInd,
+      events,
+      assessmentTax,
+      rawSale: sale,
+      // Financial intelligence fields
+      mortgage: {
+        loanAmount,
+        lenderName,
+        loanType,
+        isCashPurchase,
+      },
+      avmRange: { high: avmHigh, low: avmLow },
+      yearBuilt,
+      ownerName,
+      deedSaleAmt,
+      assessedLandValue: (assessmentLand as Record<string, unknown>).mktlandvalue ?? null,
+      assessedImprValue: (assessmentMarket as Record<string, unknown>).mktimprvalue ?? null,
+    },
     equity_pct: computeEquityPct(estimatedValue, lienAmount),
     status: "scoring" as const,
     search_filters: filters,
