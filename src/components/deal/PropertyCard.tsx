@@ -39,7 +39,7 @@ interface Property {
   deal_verdict?: string | null;
   distress_types?: string[] | null;
   distress_details?: DistressDetails | null;
-  report_data?: { opportunity_type?: string | null } | null;
+  report_data?: { opportunity_type?: string | null; photos?: string[] | null } | null;
   status: string;
 }
 
@@ -124,11 +124,22 @@ export const PropertyCard = ({ property, ownerContact }: Props) => {
     : "text-green-400";
 
   // Opportunity type badge
+  const firstPhoto = property.report_data?.photos?.[0] ?? null;
   const oppType = property.report_data?.opportunity_type ?? null;
   const oppBadge = oppType && OPPORTUNITY_LABELS[oppType] ? OPPORTUNITY_LABELS[oppType] : null;
 
   return (
-    <Card className="hover:border-primary/50 transition-colors">
+    <Card className="hover:border-primary/50 transition-colors overflow-hidden">
+      {firstPhoto && (
+        <div className="relative h-36 w-full overflow-hidden bg-secondary">
+          <img
+            src={firstPhoto}
+            alt={property.address}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        </div>
+      )}
       <CardContent className="p-5 space-y-3">
         {/* Header: address + score */}
         <div className="flex items-start justify-between gap-2">
