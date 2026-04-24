@@ -323,6 +323,8 @@ async function scoreDealWithGPT(
   property: Record<string, unknown>,
   intelligence: Record<string, unknown>,
   hardKillSignals: Array<{ type: string; severity: string; evidence: string }>,
+  opportunityType?: string,
+  opportunityContext?: string,
 ): Promise<{
   deal_score: number;
   deal_verdict: "Strong Deal" | "Investigate" | "Pass";
@@ -332,6 +334,7 @@ async function scoreDealWithGPT(
   market_heat_assessment: string;
   risks: string[];
   opportunities: string[];
+  opportunity_analysis?: string;
 }> {
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) throw new Error("OPENAI_API_KEY not set");
@@ -363,7 +366,7 @@ Market Narrative: ${intelligence.marketNarrative ?? "Not available"}
 
 ## Deal Killer Signals (pre-scored)
 ${hardKillSignals.length === 0 ? "None identified" : hardKillSignals.map((k) => `- ${k.type} (${k.severity}): ${k.evidence}`).join("\n")}
-
+${opportunityContext ? `\n## Opportunity Context\n${opportunityContext}` : ""}
 ## Scoring Instructions
 Score 0-100 based on:
 - Equity position (higher equity = stronger deal)
@@ -371,6 +374,7 @@ Score 0-100 based on:
 - Market heat (high motivated-seller volume, low investor competition = stronger)
 - Neighborhood trajectory
 - Number and severity of kill signals
+- Opportunity type: short sales and deep-discount scenarios can still score 70+ if acquisition math works
 
 Thresholds: ≥70 = Strong Deal, 40-69 = Investigate, <40 = Pass
 
@@ -383,7 +387,8 @@ Return ONLY valid JSON:
   "equity_assessment": "<ARV potential, lien burden analysis, equity position>",
   "market_heat_assessment": "<motivated seller supply vs investor competition for this market>",
   "risks": ["<specific risk with evidence>"],
-  "opportunities": ["<specific opportunity with evidence>"]
+  "opportunities": ["<specific opportunity with evidence>"],
+  "opportunity_analysis": "<if opportunity context was provided, a 2-3 sentence analysis of that specific opportunity type; otherwise empty string>"
 }`;
 
   const response = await withTimeout(
@@ -442,15 +447,20 @@ function applyKillSignals(
   return { verdict, score };
 }
 
-// ─── Fetch property photos via Firecrawl ─────────────────────────────────────
+// ─── Fetch photos + listing history via Zillow/Firecrawl ─────────────────────
 
-async function fetchPropertyPhotos(address: string, city: string, state: string): Promise<string[]> {
+interface ListingEvent {
+  date: string;
+  event: string;
+  price: number | null;
+}
+
+async function fetchZillowData(address: string, city: string, state: string): Promise<{ photos: string[]; listingHistory: ListingEvent[] }> {
   const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!firecrawlKey) return [];
+  if (!firecrawlKey) return { photos: [], listingHistory: [] };
 
-  // First use Serper to find the Zillow URL
   const serperKey = Deno.env.get("SERPER_API_KEY");
-  if (!serperKey) return [];
+  if (!serperKey) return { photos: [], listingHistory: [] };
 
   try {
     const searchResp = await withTimeout(
@@ -463,12 +473,11 @@ async function fetchPropertyPhotos(address: string, city: string, state: string)
       "Serper Zillow URL search"
     );
 
-    if (!searchResp.ok) return [];
+    if (!searchResp.ok) return { photos: [], listingHistory: [] };
     const searchData = await searchResp.json();
     const zillowUrl = (searchData.organic?.[0]?.link as string) ?? "";
-    if (!zillowUrl || !zillowUrl.includes("zillow.com")) return [];
+    if (!zillowUrl || !zillowUrl.includes("zillow.com")) return { photos: [], listingHistory: [] };
 
-    // Scrape the Zillow page for photos
     const scrapeResp = await withTimeout(
       fetch("https://api.firecrawl.dev/v0/scrape", {
         method: "POST",
@@ -482,21 +491,161 @@ async function fetchPropertyPhotos(address: string, city: string, state: string)
       "Firecrawl Zillow scrape"
     );
 
-    if (!scrapeResp.ok) return [];
+    if (!scrapeResp.ok) return { photos: [], listingHistory: [] };
     const scrapeData = await scrapeResp.json();
     const markdown = (scrapeData.data?.markdown as string) ?? "";
 
-    // Extract image URLs from markdown
+    // Extract photos
     const imgMatches = markdown.matchAll(/!\[.*?\]\((https:\/\/.*?\.(?:jpg|jpeg|png|webp).*?)\)/gi);
     const photos: string[] = [];
     for (const match of imgMatches) {
       if (photos.length >= 10) break;
       photos.push(match[1]);
     }
-    return photos;
+
+    // Parse price history table — pipe-delimited rows after "Price history" heading
+    const listingHistory: ListingEvent[] = [];
+    const historySection = markdown.match(/price history[\s\S]*?((?:\|[^\n]+\n){1,25})/i);
+    if (historySection) {
+      const rows = historySection[1].trim().split("\n").filter(r => r.includes("|") && !/^[\s|:-]+$/.test(r));
+      for (const row of rows.slice(0, 20)) {
+        const cols = row.split("|").map(c => c.trim()).filter(Boolean);
+        if (cols.length < 2) continue;
+        const [dateStr, eventStr, priceStr] = cols;
+        const priceNum = priceStr ? parseInt(priceStr.replace(/[^0-9]/g, ""), 10) || null : null;
+        listingHistory.push({ date: dateStr, event: eventStr ?? "", price: priceNum });
+      }
+    }
+
+    return { photos, listingHistory };
   } catch (err) {
-    console.warn("[run-deal-analyze] Photo fetch failed:", err);
-    return [];
+    console.warn("[run-deal-analyze] Zillow fetch failed:", err);
+    return { photos: [], listingHistory: [] };
+  }
+}
+
+// ─── ATTOM history calls ──────────────────────────────────────────────────────
+
+async function fetchAttomSaleHistory(attomId: string): Promise<Array<Record<string, unknown>>> {
+  const attomKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomKey) return [];
+  const resp = await withTimeout(
+    fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/salehistory/snapshot?attomid=${attomId}`, {
+      headers: { apikey: attomKey, accept: "application/json" },
+    }),
+    DEFAULT_SOURCE_TIMEOUT,
+    "ATTOM sale history"
+  );
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return (data.property?.[0]?.salehistory ?? []) as Array<Record<string, unknown>>;
+}
+
+async function fetchAttomAssessmentHistory(attomId: string): Promise<Array<Record<string, unknown>>> {
+  const attomKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomKey) return [];
+  const resp = await withTimeout(
+    fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/assessmenthistory/snapshot?attomid=${attomId}`, {
+      headers: { apikey: attomKey, accept: "application/json" },
+    }),
+    DEFAULT_SOURCE_TIMEOUT,
+    "ATTOM assessment history"
+  );
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return (data.property?.[0]?.assessmenthistory ?? []) as Array<Record<string, unknown>>;
+}
+
+// ─── Opportunity classification ───────────────────────────────────────────────
+
+function classifyOpportunity(opts: {
+  loanAmount: number;
+  estimatedValue: number;
+  equityPct: number;
+  distressTypes: string[];
+}): string {
+  const { loanAmount, estimatedValue, equityPct, distressTypes } = opts;
+  const ltv = loanAmount > 0 && estimatedValue > 0 ? loanAmount / estimatedValue : 0;
+  if (ltv > 1.0) return "short_sale";
+  if (distressTypes.some(t => t.includes("foreclosure")) && equityPct > 0) return "pre_foreclosure";
+  if (distressTypes.some(t => t.includes("tax_lien") || t === "tax_lien") && equityPct > 30) return "tax_lien_buyout";
+  if (distressTypes.some(t => t.includes("divorce") || t.includes("probate"))) return "probate_estate";
+  if (equityPct > 40 && distressTypes.length > 0) return "equity_rich_distressed";
+  return "distressed";
+}
+
+function buildOpportunityContext(opportunityType: string, loanAmount: number, estimatedValue: number): string {
+  if (opportunityType === "short_sale" && loanAmount > 0 && estimatedValue > 0) {
+    const overage = loanAmount - estimatedValue;
+    const ltv = Math.round(loanAmount / estimatedValue * 100);
+    return `SHORT SALE OPPORTUNITY: Mortgage $${loanAmount.toLocaleString()} exceeds AVM $${estimatedValue.toLocaleString()} by $${overage.toLocaleString()} (LTV ${ltv}%). Analyze lender discount likelihood (lenders typically accept 75-85% of AVM to avoid $20-30K foreclosure costs), comp support at 70-75% AVM, timeline risk, and net acquisition cost. Short sales can be Strong Deals if acquired at deep enough discount.`;
+  }
+  if (opportunityType === "pre_foreclosure") return "PRE-FORECLOSURE: Owner has financial incentive to sell before auction. Analyze timeline pressure and acquisition discount potential.";
+  if (opportunityType === "tax_lien_buyout") return "TAX LIEN BUYOUT: Strong equity (>30%) with tax lien distress. Investor can satisfy lien and acquire at deep discount.";
+  if (opportunityType === "probate_estate") return "PROBATE/DIVORCE DISTRESS: Family/estate may prioritize speed over maximum price. Analyze motivation and typical timeline for this distress type.";
+  if (opportunityType === "equity_rich_distressed") return "EQUITY-RICH DISTRESSED SELLER (>40% equity): Strong motivation plus significant equity — ideal acquisition scenario for cash buyers.";
+  return "";
+}
+
+// ─── Auto-trace Strong Deals in background ───────────────────────────────────
+
+async function autoTraceStrongDeal(
+  supabase: ReturnType<typeof createClient>,
+  property: Record<string, unknown>,
+  verdict: string,
+): Promise<void> {
+  if (verdict !== "Strong Deal") return;
+  const tracerfyKey = Deno.env.get("TRACERFY_API_KEY");
+  if (!tracerfyKey) return;
+
+  const propertyId = property.id as string;
+  const userId = property.user_id as string;
+  if (!propertyId || !userId) return;
+
+  try {
+    const { data: existing } = await supabase
+      .from("owner_contacts")
+      .select("id")
+      .eq("property_id", propertyId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existing) return;
+
+    const dd = (property.distress_details as Record<string, unknown>) ?? {};
+    const ownerName = String((dd.ownerName ?? dd.owner_name) ?? "");
+
+    const tracerfyResp = await fetch("https://api.tracerfy.com/v1/skiptrace", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tracerfyKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: ownerName,
+        address: property.address,
+        city: property.city,
+        state: property.state,
+        zip: property.zip,
+      }),
+    });
+
+    if (!tracerfyResp.ok) {
+      const body = await tracerfyResp.text().catch(() => "");
+      throw new Error(`Tracerfy ${tracerfyResp.status}: ${body.slice(0, 200)}`);
+    }
+
+    const td = await tracerfyResp.json() as Record<string, unknown>;
+    await supabase.from("owner_contacts").insert({
+      property_id: propertyId,
+      user_id: userId,
+      owner_name: (td.name as string) ?? ownerName ?? null,
+      phones: (td.phones as unknown[]) ?? [],
+      emails: (td.emails as unknown[]) ?? [],
+      mailing_address: (td.mailingAddress as Record<string, unknown>) ?? {},
+      skip_trace_source: "auto_tracerfy",
+      traced_at: new Date().toISOString(),
+    });
+    console.log(`[run-deal-analyze] Auto-traced Strong Deal ${propertyId}`);
+  } catch (err) {
+    console.error(`[run-deal-analyze] autoTraceStrongDeal failed for ${propertyId}:`, err);
   }
 }
 
@@ -544,6 +693,9 @@ Deno.serve(async (req) => {
 
     const pipelineMetrics: Record<string, { status: string; durationMs: number; error?: string }> = {};
     const currentYear = new Date().getFullYear();
+    const attomId = (property.attom_id as string | null) ?? null;
+
+    const emptyHistoryResult = { result: [] as Array<Record<string, unknown>>, status: "skip", durationMs: 0 };
 
     // ── Run all Layer 2 intelligence calls in parallel ──────────────────────
     const [
@@ -553,7 +705,9 @@ Deno.serve(async (req) => {
       dealKillersResult,
       publicRecordsResult,
       marketNarrativeResult,
-      photosResult,
+      zillowResult,
+      saleHistoryResult,
+      assessmentHistoryResult,
     ] = await Promise.all([
       safeCall(() => fetchMarketHeat(zip, city), "market_heat", { motivatedSellerVolume: null, investorCompetitionCpc: null, signal: "Unknown" }),
       safeCall(() => fetchNeighborhoodSentiment(city, state, zip), "neighborhood_sentiment", { snippets: [], sentiment: "Unknown" }),
@@ -561,7 +715,9 @@ Deno.serve(async (req) => {
       safeCall(() => fetchDealKillers(address, city, state), "deal_killers", { floodZone: false, environmental: false, killSignals: [] }),
       safeCall(() => fetchPublicRecordsConfirm(address, ownerName, city, currentYear), "public_records", { lisPendensConfirmed: false, taxLienConfirmed: false, snippets: [] }),
       safeCall(() => fetchMarketNarrative(zip, city, state), "market_narrative", ""),
-      safeCall(() => fetchPropertyPhotos(address, city, state), "photos", []),
+      safeCall(() => fetchZillowData(address, city, state), "zillow", { photos: [], listingHistory: [] }),
+      attomId ? safeCall(() => fetchAttomSaleHistory(attomId), "sale_history", []) : Promise.resolve(emptyHistoryResult),
+      attomId ? safeCall(() => fetchAttomAssessmentHistory(attomId), "assessment_history", []) : Promise.resolve(emptyHistoryResult),
     ]);
 
     // Record metrics
@@ -571,7 +727,11 @@ Deno.serve(async (req) => {
     pipelineMetrics.deal_killers = { status: dealKillersResult.status, durationMs: dealKillersResult.durationMs, error: dealKillersResult.error };
     pipelineMetrics.public_records = { status: publicRecordsResult.status, durationMs: publicRecordsResult.durationMs, error: publicRecordsResult.error };
     pipelineMetrics.market_narrative = { status: marketNarrativeResult.status, durationMs: marketNarrativeResult.durationMs, error: marketNarrativeResult.error };
-    pipelineMetrics.photos = { status: photosResult.status, durationMs: photosResult.durationMs, error: photosResult.error };
+    pipelineMetrics.zillow = { status: zillowResult.status, durationMs: zillowResult.durationMs, error: zillowResult.error };
+    if (attomId) {
+      pipelineMetrics.sale_history = { status: saleHistoryResult.status, durationMs: saleHistoryResult.durationMs };
+      pipelineMetrics.assessment_history = { status: assessmentHistoryResult.status, durationMs: assessmentHistoryResult.durationMs };
+    }
 
     const intelligence = {
       marketHeat: marketHeatResult.result,
@@ -581,6 +741,16 @@ Deno.serve(async (req) => {
       publicRecordsConfirm: publicRecordsResult.result,
       marketNarrative: marketNarrativeResult.result,
     };
+
+    // ── Classify opportunity type (deterministic, before GPT) ───────────────
+    const dd = (property.distress_details as Record<string, unknown>) ?? {};
+    const mtg = (dd.mortgage as Record<string, unknown>) ?? {};
+    const loanAmt = typeof mtg.loanAmount === "number" ? mtg.loanAmount : 0;
+    const estValue = typeof property.estimated_value === "number" ? property.estimated_value : 0;
+    const equityPct = typeof property.equity_pct === "number" ? property.equity_pct : 0;
+    const distressTypes = (property.distress_types as string[]) ?? [];
+    const opportunityType = classifyOpportunity({ loanAmount: loanAmt, estimatedValue: estValue, equityPct, distressTypes });
+    const opportunityContext = buildOpportunityContext(opportunityType, loanAmt, estValue);
 
     // ── Adversarial kill pass (parallel with Layer 2, using deal killer signals) ──
     const adversarialResult = await safeCall(
@@ -604,7 +774,7 @@ Deno.serve(async (req) => {
     } else {
       // ── Main GPT-4o scoring ──────────────────────────────────────────────
       const claudeCall = await safeCall(
-        () => scoreDealWithGPT(property, intelligence, hardKillSignals),
+        () => scoreDealWithGPT(property, intelligence, hardKillSignals, opportunityType, opportunityContext),
         "gpt_scoring",
         null
       );
@@ -628,9 +798,16 @@ Deno.serve(async (req) => {
       market_heat_assessment: claudeResult?.market_heat_assessment ?? "",
       risks: claudeResult?.risks ?? hardKills.map((k) => k.evidence),
       opportunities: claudeResult?.opportunities ?? [],
+      opportunity_type: opportunityType,
+      opportunity_analysis: claudeResult?.opportunity_analysis ?? null,
       hardKillSignals,
       intelligence,
-      photos: photosResult.result,
+      photos: zillowResult.result.photos,
+      history: {
+        sales: saleHistoryResult.result,
+        assessments: assessmentHistoryResult.result,
+        listing: zillowResult.result.listingHistory,
+      },
       pipelineMetrics: { sources: pipelineMetrics },
     };
 
@@ -654,6 +831,14 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[run-deal-analyze] Done: ${property.address} → ${finalVerdict} (${finalScore})`);
+
+    // Fire auto-trace for Strong Deals in background (no credit deduction)
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(autoTraceStrongDeal(supabase, property, finalVerdict));
+    } else {
+      autoTraceStrongDeal(supabase, property, finalVerdict).catch(() => {});
+    }
 
     return new Response(JSON.stringify({ ok: true, deal_score: finalScore, deal_verdict: finalVerdict }), {
       status: 200,

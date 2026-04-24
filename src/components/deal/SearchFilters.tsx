@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Bookmark, Search } from "lucide-react";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const DISTRESS_TYPES = [
   { id: "tax_lien", label: "Tax Lien" },
@@ -29,13 +31,30 @@ interface Props {
   onChange: (f: Filters) => void;
   onSearch: () => void;
   searching: boolean;
-  savedSearches?: { id: string; name: string; filters: Filters }[];
+  savedSearches?: any[];
   onSaveSearch?: () => void;
   onLoadSavedSearch?: (filters: Filters) => void;
+  onSearchesChange?: (updated: any[]) => void;
 }
 
-export const SearchFilters = ({ filters, onChange, onSearch, searching, savedSearches = [], onSaveSearch, onLoadSavedSearch }: Props) => {
+const fmtTimeAgo = (iso: string) => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
+  return `${Math.round(mins / 1440)}d ago`;
+};
+
+export const SearchFilters = ({ filters, onChange, onSearch, searching, savedSearches = [], onSaveSearch, onLoadSavedSearch, onSearchesChange }: Props) => {
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const handleToggleMonitor = async (id: string, current: boolean) => {
+    const updated = !current;
+    await supabase
+      .from("saved_searches" as any)
+      .update({ is_monitored: updated })
+      .eq("id", id);
+    onSearchesChange?.(savedSearches.map((s) => s.id === id ? { ...s, is_monitored: updated } : s));
+  };
 
   const toggleDistress = (id: string) => {
     const next = filters.distressTypes.includes(id)
@@ -150,13 +169,34 @@ export const SearchFilters = ({ filters, onChange, onSearch, searching, savedSea
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Saved Searches</p>
           {savedSearches.map((ss) => (
-            <button
-              key={ss.id}
-              onClick={() => onLoadSavedSearch?.(ss.filters)}
-              className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {ss.name}
-            </button>
+            <div key={ss.id} className="rounded-lg border border-border/50 overflow-hidden">
+              <button
+                onClick={() => onLoadSavedSearch?.(ss.filters)}
+                className="w-full text-left text-sm px-3 py-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {ss.name}
+              </button>
+              <div className="flex items-center justify-between px-3 pb-2 gap-2">
+                <div className="min-w-0">
+                  {ss.is_monitored && ss.last_monitored_at && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Checked {fmtTimeAgo(ss.last_monitored_at)}
+                    </p>
+                  )}
+                  {ss.is_monitored && !ss.last_monitored_at && (
+                    <p className="text-[11px] text-muted-foreground">Pending first run</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] text-muted-foreground">Monitor</span>
+                  <Switch
+                    checked={!!ss.is_monitored}
+                    onCheckedChange={() => handleToggleMonitor(ss.id, !!ss.is_monitored)}
+                    className="scale-75"
+                  />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}

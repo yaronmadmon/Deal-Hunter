@@ -6,7 +6,7 @@ import { AppNav } from "@/components/AppNav";
 import { SearchFilters, Filters } from "@/components/deal/SearchFilters";
 import { PropertyCard } from "@/components/deal/PropertyCard";
 import { toast } from "sonner";
-import { Phone } from "lucide-react";
+import { Search } from "lucide-react";
 
 const DEFAULT_FILTERS: Filters = {
   location: "",
@@ -19,6 +19,7 @@ const DealSearch = () => {
   const { user, loading, profile } = useAuth();
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [properties, setProperties] = useState<any[]>([]);
+  const [ownerContacts, setOwnerContacts] = useState<Record<string, any>>({});
   const [loadingProps, setLoadingProps] = useState(true);
   const [searching, setSearching] = useState(false);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
@@ -27,7 +28,7 @@ const DealSearch = () => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
 
-  // Load existing properties
+  // Load existing properties + bulk-fetch owner contacts
   useEffect(() => {
     if (!user) return;
     setLoadingProps(true);
@@ -39,8 +40,23 @@ const DealSearch = () => {
       .limit(100)
       .then(({ data, error }) => {
         if (error) console.error("Error loading properties:", error);
-        setProperties(data ?? []);
+        const props = data ?? [];
+        setProperties(props);
         setLoadingProps(false);
+
+        const ids = props.map((p: any) => p.id);
+        if (ids.length > 0) {
+          supabase
+            .from("owner_contacts" as any)
+            .select("property_id, owner_name, phones, emails, traced_at")
+            .eq("user_id", user.id)
+            .in("property_id", ids)
+            .then(({ data: contacts }) => {
+              setOwnerContacts(
+                Object.fromEntries((contacts ?? []).map((c: any) => [c.property_id, c]))
+              );
+            });
+        }
       });
   }, [user]);
 
@@ -72,6 +88,20 @@ const DealSearch = () => {
           setProperties((prev) =>
             prev.map((p) => (p.id === (payload.new as any).id ? payload.new : p))
           );
+          if ((payload.new as any).status === "complete") {
+            const propId = (payload.new as any).id;
+            supabase
+              .from("owner_contacts" as any)
+              .select("property_id, owner_name, phones, emails, traced_at")
+              .eq("user_id", user.id)
+              .eq("property_id", propId)
+              .maybeSingle()
+              .then(({ data: contact }) => {
+                if (contact) {
+                  setOwnerContacts((prev) => ({ ...prev, [propId]: contact }));
+                }
+              });
+          }
         }
       })
       .subscribe();
@@ -156,6 +186,7 @@ const DealSearch = () => {
               savedSearches={savedSearches}
               onSaveSearch={handleSaveSearch}
               onLoadSavedSearch={(f) => setFilters(f)}
+              onSearchesChange={setSavedSearches}
             />
           </div>
         </aside>
@@ -185,7 +216,7 @@ const DealSearch = () => {
             </div>
           ) : properties.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Phone className="h-10 w-10 text-muted-foreground mb-4" />
+              <Search className="h-10 w-10 text-muted-foreground mb-4" />
               <h2 className="font-heading text-xl font-semibold text-foreground mb-2">No deals yet</h2>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Enter a location, select distress types, and hit Search to find your first deals.
@@ -194,7 +225,7 @@ const DealSearch = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {properties.map((p) => (
-                <PropertyCard key={p.id} property={p} />
+                <PropertyCard key={p.id} property={p} ownerContact={ownerContacts[p.id] ?? null} />
               ))}
             </div>
           )}

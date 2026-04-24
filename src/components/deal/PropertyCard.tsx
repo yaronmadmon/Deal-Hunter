@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Bed, Bath, Maximize2, Phone } from "lucide-react";
+import { Bed, Bath, Maximize2, Phone, MessageSquare, Mail, User, Sparkles } from "lucide-react";
 import { DealScoreBadge } from "./DealScoreBadge";
 import { DistressTypeBadge } from "./DistressTypeBadge";
 
@@ -11,6 +11,7 @@ interface MortgageInfo {
   lenderName?: string | null;
   loanType?: string | null;
   isCashPurchase?: boolean;
+  ltv?: number | null;
 }
 
 interface DistressDetails {
@@ -38,12 +39,19 @@ interface Property {
   deal_verdict?: string | null;
   distress_types?: string[] | null;
   distress_details?: DistressDetails | null;
+  report_data?: { opportunity_type?: string | null } | null;
   status: string;
+}
+
+interface OwnerContact {
+  owner_name?: string | null;
+  phones?: Array<{ number?: string; type?: string }> | null;
+  emails?: Array<{ address?: string }> | null;
 }
 
 interface Props {
   property: Property;
-  onSkipTrace?: (id: string) => void;
+  ownerContact?: OwnerContact | null;
 }
 
 const fmt = (n: number) =>
@@ -58,7 +66,15 @@ const fmtYear = (dateStr: string) => {
   return isNaN(y) ? null : y;
 };
 
-export const PropertyCard = ({ property, onSkipTrace }: Props) => {
+const OPPORTUNITY_LABELS: Record<string, { label: string; color: string }> = {
+  short_sale: { label: "Short Sale Opp", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  pre_foreclosure: { label: "Pre-Foreclosure", color: "bg-red-500/15 text-red-400 border-red-500/30" },
+  tax_lien_buyout: { label: "Tax Lien Buyout", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  probate_estate: { label: "Probate/Estate", color: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
+  equity_rich_distressed: { label: "Equity-Rich", color: "bg-green-500/15 text-green-400 border-green-500/30" },
+};
+
+export const PropertyCard = ({ property, ownerContact }: Props) => {
   const navigate = useNavigate();
   const isPending = property.status === "searching" || property.status === "scoring";
 
@@ -89,8 +105,27 @@ export const PropertyCard = ({ property, onSkipTrace }: Props) => {
   const avmHigh = dd.avmRange?.high ?? null;
   const avmLow = dd.avmRange?.low ?? null;
   const yearBuilt = dd.yearBuilt ?? null;
-
   const saleYear = property.last_sale_date ? fmtYear(property.last_sale_date) : null;
+
+  // Owner info — prefer traced contact, fall back to ATTOM owner name
+  const ownerName = ownerContact?.owner_name || dd.ownerName || null;
+  const firstPhone = ownerContact?.phones?.[0]?.number ?? null;
+  const firstEmail = ownerContact?.emails?.[0]?.address ?? null;
+  const hasContact = !!(firstPhone || firstEmail);
+
+  // LTV color coding
+  const ltvPct = mtg.loanAmount && property.estimated_value
+    ? Math.round(mtg.loanAmount / property.estimated_value * 100)
+    : null;
+  const ltvColor = ltvPct === null
+    ? "text-foreground"
+    : ltvPct > 100 ? "text-red-400"
+    : ltvPct > 80 ? "text-amber-400"
+    : "text-green-400";
+
+  // Opportunity type badge
+  const oppType = property.report_data?.opportunity_type ?? null;
+  const oppBadge = oppType && OPPORTUNITY_LABELS[oppType] ? OPPORTUNITY_LABELS[oppType] : null;
 
   return (
     <Card className="hover:border-primary/50 transition-colors">
@@ -100,6 +135,12 @@ export const PropertyCard = ({ property, onSkipTrace }: Props) => {
           <div className="min-w-0">
             <p className="font-semibold text-foreground text-sm leading-tight truncate">{property.address}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{property.city}, {property.state} {property.zip}</p>
+            {ownerName && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <User className="w-3 h-3 shrink-0" />
+                <span className="truncate">{ownerName}</span>
+              </p>
+            )}
           </div>
           {property.deal_score !== null && property.deal_score !== undefined && (
             <DealScoreBadge score={property.deal_score} />
@@ -112,6 +153,15 @@ export const PropertyCard = ({ property, onSkipTrace }: Props) => {
             {property.distress_types.map((t) => (
               <DistressTypeBadge key={t} type={t} />
             ))}
+          </div>
+        )}
+
+        {/* Opportunity badge */}
+        {oppBadge && (
+          <div>
+            <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border ${oppBadge.color}`}>
+              {oppBadge.label}
+            </span>
           </div>
         )}
 
@@ -166,8 +216,8 @@ export const PropertyCard = ({ property, onSkipTrace }: Props) => {
             </div>
           ) : mtg.loanAmount ? (
             <div>
-              <p className="text-muted-foreground">Mortgage</p>
-              <p className="font-medium text-foreground">{fmt(mtg.loanAmount)}</p>
+              <p className="text-muted-foreground">Mortgage{ltvPct !== null ? ` (LTV ${ltvPct}%)` : ""}</p>
+              <p className={`font-medium ${ltvColor}`}>{fmt(mtg.loanAmount)}</p>
               {mtg.lenderName && <p className="text-[10px] text-muted-foreground truncate">{mtg.lenderName}</p>}
             </div>
           ) : null}
@@ -185,16 +235,36 @@ export const PropertyCard = ({ property, onSkipTrace }: Props) => {
           )}
         </div>
 
+        {/* Contact buttons — only when traced */}
+        {hasContact && (
+          <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
+            <span className="text-xs text-muted-foreground mr-1">Contact:</span>
+            {firstPhone && (
+              <>
+                <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                  <a href={`tel:${firstPhone}`} title="Call"><Phone className="w-3.5 h-3.5" /></a>
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                  <a href={`sms:${firstPhone}`} title="Text"><MessageSquare className="w-3.5 h-3.5" /></a>
+                </Button>
+              </>
+            )}
+            {firstEmail && (
+              <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                <a href={`mailto:${firstEmail}`} title="Email"><Mail className="w-3.5 h-3.5" /></a>
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 pt-1">
           <Button size="sm" variant="default" className="flex-1 text-xs" onClick={() => navigate(`/property/${property.id}`)}>
             View Deal
           </Button>
-          {onSkipTrace && (
-            <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => onSkipTrace(property.id)}>
-              <Phone className="w-3 h-3 mr-1" />Get Owner
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => navigate(`/property/${property.id}#outreach`)}>
+            <Sparkles className="w-3 h-3 mr-1" />AI Outreach
+          </Button>
         </div>
       </CardContent>
     </Card>

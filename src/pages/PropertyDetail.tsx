@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { AppNav } from "@/components/AppNav";
@@ -13,9 +13,11 @@ import { IntelligenceSection } from "@/components/deal/IntelligenceSection";
 import { OwnerContactSection } from "@/components/deal/OwnerContactSection";
 import { ContactLogSection } from "@/components/deal/ContactLogSection";
 import { ROICalculator } from "@/components/deal/ROICalculator";
+import { OutreachSection } from "@/components/deal/OutreachSection";
+import { PropertyHistorySection } from "@/components/deal/PropertyHistorySection";
 import { DistressTypeBadge } from "@/components/deal/DistressTypeBadge";
 import { toast } from "sonner";
-import { ArrowLeft, Home, TrendingUp, Brain, Phone, MessageSquare, Plus, Loader2, BarChart3, Calculator } from "lucide-react";
+import { ArrowLeft, Home, TrendingUp, Brain, Phone, MessageSquare, Plus, Loader2, BarChart3, Calculator, Sparkles, History } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const VERDICT_TO_STRENGTH: Record<string, "Strong" | "Moderate" | "Weak"> = {
@@ -37,6 +39,7 @@ const PIPELINE_STAGES = [
 const PropertyDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading, profile } = useAuth();
   const [property, setProperty] = useState<any>(null);
   const [loadingProp, setLoadingProp] = useState(true);
@@ -44,10 +47,17 @@ const PropertyDetail = () => {
   const [contactLog, setContactLog] = useState<any[]>([]);
   const [pipelineDeal, setPipelineDeal] = useState<any>(null);
   const [addingToPipeline, setAddingToPipeline] = useState(false);
+  const outreachRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (location.hash === "#outreach" && outreachRef.current) {
+      setTimeout(() => outreachRef.current?.scrollIntoView({ behavior: "smooth" }), 300);
+    }
+  }, [location.hash, loadingProp]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -180,6 +190,12 @@ const PropertyDetail = () => {
           <PropertyInfoSection property={{ ...property, report_data: reportData }} />
         </CollapsibleSection>
 
+        {(reportData.history?.sales?.length > 0 || reportData.history?.assessments?.length > 0 || reportData.history?.listing?.length > 0) && (
+          <CollapsibleSection title="Transaction & Tax History" icon={<History className="h-4 w-4 text-primary" />}>
+            <PropertyHistorySection history={reportData.history} />
+          </CollapsibleSection>
+        )}
+
         <CollapsibleSection title="Distress Details" icon={<BarChart3 className="h-4 w-4 text-primary" />} defaultOpen>
           <DistressDetailsSection distressTypes={property.distress_types} distressDetails={property.distress_details} />
         </CollapsibleSection>
@@ -201,6 +217,17 @@ const PropertyDetail = () => {
             onContactRevealed={(c) => setOwnerContact(c)}
           />
         </CollapsibleSection>
+
+        <div ref={outreachRef}>
+          <CollapsibleSection
+            title="AI Outreach"
+            icon={<Sparkles className="h-4 w-4 text-primary" />}
+            id="outreach"
+            defaultOpen={location.hash === "#outreach"}
+          >
+            <OutreachSection propertyId={property.id} ownerContact={ownerContact} />
+          </CollapsibleSection>
+        </div>
 
         <CollapsibleSection title="ROI Calculator" icon={<Calculator className="h-4 w-4 text-primary" />}>
           <ROICalculator estimatedValue={property.estimated_value} />

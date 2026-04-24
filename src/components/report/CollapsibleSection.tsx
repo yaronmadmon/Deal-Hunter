@@ -9,6 +9,7 @@ interface Props {
   defaultOpen?: boolean;
   children: React.ReactNode;
   className?: string;
+  id?: string;
 }
 
 export const CollapsibleSection = ({
@@ -18,11 +19,12 @@ export const CollapsibleSection = ({
   defaultOpen = false,
   children,
   className,
+  id,
 }: Props) => {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("mb-6", className)}>
+    <div id={id} className={cn("mb-6", className)}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-colors cursor-pointer group"
