@@ -157,6 +157,19 @@ const DealSearch = () => {
     toast.success("Search saved!");
   };
 
+  const handleSkipTrace = async (propertyId: string) => {
+    const { data, error } = await supabase.functions.invoke("skip-trace", {
+      body: { propertyId },
+    });
+    if (error || !data?.ok) {
+      const msg = data?.code === "NO_CREDITS" ? "No skip trace credits remaining." : "Skip trace failed. Try again.";
+      toast.error(msg);
+      return;
+    }
+    setOwnerContacts((prev) => ({ ...prev, [propertyId]: data.contact }));
+    toast.success(data.cached ? "Contact info loaded." : "Owner contact found!");
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -225,7 +238,7 @@ const DealSearch = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {properties.map((p) => (
-                <PropertyCard key={p.id} property={p} ownerContact={ownerContacts[p.id] ?? null} />
+                <PropertyCard key={p.id} property={p} ownerContact={ownerContacts[p.id] ?? null} onSkipTrace={handleSkipTrace} />
               ))}
             </div>
           )}

@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Bed, Bath, Maximize2, Phone, MessageSquare, Mail, User, Sparkles, MapPin } from "lucide-react";
+import { Bed, Bath, Maximize2, Phone, MessageSquare, Mail, User, Sparkles, MapPin, Loader2 } from "lucide-react";
 import { DealScoreBadge } from "./DealScoreBadge";
 import { DistressTypeBadge } from "./DistressTypeBadge";
 
@@ -52,6 +53,7 @@ interface OwnerContact {
 interface Props {
   property: Property;
   ownerContact?: OwnerContact | null;
+  onSkipTrace?: (id: string) => Promise<void>;
 }
 
 const fmt = (n: number) =>
@@ -74,8 +76,9 @@ const OPPORTUNITY_LABELS: Record<string, { label: string; color: string }> = {
   equity_rich_distressed: { label: "Equity-Rich", color: "bg-green-500/15 text-green-400 border-green-500/30" },
 };
 
-export const PropertyCard = ({ property, ownerContact }: Props) => {
+export const PropertyCard = ({ property, ownerContact, onSkipTrace }: Props) => {
   const navigate = useNavigate();
+  const [tracing, setTracing] = useState(false);
   const isPending = property.status === "searching" || property.status === "scoring";
 
   if (isPending) {
@@ -257,27 +260,44 @@ export const PropertyCard = ({ property, ownerContact }: Props) => {
           )}
         </div>
 
-        {/* Contact buttons — only when traced */}
-        {hasContact && (
-          <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
-            <span className="text-xs text-muted-foreground mr-1">Contact:</span>
-            {firstPhone && (
-              <>
+        {/* Contact row */}
+        <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
+          {hasContact ? (
+            <>
+              <span className="text-xs text-muted-foreground mr-1">Contact:</span>
+              {firstPhone && (
+                <>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                    <a href={`tel:${firstPhone}`} title={firstPhone}><Phone className="w-3.5 h-3.5" /></a>
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                    <a href={`sms:${firstPhone}`} title="Text"><MessageSquare className="w-3.5 h-3.5" /></a>
+                  </Button>
+                </>
+              )}
+              {firstEmail && (
                 <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
-                  <a href={`tel:${firstPhone}`} title="Call"><Phone className="w-3.5 h-3.5" /></a>
+                  <a href={`mailto:${firstEmail}`} title={firstEmail}><Mail className="w-3.5 h-3.5" /></a>
                 </Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
-                  <a href={`sms:${firstPhone}`} title="Text"><MessageSquare className="w-3.5 h-3.5" /></a>
-                </Button>
-              </>
-            )}
-            {firstEmail && (
-              <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
-                <a href={`mailto:${firstEmail}`} title="Email"><Mail className="w-3.5 h-3.5" /></a>
-              </Button>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          ) : onSkipTrace && property.status === "complete" ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs w-full"
+              disabled={tracing}
+              onClick={async () => {
+                setTracing(true);
+                await onSkipTrace(property.id);
+                setTracing(false);
+              }}
+            >
+              {tracing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Phone className="w-3 h-3 mr-1" />}
+              {tracing ? "Tracing…" : "Get Owner Info"}
+            </Button>
+          ) : null}
+        </div>
 
         {/* Actions */}
         <div className="flex gap-2 pt-1">
