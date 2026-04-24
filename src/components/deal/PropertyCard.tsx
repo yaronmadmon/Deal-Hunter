@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { Bed, Bath, Maximize2, Phone, MessageSquare, Mail, User, Sparkles } from "lucide-react";
+import { Bed, Bath, Maximize2, Phone, MessageSquare, Mail, User, Sparkles, MapPin } from "lucide-react";
 import { DealScoreBadge } from "./DealScoreBadge";
 import { DistressTypeBadge } from "./DistressTypeBadge";
 
@@ -134,7 +134,18 @@ export const PropertyCard = ({ property, ownerContact }: Props) => {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-semibold text-foreground text-sm leading-tight truncate">{property.address}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{property.city}, {property.state} {property.zip}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-muted-foreground">{property.city}, {property.state} {property.zip}</p>
+              <a
+                href={`https://www.google.com/maps?q=${encodeURIComponent(`${property.address}, ${property.city}, ${property.state} ${property.zip}`)}&layer=c`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-[11px] text-primary/70 hover:text-primary transition-colors shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MapPin className="w-2.5 h-2.5" />Street View
+              </a>
+            </div>
             {ownerName && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <User className="w-3 h-3 shrink-0" />
