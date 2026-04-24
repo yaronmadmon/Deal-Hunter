@@ -175,7 +175,7 @@ const DealSearch = () => {
         <aside className="w-72 shrink-0">
           <div className="sticky top-[72px] rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 mb-5">
-              <Phone className="h-4 w-4 text-primary" />
+              <Search className="h-4 w-4 text-primary" />
               <h2 className="font-semibold text-foreground">Find Deals</h2>
             </div>
             <SearchFilters
