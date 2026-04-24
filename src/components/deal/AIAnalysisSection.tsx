@@ -6,14 +6,25 @@ interface ReportData {
   distress_analysis?: string;
   equity_assessment?: string;
   market_heat_assessment?: string;
-  opportunities?: string[];
-  risks?: string[];
+  opportunities?: Array<string | unknown>;
+  risks?: Array<string | unknown>;
+  opportunity_type?: string | null;
+  opportunity_analysis?: string | null;
   intelligence?: {
     dealKillers?: {
       killSignals?: { type: string; evidence: string }[];
     };
   };
 }
+
+const toStr = (v: unknown): string => {
+  if (typeof v === "string") return v;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return String(o.text ?? o.content ?? o.snippet ?? o.evidence ?? JSON.stringify(v));
+  }
+  return String(v ?? "");
+};
 
 interface Props {
   reportData?: ReportData | null;
@@ -53,6 +64,9 @@ export const AIAnalysisSection = ({ reportData }: Props) => {
       <AnalysisBlock label="Distress Analysis" text={reportData.distress_analysis} />
       <AnalysisBlock label="Equity Assessment" text={reportData.equity_assessment} />
       <AnalysisBlock label="Market Heat" text={reportData.market_heat_assessment} />
+      {reportData.opportunity_analysis && (
+        <AnalysisBlock label="Opportunity Analysis" text={reportData.opportunity_analysis} />
+      )}
 
       {(opps.length > 0 || risks.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -63,7 +77,7 @@ export const AIAnalysisSection = ({ reportData }: Props) => {
                 {opps.map((o, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                     <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5 shrink-0" />
-                    {o}
+                    {toStr(o)}
                   </li>
                 ))}
               </ul>
@@ -76,7 +90,7 @@ export const AIAnalysisSection = ({ reportData }: Props) => {
                 {risks.map((r, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                     <XCircle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
-                    {r}
+                    {toStr(r)}
                   </li>
                 ))}
               </ul>

@@ -7,16 +7,17 @@ interface Intelligence {
     signal?: string;
   };
   neighborhoodSentiment?: {
-    snippets?: string[];
+    snippets?: Array<string | { title?: string; snippet?: string }>;
     sentiment?: "Positive" | "Mixed" | "Negative";
   };
   ownerResearch?: {
-    courtRecords?: string[];
+    courtRecords?: Array<string | { title?: string; snippet?: string }>;
     distressConfirmed?: boolean;
   };
   publicRecordsConfirm?: {
     lisPendensConfirmed?: boolean;
     taxLienConfirmed?: boolean;
+    snippets?: Array<string | { title?: string; snippet?: string }>;
   };
   marketNarrative?: string;
   dealKillers?: {
@@ -25,6 +26,11 @@ interface Intelligence {
     killSignals?: { type: string; evidence: string }[];
   };
 }
+
+const toText = (item: string | { title?: string; snippet?: string }): string => {
+  if (typeof item === "string") return item;
+  return item.snippet || item.title || "";
+};
 
 interface Props {
   intelligence?: Intelligence | null;
@@ -77,7 +83,7 @@ export const IntelligenceSection = ({ intelligence }: Props) => {
           {neighborhoodSentiment.snippets && neighborhoodSentiment.snippets.length > 0 && (
             <ul className="space-y-1">
               {neighborhoodSentiment.snippets.slice(0, 3).map((s, i) => (
-                <li key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-3">{s}</li>
+                <li key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-3">{toText(s)}</li>
               ))}
             </ul>
           )}
@@ -97,7 +103,7 @@ export const IntelligenceSection = ({ intelligence }: Props) => {
           {ownerResearch.courtRecords && ownerResearch.courtRecords.length > 0 && (
             <ul className="space-y-1">
               {ownerResearch.courtRecords.slice(0, 3).map((r, i) => (
-                <li key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-3">{r}</li>
+                <li key={i} className="text-xs text-muted-foreground border-l-2 border-border pl-3">{toText(r)}</li>
               ))}
             </ul>
           )}
