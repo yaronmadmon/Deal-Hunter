@@ -62,11 +62,12 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
   const deedSaleAmt: number | null = (deedAmount.saleamt as number) > 0 ? (deedAmount.saleamt as number) : null;
   // Cash purchase: last sale had no associated mortgage, or ATTOM flags it
   const isCashPurchase: boolean =
-    (saleAmount.saledisclosuretype as string ?? "").toUpperCase().includes("CASH") ||
-    (saleAmount.cashpurchase as boolean) === true ||
+    String(saleAmount.saledisclosuretype ?? "").toUpperCase().includes("CASH") ||
+    String(saleAmount.cashpurchase ?? "").toUpperCase() === "TRUE" ||
     (!loanAmount && !!(saleAmount.saleamt as number));
 
-  const yearBuilt: number | null = (summary.yearbuilt as number) ?? (summary.yearBuilt as number) ?? null;
+  const yearBuiltRaw = summary.yearbuilt ?? summary.yearBuilt ?? null;
+  const yearBuilt: number | null = yearBuiltRaw !== null ? Number(yearBuiltRaw) || null : null;
   const ownerName: string | null = String(
     (deed as Record<string, unknown>).buyer
       ? ((deed.buyer as Record<string, unknown>).name1full ?? "")
