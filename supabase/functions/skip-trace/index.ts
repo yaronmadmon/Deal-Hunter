@@ -132,26 +132,29 @@ Deno.serve(async (req) => {
 
       tracerfyData = await tracerfyResponse.json();
     } catch (tracerfyError) {
-      console.error("[skip-trace] Tracerfy call failed:", tracerfyError);
+      const errMsg = tracerfyError instanceof Error ? tracerfyError.message : String(tracerfyError);
+      console.error("[skip-trace] Tracerfy call failed:", errMsg);
       tracerfyFailed = true;
 
-      // Refund the credit — user should not be charged for a failed trace
-      await supabase
-        .from("profiles")
-        .update({ credits: supabase.rpc("credits", {}) }) // increment via direct update
-        .eq("id", user.id);
-
-      // Simpler refund: direct increment
-      await supabase.rpc("increment_credits", { p_user_id: user.id }).catch(async () => {
-        // Fallback: direct SQL update via service role
+      // Refund the credit — read current balance, add 1 back
+      try {
+        const { data: curr } = await supabase
+          .from("profiles")
+          .select("credits")
+          .eq("id", user.id)
+          .single();
+        const currentCredits = typeof curr?.credits === "number" ? curr.credits : 0;
         await supabase
           .from("profiles")
-          .update({ credits: (await supabase.from("profiles").select("credits").eq("id", user.id).single()).data?.credits ?? 0 + 1 })
+          .update({ credits: currentCredits + 1 })
           .eq("id", user.id);
-      });
+        console.log(`[skip-trace] Refunded 1 credit to user ${user.id}`);
+      } catch (refundErr) {
+        console.error("[skip-trace] Credit refund failed:", refundErr);
+      }
 
       return new Response(
-        JSON.stringify({ error: "Skip trace service temporarily unavailable. Your credit has been refunded." }),
+        JSON.stringify({ error: `Skip trace service error: ${errMsg}` }),
         {
           status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
