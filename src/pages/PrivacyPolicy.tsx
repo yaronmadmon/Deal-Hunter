@@ -22,11 +22,11 @@ const PrivacyPolicy = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">1. Who We Are</h2>
             <p>
-              Deal Hunter ("we", "us", "our") is a startup idea validation platform. Our service helps founders
-              validate business ideas using real market data from public sources. We are the data controller
+              Deal Hunter ("we", "us", "our") is a real estate investment platform. Our service helps investors
+              find and evaluate distressed properties using real market data from public sources. We are the data controller
               for the personal data we process.
             </p>
-            <p>Contact: <a href="mailto:privacy@goldrushapp.live" className="underline text-foreground">privacy@goldrushapp.live</a></p>
+            <p>Contact: <a href="mailto:yaronmadmon@gmail.com" className="underline text-foreground">yaronmadmon@gmail.com</a></p>
           </section>
 
           <section className="space-y-3">
@@ -95,7 +95,7 @@ const PrivacyPolicy = () => {
             </ul>
             <p>
               To exercise any of these rights, email{" "}
-              <a href="mailto:privacy@goldrushapp.live" className="underline text-foreground">privacy@goldrushapp.live</a>{" "}
+              <a href="mailto:yaronmadmon@gmail.com" className="underline text-foreground">yaronmadmon@gmail.com</a>{" "}
               or use the account deletion option in Settings. We will respond within 30 days.
             </p>
           </section>
@@ -130,7 +130,7 @@ const PrivacyPolicy = () => {
             <h2 className="text-lg font-semibold text-foreground">11. Contact</h2>
             <p>
               Questions? Email{" "}
-              <a href="mailto:privacy@goldrushapp.live" className="underline text-foreground">privacy@goldrushapp.live</a>.
+              <a href="mailto:yaronmadmon@gmail.com" className="underline text-foreground">yaronmadmon@gmail.com</a>.
               You also have the right to lodge a complaint with your local data protection authority.
             </p>
           </section>

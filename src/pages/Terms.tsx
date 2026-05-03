@@ -30,8 +30,8 @@ const Terms = () => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">2. Description of Service</h2>
             <p>
-              Deal Hunter is an AI-powered startup idea validation platform. We aggregate publicly available market
-              data and apply AI analysis to produce reports. Our reports are informational only — they are not
+              Deal Hunter is an AI-powered real estate investment platform. We aggregate publicly available property
+              data and apply AI analysis to score and evaluate distressed properties. Our reports are informational only — they are not
               financial, legal, or investment advice. Use them as one input among many in your decision-making.
             </p>
           </section>
@@ -126,7 +126,7 @@ const Terms = () => {
             <h2 className="text-lg font-semibold text-foreground">12. Contact</h2>
             <p>
               Questions about these terms? Email{" "}
-              <a href="mailto:legal@goldrushapp.live" className="underline text-foreground">legal@goldrushapp.live</a>.
+              <a href="mailto:yaronmadmon@gmail.com" className="underline text-foreground">yaronmadmon@gmail.com</a>.
             </p>
           </section>
         </div>
