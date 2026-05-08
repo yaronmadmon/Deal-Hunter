@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bot, Loader2, MessageSquare, PhoneCall, CheckCircle2, Send } from "lucide-react";
+import { Bot, Loader2, MessageSquare, PhoneCall, CheckCircle2, Send, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +67,8 @@ export const SMSConversationSection = ({ propertyId, userId, ownerPhones }: Prop
   const [manualReply, setManualReply] = useState("");
   const [sendingManual, setSendingManual] = useState(false);
   const [loadingThread, setLoadingThread] = useState(true);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -227,13 +229,55 @@ export const SMSConversationSection = ({ propertyId, userId, ownerPhones }: Prop
                 {formatPhone(thread.homeowner_phone)}
               </span>
             </div>
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full
-              ${thread.status === "active"
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-secondary text-muted-foreground"}`}>
-              {thread.status === "active" ? "AI active" : thread.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px] px-2 text-muted-foreground"
+                disabled={summarizing || messages.length === 0}
+                onClick={async () => {
+                  setSummarizing(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("generate-outreach", {
+                      body: {
+                        propertyId,
+                        outreachType: "summary",
+                        messages: messages.map((m) => ({ direction: m.direction, body: m.body })),
+                      },
+                    });
+                    if (error || data?.error) throw new Error(data?.error ?? "Summarize failed");
+                    setSummary(data.draft?.summary ?? null);
+                  } catch {
+                    toast.error("Failed to generate summary.");
+                  } finally {
+                    setSummarizing(false);
+                  }
+                }}
+              >
+                {summarizing
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <><FileText className="h-3 w-3 mr-1" />Summarize</>}
+              </Button>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full
+                ${thread.status === "active"
+                  ? "bg-emerald-500/15 text-emerald-400"
+                  : "bg-secondary text-muted-foreground"}`}>
+                {thread.status === "active" ? "AI active" : thread.status}
+              </span>
+            </div>
           </div>
+
+          {/* Conversation summary */}
+          {summary && (
+            <div className="border-b border-border bg-secondary/40 px-4 py-3 flex items-start gap-2">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">AI Summary</p>
+                <p className="text-sm text-foreground leading-relaxed">{summary}</p>
+              </div>
+              <button className="text-[10px] text-muted-foreground hover:text-foreground shrink-0" onClick={() => setSummary(null)}>✕</button>
+            </div>
+          )}
 
           {/* Message bubbles */}
           <div className="flex flex-col gap-3 p-4 max-h-96 overflow-y-auto">

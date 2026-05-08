@@ -184,6 +184,18 @@ const DealSearch = () => {
     };
   }, [user]);
 
+  const campaignStats = useMemo(() => {
+    const stats: Record<string, { total: number; contacted: number }> = {};
+    for (const p of properties) {
+      if (!p.campaign_id) continue;
+      if (!stats[p.campaign_id]) stats[p.campaign_id] = { total: 0, contacted: 0 };
+      stats[p.campaign_id].total++;
+      const stage = pipelineStageMap[p.id];
+      if (stage && stage !== "new") stats[p.campaign_id].contacted++;
+    }
+    return stats;
+  }, [properties, pipelineStageMap]);
+
   const resolvedFilters = useMemo(() => withInferredSearchMode(filters), [filters]);
   const isPropertySearch = resolvedFilters.searchMode === "property";
 
@@ -394,22 +406,28 @@ const DealSearch = () => {
                 >
                   All Results
                 </button>
-                {campaigns.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCampaignId(c.id === selectedCampaignId ? null : c.id)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      selectedCampaignId === c.id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {c.name}
-                    {c.property_count > 0 && (
-                      <span className="ml-1.5 opacity-60">{c.property_count}</span>
-                    )}
-                  </button>
-                ))}
+                {campaigns.map((c) => {
+                  const stats = campaignStats[c.id];
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCampaignId(c.id === selectedCampaignId ? null : c.id)}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        selectedCampaignId === c.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {c.name}
+                      {(stats?.total ?? c.property_count) > 0 && (
+                        <span className="ml-1.5 opacity-60">{stats?.total ?? c.property_count}</span>
+                      )}
+                      {stats?.contacted > 0 && (
+                        <span className="ml-1 text-emerald-400 opacity-80">· {stats.contacted} contacted</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

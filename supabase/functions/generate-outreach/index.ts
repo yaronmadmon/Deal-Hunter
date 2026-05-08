@@ -36,7 +36,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { propertyId, outreachType } = await req.json() as { propertyId: string; outreachType: "email" | "sms" };
+    const { propertyId, outreachType, messages } = await req.json() as {
+      propertyId: string;
+      outreachType: "email" | "sms" | "summary";
+      messages?: { direction: string; body: string }[];
+    };
     if (!propertyId || !outreachType) {
       return new Response(JSON.stringify({ error: "propertyId and outreachType are required" }), {
         status: 400,
@@ -96,12 +100,25 @@ Opportunity Analysis: ${(reportData.opportunity_analysis as string) ?? ""}`;
     let userPrompt: string;
     let maxTokens: number;
 
-    if (outreachType === "sms") {
-      userPrompt = `Write a personalized SMS to this distressed property owner. Max 160 characters. Casual, friendly tone. Mention their name and that you're a local investor who may be able to help with their situation. No hard sell.
+    if (outreachType === "summary") {
+      const convo = (messages ?? [])
+        .map((m) => `${m.direction === "inbound" ? "OWNER" : "YOU"}: ${m.body}`)
+        .join("\n");
+      userPrompt = `Summarize this SMS conversation in 2-3 sentences for an investor's CRM notes. Focus on: the owner's motivation level, key objections raised, and the agreed next step (if any).
 
 ${propertyContext}
 
-Return JSON: { "body": "<sms text under 160 chars>" }`;
+Conversation:
+${convo || "No messages yet."}
+
+Return JSON: { "summary": "<2-3 sentence CRM summary>" }`;
+      maxTokens = 400;
+    } else if (outreachType === "sms") {
+      userPrompt = `Write a personalized SMS to this distressed property owner. Max 140 characters (compliance footer will be appended). Casual, friendly tone. Mention their name and that you're a local investor who may be able to help with their situation. No hard sell.
+
+${propertyContext}
+
+Return JSON: { "body": "<sms text under 140 chars, no compliance footer>" }`;
       maxTokens = 300;
     } else {
       userPrompt = `Write a personalized email to this distressed property owner. Include a compelling subject line. Body: 3-4 short paragraphs. Empathetic tone — acknowledge their situation, explain you're a local investor who pays cash and closes fast, offer a no-obligation conversation.
@@ -138,6 +155,11 @@ Return JSON: { "subject": "<email subject>", "body": "<email body with paragraph
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content ?? "{}";
     const draft = JSON.parse(raw);
+
+    // Append Twilio A2P compliance footer to SMS outreach
+    if (outreachType === "sms" && typeof draft.body === "string") {
+      draft.body = `${draft.body}\n\nReply STOP to opt out. Msg & data rates may apply.`;
+    }
 
     return new Response(JSON.stringify({ ok: true, draft }), {
       status: 200,

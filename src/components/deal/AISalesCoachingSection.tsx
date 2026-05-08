@@ -25,6 +25,14 @@ const OBJECTION_MAP: Record<string, string> = {
   default: "If they say 'I'm not interested': Acknowledge it — 'Totally fine, I just wanted to make sure you had options. Can I check back in a few weeks?'",
 };
 
+const getEquityNegotiationTip = (equityPct: number | null): string => {
+  if (equityPct == null) return "Confirm any existing liens before making an offer — unknown encumbrances are the biggest deal-killers.";
+  if (equityPct >= 50) return `${Math.round(equityPct)}% equity — seller can close cleanly. Lead with speed and certainty over price; they don't need the highest offer, they need out fast.`;
+  if (equityPct >= 25) return `${Math.round(equityPct)}% equity — moderate room. Lead with net proceeds: show them what they walk away with after fees and closing costs.`;
+  if (equityPct >= 10) return `${Math.round(equityPct)}% equity — limited room. Focus on debt relief and a fast close. A short-payoff conversation with the lender may be needed.`;
+  return `${Math.round(equityPct)}% equity — seller may be near or underwater. Explore subject-to or short-sale options. Approach with financial solutions, not just a purchase offer.`;
+};
+
 interface Props {
   pipelineDeal: {
     next_step_brief?: string | null;
@@ -36,9 +44,10 @@ interface Props {
   reportData: Record<string, unknown>;
   distressTypes: string[];
   contactCount: number;
+  equityPct?: number | null;
 }
 
-export const AISalesCoachingSection = ({ pipelineDeal, reportData, distressTypes, contactCount }: Props) => {
+export const AISalesCoachingSection = ({ pipelineDeal, reportData, distressTypes, contactCount, equityPct }: Props) => {
   const [expanded, setExpanded] = useState(true);
 
   if (contactCount === 0 || !pipelineDeal) return null;
@@ -110,6 +119,12 @@ export const AISalesCoachingSection = ({ pipelineDeal, reportData, distressTypes
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Recommended tone</p>
             <p className="text-sm text-foreground">{tone}</p>
+          </div>
+
+          {/* Negotiation approach based on equity */}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Negotiation approach</p>
+            <p className="text-sm text-foreground">{getEquityNegotiationTip(equityPct ?? null)}</p>
           </div>
 
           {/* Objection handling */}

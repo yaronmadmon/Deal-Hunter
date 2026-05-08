@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
   BarChart3,
   Bot,
   Brain,
   Calculator,
+  CalendarDays,
   History,
   Home,
   MapPin,
@@ -48,6 +50,39 @@ const PIPELINE_STAGES = [
   { value: "won", label: "Won" },
   { value: "dead", label: "Dead" },
 ];
+
+const MEETING_PREP_TIPS: Record<string, string[]> = {
+  foreclosure: [
+    "Acknowledge the timeline pressure — foreclosure auctions have firm dates.",
+    "Ask if they've been in contact with the lender about loss mitigation options.",
+    "Have your as-is cash offer range ready — they may want a number in this call.",
+    "Ask about any second liens or judgment liens before committing to a price.",
+  ],
+  tax_lien: [
+    "Come prepared with the exact lien amount including penalties — most owners underestimate it.",
+    "Position your offer as tax relief: you'll handle all back taxes at closing.",
+    "Ask if a redemption period still applies in their state.",
+    "Confirm whether there are any additional municipal liens on the property.",
+  ],
+  divorce: [
+    "Keep the tone neutral and solution-focused — both parties need to feel heard.",
+    "Understand who has authority to sign (both spouses, or one with POA/court order).",
+    "Emphasize speed and certainty — a clean exit often resolves the stalemate.",
+    "Ask if there's a mediator or attorney you should loop in.",
+  ],
+  delinquency: [
+    "Lead with empathy — many owners in delinquency feel shame; normalize the situation.",
+    "Ask about their specific hardship to frame your offer around their real motivation.",
+    "Walk through the cost of staying vs. walking away clean — let the numbers speak.",
+    "Confirm there's no active forbearance agreement that could complicate a quick close.",
+  ],
+  default: [
+    "Open by asking how they're doing — build rapport before discussing numbers.",
+    "Confirm their motivation level and timeline before making an offer.",
+    "Have a clear proof-of-funds or funding story ready if they ask.",
+    "Ask what their ideal outcome looks like: price, timeline, or flexibility.",
+  ],
+};
 
 const formatCurrency = (value?: number | null) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
@@ -196,7 +231,10 @@ const PropertyDetail = () => {
   const [pipelineDeal, setPipelineDeal] = useState<any>(null);
   const [addingToPipeline, setAddingToPipeline] = useState(false);
   const [refreshingFacts, setRefreshingFacts] = useState(false);
+  const [meetings, setMeetings] = useState<any[]>([]);
   const outreachRef = useRef<HTMLDivElement>(null);
+  const contactLogRef = useRef<HTMLDivElement>(null);
+  const smsRef = useRef<HTMLDivElement>(null);
   const autoRefreshTriggeredRef = useRef(false);
 
   const reloadProperty = async () => {
@@ -284,6 +322,15 @@ const PropertyDetail = () => {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => setPipelineDeal(data));
+
+    supabase
+      .from("meetings" as any)
+      .select("id, homeowner_name, homeowner_phone, scheduled_at, scheduled_at_raw, status")
+      .eq("property_id", id)
+      .eq("user_id", user.id)
+      .in("status", ["pending", "confirmed"])
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setMeetings(data ?? []));
   }, [id, user, loading, navigate]);
 
   const handleAddToPipeline = async () => {
@@ -348,6 +395,14 @@ const PropertyDetail = () => {
     debtStatus.taxDelinquentYear
   );
   const shouldAutoRefreshFacts = isMissingOwner || isMissingMortgage || isMissingHistory || isMissingPhotos || isMissingDebtStatus;
+  const activeMeeting = meetings[0] ?? null;
+  const primaryDistressType = (property?.distress_types ?? [])[0] ?? "default";
+  const meetingPrepTips = MEETING_PREP_TIPS[primaryDistressType] ?? MEETING_PREP_TIPS.default;
+  const isOverdueFollowUp = !!(
+    pipelineDeal?.follow_up_at &&
+    new Date(pipelineDeal.follow_up_at) < new Date() &&
+    pipelineDeal?.follow_up_status !== "completed"
+  );
 
   useEffect(() => {
     if (!property?.id || !shouldAutoRefreshFacts || autoRefreshTriggeredRef.current) return;
@@ -367,6 +422,26 @@ const PropertyDetail = () => {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Search
         </Button>
+
+        {isOverdueFollowUp && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-destructive">Follow-up overdue</p>
+              <p className="text-xs text-destructive/80 mt-0.5">
+                {pipelineDeal?.next_step_brief ?? "A follow-up was scheduled and hasn't been logged yet."}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 h-7 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+              onClick={() => contactLogRef.current?.scrollIntoView({ behavior: "smooth" })}
+            >
+              Log Now
+            </Button>
+          </div>
+        )}
 
         <Card className="border-border/80 bg-card/90">
           <CardContent className="space-y-6 p-5 sm:p-6">
@@ -399,21 +474,7 @@ const PropertyDetail = () => {
                   Refresh Property Data
                 </Button>
 
-                {pipelineDeal ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">Pipeline stage</span>
-                    <Select value={pipelineDeal.stage} onValueChange={handleStageChange}>
-                      <SelectTrigger className="w-44">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PIPELINE_STAGES.map((stage) => (
-                          <SelectItem key={stage.value} value={stage.value}>{stage.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
+                {!pipelineDeal && (
                   <Button variant="outline" onClick={handleAddToPipeline} disabled={addingToPipeline}>
                     {addingToPipeline ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                     Add to Pipeline
@@ -431,6 +492,50 @@ const PropertyDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {pipelineDeal && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/90 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stage</span>
+              <Select value={pipelineDeal.stage} onValueChange={handleStageChange}>
+                <SelectTrigger className="w-44 h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PIPELINE_STAGES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => contactLogRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                <Phone className="h-3.5 w-3.5 mr-1.5" />Log Contact
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => smsRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />SMS
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => outreachRef.current?.scrollIntoView({ behavior: "smooth" })}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />AI Draft
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
           <div className="space-y-6">
@@ -473,6 +578,7 @@ const PropertyDetail = () => {
               />
             </SectionCard>
 
+            <div ref={smsRef}>
             {user ? (
               <SectionCard title="AI Text Conversation" description="AI engages the owner over SMS and books a meeting" icon={Bot}>
                 <SMSConversationSection
@@ -484,6 +590,7 @@ const PropertyDetail = () => {
                 />
               </SectionCard>
             ) : null}
+            </div>
 
             <div ref={outreachRef}>
               <SectionCard title="AI Outreach" description="Generate outreach copy once owner details are available" icon={Sparkles}>
@@ -495,6 +602,7 @@ const PropertyDetail = () => {
               <ROICalculator estimatedValue={property.estimated_value} />
             </SectionCard>
 
+            <div ref={contactLogRef}>
             <SectionCard title="Contact Log" description="Track calls, emails, and follow-ups" icon={MessageSquare}>
               {user ? (
                 <ContactLogSection
@@ -508,6 +616,35 @@ const PropertyDetail = () => {
                 />
               ) : null}
             </SectionCard>
+            </div>
+
+            {/* Appointment prep — shown when a pending/confirmed meeting exists */}
+            {activeMeeting && (
+              <SectionCard title="Meeting Prep" icon={CalendarDays} description="Talking points for your upcoming call">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
+                    <CalendarDays className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-400">
+                        {activeMeeting.homeowner_name ?? "Homeowner"} — {activeMeeting.scheduled_at_raw ?? "time TBD"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 capitalize">{activeMeeting.status} meeting</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Talking points</p>
+                    <ul className="space-y-2">
+                      {meetingPrepTips.map((tip, i) => (
+                        <li key={i} className="flex gap-2.5 text-sm text-foreground">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
 
             {/* AI Sales Coaching — shown after first contact is logged */}
             <AISalesCoachingSection
@@ -515,6 +652,7 @@ const PropertyDetail = () => {
               reportData={reportData}
               distressTypes={Array.isArray(property.distress_types) ? property.distress_types : []}
               contactCount={contactLog.length}
+              equityPct={property.equity_pct ?? null}
             />
           </div>
         </div>

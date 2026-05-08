@@ -40,6 +40,7 @@ export default function Inbox() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState<string | null>(null);
 
@@ -51,8 +52,26 @@ export default function Inbox() {
       .eq("user_id", user.id)
       .neq("status", "ended")
       .order("last_inbound_at", { ascending: false, nullsFirst: false });
-    setThreads(data ?? []);
+    const threads = data ?? [];
+    setThreads(threads);
     setLoading(false);
+
+    // Load last message preview for each thread
+    const ids = threads.map((t: Thread) => t.id);
+    if (ids.length > 0) {
+      const { data: msgs } = await (supabase as any)
+        .from("sms_messages")
+        .select("thread_id, body, direction, created_at")
+        .in("thread_id", ids)
+        .order("created_at", { ascending: false });
+      const preview: Record<string, string> = {};
+      for (const msg of msgs ?? []) {
+        if (!preview[msg.thread_id]) {
+          preview[msg.thread_id] = (msg.direction === "inbound" ? "Owner: " : "You: ") + msg.body;
+        }
+      }
+      setLastMessages(preview);
+    }
   }, [user]);
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
@@ -177,6 +196,9 @@ export default function Inbox() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{formatPhone(thread.homeowner_phone)}</p>
+                    {lastMessages[thread.id] && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate opacity-70">{lastMessages[thread.id]}</p>
+                    )}
 
                     <div className="flex items-center gap-2 mt-1.5">
                       {hasUnread && (
