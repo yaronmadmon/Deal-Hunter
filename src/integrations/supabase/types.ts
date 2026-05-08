@@ -1,3 +1,34 @@
+npm WARN exec The following package was not found and will be installed: supabase@2.98.0
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'bin-links@6.0.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'cmd-shim@8.0.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'npm-normalize-package-bin@5.0.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'proc-log@6.1.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'read-cmd-shim@6.0.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
+npm WARN EBADENGINE Unsupported engine {
+npm WARN EBADENGINE   package: 'write-file-atomic@7.0.0',
+npm WARN EBADENGINE   required: { node: '^20.17.0 || >=22.9.0' },
+npm WARN EBADENGINE   current: { node: 'v20.11.1', npm: '10.2.4' }
+npm WARN EBADENGINE }
 export type Json =
   | string
   | number
@@ -352,12 +383,70 @@ export type Database = {
         }
         Relationships: []
       }
+      meetings: {
+        Row: {
+          created_at: string
+          homeowner_name: string | null
+          homeowner_phone: string
+          id: string
+          notes: string | null
+          property_id: string
+          scheduled_at: string | null
+          scheduled_at_raw: string | null
+          status: string
+          thread_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          homeowner_name?: string | null
+          homeowner_phone: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          scheduled_at?: string | null
+          scheduled_at_raw?: string | null
+          status?: string
+          thread_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          homeowner_name?: string | null
+          homeowner_phone?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          scheduled_at?: string | null
+          scheduled_at_raw?: string | null
+          status?: string
+          thread_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "sms_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
           id: string
           message: string
           read: boolean
+          saved_search_id: string | null
           title: string
           user_id: string
           watchlist_id: string | null
@@ -367,6 +456,7 @@ export type Database = {
           id?: string
           message: string
           read?: boolean
+          saved_search_id?: string | null
           title: string
           user_id: string
           watchlist_id?: string | null
@@ -376,11 +466,19 @@ export type Database = {
           id?: string
           message?: string
           read?: boolean
+          saved_search_id?: string | null
           title?: string
           user_id?: string
           watchlist_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_saved_search_id_fkey"
+            columns: ["saved_search_id"]
+            isOneToOne: false
+            referencedRelation: "saved_searches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_watchlist_id_fkey"
             columns: ["watchlist_id"]
@@ -440,32 +538,47 @@ export type Database = {
       pipeline_deals: {
         Row: {
           created_at: string
+          follow_up_at: string | null
+          follow_up_status: string
           id: string
+          next_action: string | null
+          next_step_brief: string | null
           notes: string | null
           priority: string
           property_id: string
           stage: string
           updated_at: string
+          urgency_flag: boolean
           user_id: string
         }
         Insert: {
           created_at?: string
+          follow_up_at?: string | null
+          follow_up_status?: string
           id?: string
+          next_action?: string | null
+          next_step_brief?: string | null
           notes?: string | null
           priority?: string
           property_id: string
           stage?: string
           updated_at?: string
+          urgency_flag?: boolean
           user_id: string
         }
         Update: {
           created_at?: string
+          follow_up_at?: string | null
+          follow_up_status?: string
           id?: string
+          next_action?: string | null
+          next_step_brief?: string | null
           notes?: string | null
           priority?: string
           property_id?: string
           stage?: string
           updated_at?: string
+          urgency_flag?: boolean
           user_id?: string
         }
         Relationships: [
@@ -630,24 +743,118 @@ export type Database = {
           created_at: string
           filters: Json
           id: string
+          is_monitored: boolean
+          last_monitored_at: string | null
+          monitor_frequency_hours: number
+          monitor_run_time: string | null
+          monitor_timezone: string
           name: string
+          seen_attom_ids: string[]
           user_id: string
         }
         Insert: {
           created_at?: string
           filters?: Json
           id?: string
+          is_monitored?: boolean
+          last_monitored_at?: string | null
+          monitor_frequency_hours?: number
+          monitor_run_time?: string | null
+          monitor_timezone?: string
           name: string
+          seen_attom_ids?: string[]
           user_id: string
         }
         Update: {
           created_at?: string
           filters?: Json
           id?: string
+          is_monitored?: boolean
+          last_monitored_at?: string | null
+          monitor_frequency_hours?: number
+          monitor_run_time?: string | null
+          monitor_timezone?: string
           name?: string
+          seen_attom_ids?: string[]
           user_id?: string
         }
         Relationships: []
+      }
+      sms_messages: {
+        Row: {
+          body: string
+          created_at: string
+          direction: string
+          id: string
+          telnyx_message_id: string | null
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          direction: string
+          id?: string
+          telnyx_message_id?: string | null
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          telnyx_message_id?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "sms_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_threads: {
+        Row: {
+          ai_enabled: boolean
+          created_at: string
+          homeowner_phone: string
+          id: string
+          last_message_at: string | null
+          property_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          ai_enabled?: boolean
+          created_at?: string
+          homeowner_phone: string
+          id?: string
+          last_message_at?: string | null
+          property_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          ai_enabled?: boolean
+          created_at?: string
+          homeowner_phone?: string
+          id?: string
+          last_message_at?: string | null
+          property_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_threads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -979,3 +1186,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />

@@ -68,3 +68,18 @@ verify_jwt = false
 
 [functions.refresh-auction-feed]
 verify_jwt = false
+
+[functions.run-monitored-searches]
+verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.receive-sms]
+verify_jwt = false
+
+[functions.schedule-followup]
+verify_jwt = false
+
+[functions.run-followup-agent]
+verify_jwt = false

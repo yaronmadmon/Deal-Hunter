@@ -40,6 +40,18 @@ const DealPipeline = () => {
       });
   }, [user]);
 
+  const handleSnooze = async (dealId: string, days: number) => {
+    const newDate = new Date();
+    newDate.setDate(newDate.getDate() + days);
+    const newIso = newDate.toISOString();
+    setDeals((prev) => prev.map((d) => d.id === dealId ? { ...d, follow_up_at: newIso, follow_up_status: "pending" } : d));
+    await supabase
+      .from("pipeline_deals" as any)
+      .update({ follow_up_at: newIso, follow_up_status: "pending" })
+      .eq("id", dealId);
+    toast.success(`Follow-up snoozed ${days} day${days > 1 ? "s" : ""}`);
+  };
+
   const handleStageChange = async (dealId: string, stage: string) => {
     const prevDeals = deals;
     setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage } : d)));
@@ -98,6 +110,7 @@ const DealPipeline = () => {
                   stage={col.stage}
                   deals={deals.filter((d) => d.stage === col.stage)}
                   onStageChange={handleStageChange}
+                  onSnooze={handleSnooze}
                 />
               ))}
             </div>

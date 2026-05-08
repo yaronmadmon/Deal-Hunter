@@ -5,6 +5,11 @@ interface Deal {
   stage: string;
   priority: string;
   updated_at?: string;
+  follow_up_at?: string | null;
+  follow_up_status?: string | null;
+  next_step_brief?: string | null;
+  next_action?: string | null;
+  urgency_flag?: boolean;
   properties: {
     id: string;
     address: string;
@@ -21,19 +26,20 @@ interface Props {
   stage: string;
   deals: Deal[];
   onStageChange: (dealId: string, stage: string) => void;
+  onSnooze?: (dealId: string, days: number) => void;
 }
 
 const STAGE_COLORS: Record<string, string> = {
-  new: "border-blue-500/50",
-  contacted: "border-yellow-500/50",
-  follow_up: "border-orange-500/50",
-  negotiating: "border-purple-500/50",
-  under_contract: "border-cyan-500/50",
-  won: "border-green-500/50",
-  dead: "border-red-500/30",
+  new: "border-foreground/15",
+  contacted: "border-foreground/25",
+  follow_up: "border-foreground/35",
+  negotiating: "border-foreground/45",
+  under_contract: "border-foreground/55",
+  won: "border-foreground/70",
+  dead: "border-border",
 };
 
-export const KanbanColumn = ({ title, stage, deals, onStageChange }: Props) => (
+export const KanbanColumn = ({ title, stage, deals, onStageChange, onSnooze }: Props) => (
   <div className="flex flex-col min-w-[240px] w-60 flex-shrink-0">
     <div className={`mb-3 flex items-center justify-between border-b-2 pb-2 ${STAGE_COLORS[stage] ?? "border-border"}`}>
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
@@ -46,7 +52,7 @@ export const KanbanColumn = ({ title, stage, deals, onStageChange }: Props) => (
         </div>
       )}
       {deals.map((deal) => (
-        <PipelineCard key={deal.id} deal={deal} onStageChange={onStageChange} />
+        <PipelineCard key={deal.id} deal={deal} onStageChange={onStageChange} onSnooze={onSnooze} />
       ))}
     </div>
   </div>

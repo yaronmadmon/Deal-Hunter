@@ -101,7 +101,23 @@ const PrivacyPolicy = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">8. Cookies</h2>
+            <h2 className="text-lg font-semibold text-foreground">8. SMS and Text Messaging</h2>
+            <p>
+              Deal Hunter enables investors to send SMS messages to property owners as part of their outreach
+              workflow. By using this feature, investors agree to comply with applicable messaging laws and
+              regulations, including the TCPA.
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Mobile phone numbers collected or used through Deal Hunter are <strong className="text-foreground">never shared with third parties</strong> for their own marketing purposes</li>
+              <li>Message frequency varies based on individual investor activity</li>
+              <li>Message and data rates may apply to all SMS communications</li>
+              <li>Property owners who receive messages may opt out at any time by replying <strong className="text-foreground">STOP</strong></li>
+              <li>For help, reply <strong className="text-foreground">HELP</strong> or contact yaronmadmon@gmail.com</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">9. Cookies</h2>
             <p>We use the following cookies:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li><strong className="text-foreground">Essential:</strong> authentication session token (required to stay logged in)</li>
@@ -111,7 +127,7 @@ const PrivacyPolicy = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">9. Security</h2>
+            <h2 className="text-lg font-semibold text-foreground">10. Security</h2>
             <p>
               All data is encrypted in transit (TLS 1.2+) and at rest. Passwords are never stored in plaintext.
               Access to production databases is restricted and audited.
@@ -119,7 +135,7 @@ const PrivacyPolicy = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">10. Changes to This Policy</h2>
+            <h2 className="text-lg font-semibold text-foreground">11. Changes to This Policy</h2>
             <p>
               We may update this policy. If changes are material, we will notify you by email or a prominent
               notice on the app at least 14 days before they take effect.
@@ -127,7 +143,7 @@ const PrivacyPolicy = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">11. Contact</h2>
+            <h2 className="text-lg font-semibold text-foreground">12. Contact</h2>
             <p>
               Questions? Email{" "}
               <a href="mailto:yaronmadmon@gmail.com" className="underline text-foreground">yaronmadmon@gmail.com</a>.

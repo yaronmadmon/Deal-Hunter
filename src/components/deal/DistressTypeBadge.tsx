@@ -1,14 +1,14 @@
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  tax_lien: { label: "Tax Lien", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  foreclosure: { label: "Foreclosure", color: "bg-red-500/15 text-red-400 border-red-500/30" },
-  divorce: { label: "Divorce/Probate", color: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
-  delinquency: { label: "Delinquency", color: "bg-orange-500/15 text-orange-400 border-orange-500/30" },
+  tax_lien: { label: "Tax Lien", color: "border-violet-500/30 bg-violet-500/12 text-violet-200" },
+  foreclosure: { label: "Foreclosure", color: "border-sky-500/30 bg-sky-500/12 text-sky-200" },
+  divorce: { label: "Divorce/Probate", color: "border-indigo-500/25 bg-indigo-500/10 text-indigo-100" },
+  delinquency: { label: "Delinquency", color: "border-blue-500/25 bg-blue-500/10 text-blue-100" },
 };
 
 export const DistressTypeBadge = ({ type }: { type: string }) => {
-  const config = TYPE_CONFIG[type] ?? { label: type, color: "bg-secondary text-muted-foreground border-border" };
+  const config = TYPE_CONFIG[type] ?? { label: type, color: "border-border bg-secondary text-muted-foreground" };
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${config.color}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium tracking-[0.02em] ${config.color}`}>
       {config.label}
     </span>
   );

@@ -19,7 +19,7 @@ const tiers = [
     features: [
       "3 property searches (lifetime)",
       "2 skip traces (lifetime)",
-      "AI deal score",
+      "AI property analysis",
       "Basic property info",
       "No deal pipeline CRM",
     ],
@@ -78,7 +78,7 @@ const tiers = [
 const comparisonFeatures = [
   { label: "Property searches/month", values: ["3 lifetime", "50/mo", "Unlimited"] },
   { label: "Skip traces/month", values: ["2 lifetime", "25/mo", "100/mo"] },
-  { label: "AI deal score", values: [true, true, true] },
+  { label: "AI property analysis", values: [true, true, true] },
   { label: "Full AI deal analysis", values: [false, true, true] },
   { label: "Owner research layer", values: [false, true, true] },
   { label: "Deal pipeline CRM", values: [false, true, true] },
@@ -100,7 +100,7 @@ const faqs = [
   { q: "What data sources do you use?", a: "Property data from ATTOM Data Solutions — the same source used by major real estate platforms. Enriched with Serper, Perplexity, Keywords Everywhere, and Firecrawl for owner research, neighborhood sentiment, and market heat signals." },
   { q: "How accurate is the skip tracing?", a: "We use Tracerfy, which returns up to 8 phone numbers and 5 emails per owner. Contact data is cross-referenced across multiple sources for accuracy." },
   { q: "How fresh is the distressed property data?", a: "ATTOM captures new tax lien, foreclosure, and lis pendens filings within 24-48 hours of county recording." },
-  { q: "What is the AI deal score?", a: "A 0-100 score computed by Claude using ATTOM property facts + neighborhood sentiment + market heat (motivated seller volume vs. investor competition). Properties ≥70 are flagged as Strong Deal." },
+  { q: "What does the AI analysis do?", a: "It summarizes property facts, owner context, distress signals, market pressure, and risk notes so you can review a deal faster. We are currently de-emphasizing the numeric score in the product UI." },
   { q: "Do unused skip traces roll over?", a: "Monthly skip traces reset each billing cycle and do not roll over. One-time purchased traces never expire." },
 ];
 

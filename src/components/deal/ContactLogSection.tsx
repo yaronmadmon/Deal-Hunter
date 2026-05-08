@@ -29,10 +29,37 @@ const CONTACT_ICONS: Record<string, any> = {
   note: FileText,
 };
 
+const ICON_COLORS: Record<string, string> = {
+  call: "bg-sky-500/15 text-sky-400",
+  email: "bg-amber-500/15 text-amber-400",
+  sms: "bg-emerald-500/15 text-emerald-400",
+  visit: "bg-purple-500/15 text-purple-400",
+  note: "bg-secondary text-muted-foreground",
+};
+
+const OUTCOME_COLORS: Record<string, string> = {
+  interested: "text-emerald-400",
+  spoke: "text-sky-400",
+  not_interested: "text-destructive",
+  left_voicemail: "text-amber-400",
+  no_answer: "text-muted-foreground",
+};
+
 const CONTACT_TYPES = ["call", "email", "sms", "visit", "note"];
 const OUTCOMES = ["no_answer", "left_voicemail", "spoke", "interested", "not_interested"];
 
-const outcomeLabel = (o: string) => o.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const fmt = (o: string) => o.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const relativeTime = (iso: string) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins <= 1 ? "just now" : `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }: Props) => {
   const [showForm, setShowForm] = useState(false);
@@ -42,15 +69,11 @@ export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }:
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
-    if (!notes.trim() && contactType !== "note") {
-      toast.error("Add some notes about the contact attempt.");
-      return;
-    }
     setSaving(true);
     try {
       const { data, error } = await supabase
         .from("contact_log" as any)
-        .insert({ property_id: propertyId, user_id: userId, contact_type: contactType, outcome, notes: notes.trim() || null })
+        .insert({ property_id: propertyId, user_id: userId, contact_type: contactType, outcome: contactType !== "note" ? outcome : null, notes: notes.trim() || null })
         .select()
         .single();
       if (error) throw error;
@@ -70,8 +93,10 @@ export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }:
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{entries.length} contact{entries.length !== 1 ? "s" : ""} logged</span>
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowForm(!showForm)}>
+        <span className="text-sm text-muted-foreground">
+          {entries.length} contact{entries.length !== 1 ? "s" : ""} logged
+        </span>
+        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowForm(!showForm)}>
           <Plus className="h-3 w-3 mr-1" />Log Contact
         </Button>
       </div>
@@ -87,7 +112,7 @@ export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }:
                 </SelectTrigger>
                 <SelectContent>
                   {CONTACT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{outcomeLabel(t)}</SelectItem>
+                    <SelectItem key={t} value={t}>{fmt(t)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -101,7 +126,7 @@ export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }:
                   </SelectTrigger>
                   <SelectContent>
                     {OUTCOMES.map((o) => (
-                      <SelectItem key={o} value={o}>{outcomeLabel(o)}</SelectItem>
+                      <SelectItem key={o} value={o}>{fmt(o)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -120,26 +145,48 @@ export const ContactLogSection = ({ propertyId, userId, entries, onEntryAdded }:
         <p className="text-sm text-muted-foreground">No contacts logged yet.</p>
       )}
 
-      <div className="space-y-3">
-        {entries.map((entry) => {
-          const Icon = CONTACT_ICONS[entry.contact_type] ?? FileText;
-          return (
-            <div key={entry.id} className="flex gap-3 rounded-lg border border-border bg-background px-4 py-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground capitalize">{entry.contact_type}</span>
-                  {entry.outcome && <span>• {outcomeLabel(entry.outcome)}</span>}
-                  <span className="ml-auto">{new Date(entry.created_at).toLocaleDateString()}</span>
+      {/* Visual timeline */}
+      {entries.length > 0 && (
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[17px] top-5 bottom-2 w-px bg-border" />
+
+          <div className="space-y-4">
+            {entries.map((entry, i) => {
+              const Icon = CONTACT_ICONS[entry.contact_type] ?? FileText;
+              const iconColor = ICON_COLORS[entry.contact_type] ?? ICON_COLORS.note;
+              const outcomeColor = entry.outcome ? (OUTCOME_COLORS[entry.outcome] ?? "text-muted-foreground") : "";
+
+              return (
+                <div key={entry.id} className="flex gap-3 relative">
+                  {/* Timeline dot */}
+                  <div className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconColor}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 pb-1 pt-1.5">
+                    <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-foreground capitalize">{entry.contact_type}</span>
+                        {entry.outcome && (
+                          <span className={`text-xs font-medium ${outcomeColor}`}>
+                            {fmt(entry.outcome)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground shrink-0">{relativeTime(entry.created_at)}</span>
+                    </div>
+                    {entry.notes && (
+                      <p className="mt-1 text-sm text-foreground/80 leading-relaxed">{entry.notes}</p>
+                    )}
+                  </div>
                 </div>
-                {entry.notes && <p className="mt-1 text-sm text-foreground">{entry.notes}</p>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

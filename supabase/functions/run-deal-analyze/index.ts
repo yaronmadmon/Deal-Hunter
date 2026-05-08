@@ -32,6 +32,358 @@ async function safeCall<T>(fn: () => Promise<T>, label: string, fallback: T): Pr
   }
 }
 
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const toRecordArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && !Array.isArray(item))
+    : [];
+
+const toTextValue = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return null;
+};
+
+const toNumber = (...values: unknown[]): number | null => {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const normalized = value.replace(/[$,\s]/g, "");
+      if (!normalized) continue;
+      const parsed = Number(normalized);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+};
+
+const computeEquityPct = (estimatedValue: number | null, loanAmount: number | null): number | null => {
+  if (!estimatedValue || estimatedValue <= 0) return null;
+  if (loanAmount === null || loanAmount === undefined) return null;
+  return Math.round(((estimatedValue - loanAmount) / estimatedValue) * 100);
+};
+
+const sortByDateDesc = (items: Array<Record<string, unknown>>, key: string) =>
+  [...items].sort((a, b) => {
+    const aTime = Date.parse(String(a[key] ?? ""));
+    const bTime = Date.parse(String(b[key] ?? ""));
+    return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+  });
+
+const sortByNumericDesc = (items: Array<Record<string, unknown>>, key: string) =>
+  [...items].sort((a, b) => (Number(b[key] ?? 0)) - (Number(a[key] ?? 0)));
+
+const pickRecordText = (record: Record<string, unknown>, fields: string[]) =>
+  toTextValue(...fields.map((field) => record[field]));
+
+const pickRecordNumber = (record: Record<string, unknown>, fields: string[]) =>
+  toNumber(...fields.map((field) => record[field]));
+
+const ATTOM_DISTRESS_DATE_FIELDS = [
+  "auctionDateTime",
+  "auctiondateTime",
+  "auctionDate",
+  "auctiondate",
+  "defaultDate",
+  "defaultdate",
+  "filingDate",
+  "filingdate",
+  "recordingDate",
+  "recordingdate",
+  "statusDate",
+  "statusdate",
+  "eventDate",
+  "eventdate",
+  "eventDateTime",
+  "date",
+];
+
+const estimateMonthlyPrincipalAndInterest = (principal: number | null, annualRate = 0.07, termYears = 30) => {
+  if (principal === null || principal <= 0) return null;
+  const monthlyRate = annualRate / 12;
+  const paymentCount = termYears * 12;
+  if (monthlyRate <= 0 || paymentCount <= 0) return null;
+  const factor = Math.pow(1 + monthlyRate, paymentCount);
+  return Math.round(principal * ((monthlyRate * factor) / (factor - 1)));
+};
+
+const LOW_RISK_FLOOD_PATTERNS = [
+  /\bzone x\b/i,
+  /\bzone c\b/i,
+  /minimal flood hazard/i,
+  /low to moderate flood hazard/i,
+  /low flood risk/i,
+  /outside (the )?(100|500)-year flood/i,
+  /outside .*flood zone/i,
+  /not in .*flood zone/i,
+];
+
+const HIGH_RISK_FLOOD_PATTERNS = [
+  /\bzone (?:a|ae|ah|ao|ar|a99|ve|v|a\d{1,2}|v\d{1,2})\b/i,
+  /special flood hazard area/i,
+  /\bsfha\b/i,
+  /mandatory flood insurance/i,
+  /1% annual chance flood/i,
+  /coastal high hazard/i,
+];
+
+const isHighRiskFloodMention = (text: string) => {
+  const normalized = text.toLowerCase();
+  if (!normalized.includes("flood") && !normalized.includes("fema") && !normalized.includes("sfha")) {
+    return false;
+  }
+
+  const hasHighRiskSignal = HIGH_RISK_FLOOD_PATTERNS.some((pattern) => pattern.test(text));
+  const hasLowRiskSignal = LOW_RISK_FLOOD_PATTERNS.some((pattern) => pattern.test(text));
+
+  if (hasLowRiskSignal && !hasHighRiskSignal) return false;
+  return hasHighRiskSignal;
+};
+
+const getAttomPropertyRecords = (payload: Record<string, unknown>): Record<string, unknown>[] => {
+  const propertyArray = toRecordArray(payload.property);
+  if (propertyArray.length > 0) return propertyArray;
+
+  const propertyRecord = toRecord(payload.property);
+  return Object.keys(propertyRecord).length > 0 ? [propertyRecord] : [];
+};
+
+function normalizeSaleHistoryItem(
+  item: Record<string, unknown>,
+  propertyRecord: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const amount = toRecord(item.amount);
+  const buyer = toRecord(item.buyer);
+  const seller = toRecord(item.seller);
+  const deed = toRecord(propertyRecord.deed);
+  const deedBuyer = toRecord(deed.buyer);
+  const deedSeller = toRecord(deed.seller);
+
+  const saleTransDate = toTextValue(
+    item.saleTransDate,
+    item.saleSearchDate,
+    item.salesearchdate,
+    amount.saleRecDate,
+    amount.salerecdate,
+  );
+  const saleAmt = toNumber(item.saleAmt, item.saleamt, amount.saleAmt, amount.saleamt);
+  const buyerName = toTextValue(item.buyerName, buyer.name1full, buyer.name, deedBuyer.name1full, deedBuyer.name);
+  const sellerName = toTextValue(item.sellerName, seller.name1full, seller.name, deedSeller.name1full, deedSeller.name);
+
+  if (!saleTransDate && saleAmt === null && !buyerName && !sellerName) return null;
+
+  return { saleTransDate, saleAmt, buyerName, sellerName };
+}
+
+function normalizeSaleHistoryPayload(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+  const normalized: Array<Record<string, unknown>> = [];
+
+  for (const propertyRecord of getAttomPropertyRecords(payload)) {
+    const historyItems = [
+      ...toRecordArray(propertyRecord.saleHistory),
+      ...toRecordArray(propertyRecord.salehistory),
+    ];
+
+    if (historyItems.length > 0) {
+      for (const item of historyItems) {
+        const normalizedItem = normalizeSaleHistoryItem(item, propertyRecord);
+        if (normalizedItem) normalized.push(normalizedItem);
+      }
+      continue;
+    }
+
+    const singleHistoryRecord = toRecord(propertyRecord.saleHistory);
+    if (Object.keys(singleHistoryRecord).length > 0) {
+      const normalizedItem = normalizeSaleHistoryItem(singleHistoryRecord, propertyRecord);
+      if (normalizedItem) normalized.push(normalizedItem);
+      continue;
+    }
+
+    const legacyHistoryRecord = toRecord(propertyRecord.salehistory);
+    if (Object.keys(legacyHistoryRecord).length > 0) {
+      const normalizedItem = normalizeSaleHistoryItem(legacyHistoryRecord, propertyRecord);
+      if (normalizedItem) normalized.push(normalizedItem);
+      continue;
+    }
+
+    const saleSnapshot = toRecord(propertyRecord.sale);
+    if (Object.keys(saleSnapshot).length > 0) {
+      const normalizedItem = normalizeSaleHistoryItem(saleSnapshot, propertyRecord);
+      if (normalizedItem) normalized.push(normalizedItem);
+    }
+  }
+
+  const deduped = normalized.filter((item, index, array) => {
+    const key = `${item.saleTransDate ?? ""}-${item.saleAmt ?? ""}`;
+    return array.findIndex((candidate) => `${candidate.saleTransDate ?? ""}-${candidate.saleAmt ?? ""}` === key) === index;
+  });
+
+  return sortByDateDesc(deduped, "saleTransDate").slice(0, 12);
+}
+
+function normalizeAssessmentHistoryItem(item: Record<string, unknown>): Record<string, unknown> | null {
+  const assessed = toRecord(item.assessed);
+  const calculations = toRecord(item.calculations);
+  const market = toRecord(item.market);
+  const tax = toRecord(item.tax);
+
+  const taxYear = toNumber(
+    item.taxYear,
+    item.taxyear,
+    tax.taxYear,
+    tax.taxyear,
+    tax.taxYearAssessed,
+    tax.assessorYear,
+  );
+  const assessedValue = toNumber(
+    item.assessedValue,
+    item.assdTtlValue,
+    item.assdttlvalue,
+    assessed.assdTtlValue,
+    assessed.assdttlvalue,
+    calculations.calcTtlValue,
+    calculations.calcttlvalue,
+  );
+  const marketValue = toNumber(
+    item.marketValue,
+    item.mktTtlValue,
+    item.mktttlvalue,
+    market.mktTtlValue,
+    market.mktttlvalue,
+  );
+  const taxAmt = toNumber(item.taxAmt, item.taxamt, tax.taxAmt, tax.taxamt);
+
+  if (taxYear === null && assessedValue === null && marketValue === null && taxAmt === null) return null;
+
+  return { taxYear, assessedValue, marketValue, taxAmt };
+}
+
+function normalizeAssessmentHistoryPayload(payload: Record<string, unknown>): Array<Record<string, unknown>> {
+  const normalized: Array<Record<string, unknown>> = [];
+
+  for (const propertyRecord of getAttomPropertyRecords(payload)) {
+    const historyItems = [
+      ...toRecordArray(propertyRecord.assessmentHistory),
+      ...toRecordArray(propertyRecord.assessmenthistory),
+    ];
+
+    if (historyItems.length > 0) {
+      for (const item of historyItems) {
+        const normalizedItem = normalizeAssessmentHistoryItem(item);
+        if (normalizedItem) normalized.push(normalizedItem);
+      }
+      continue;
+    }
+
+    const assessmentHistoryRecord = toRecord(propertyRecord.assessmentHistory);
+    if (Object.keys(assessmentHistoryRecord).length > 0) {
+      const normalizedItem = normalizeAssessmentHistoryItem(assessmentHistoryRecord);
+      if (normalizedItem) normalized.push(normalizedItem);
+      continue;
+    }
+
+    const legacyAssessmentHistoryRecord = toRecord(propertyRecord.assessmenthistory);
+    if (Object.keys(legacyAssessmentHistoryRecord).length > 0) {
+      const normalizedItem = normalizeAssessmentHistoryItem(legacyAssessmentHistoryRecord);
+      if (normalizedItem) normalized.push(normalizedItem);
+      continue;
+    }
+
+    const assessmentSnapshot = toRecord(propertyRecord.assessment);
+    if (Object.keys(assessmentSnapshot).length > 0) {
+      const normalizedItem = normalizeAssessmentHistoryItem(assessmentSnapshot);
+      if (normalizedItem) normalized.push(normalizedItem);
+    }
+  }
+
+  const deduped = normalized.filter((item, index, array) => {
+    const key = `${item.taxYear ?? ""}-${item.assessedValue ?? ""}-${item.taxAmt ?? ""}`;
+    return array.findIndex((candidate) => `${candidate.taxYear ?? ""}-${candidate.assessedValue ?? ""}-${candidate.taxAmt ?? ""}` === key) === index;
+  });
+
+  return sortByNumericDesc(deduped, "taxYear").slice(0, 12);
+}
+
+async function fetchAttomHistory(
+  paths: string[],
+  label: string,
+  normalize: (payload: Record<string, unknown>) => Array<Record<string, unknown>>,
+): Promise<Array<Record<string, unknown>>> {
+  const attomKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomKey) return [];
+
+  let lastHttpError: string | null = null;
+
+  for (const path of paths) {
+    const resp = await withTimeout(
+      fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0${path}`, {
+        headers: { apikey: attomKey, accept: "application/json" },
+      }),
+      DEFAULT_SOURCE_TIMEOUT,
+      label,
+    );
+
+    if (!resp.ok) {
+      lastHttpError = `${path}: ${resp.status}`;
+      continue;
+    }
+
+    const data = await resp.json() as Record<string, unknown>;
+    const normalized = normalize(data);
+    if (normalized.length > 0) return normalized;
+  }
+
+  if (lastHttpError) throw new Error(lastHttpError);
+  return [];
+}
+
+function buildFallbackSaleHistory(property: Record<string, unknown>): Array<Record<string, unknown>> {
+  const distressDetails = toRecord(property.distress_details);
+  const rawSale = toRecord(distressDetails.rawSale);
+  const rawSaleAmount = toRecord(rawSale.amount);
+  const rawDeed = toRecord(distressDetails.rawDeed);
+  const deedBuyer = toRecord(rawDeed.buyer);
+  const deedSeller = toRecord(rawDeed.seller);
+
+  const saleTransDate = toTextValue(property.last_sale_date, rawSale.saleTransDate, rawSale.salesearchdate);
+  const saleAmt = toNumber(property.last_sale_price, distressDetails.deedSaleAmt, rawSale.saleAmt, rawSale.saleamt, rawSaleAmount.saleAmt, rawSaleAmount.saleamt);
+  const buyerName = toTextValue(
+    distressDetails.deedBuyerName,
+    deedBuyer.name1full,
+    deedBuyer.name,
+    distressDetails.ownerName,
+    distressDetails.owner_name,
+  );
+  const sellerName = toTextValue(
+    distressDetails.deedSellerName,
+    deedSeller.name1full,
+    deedSeller.name,
+  );
+
+  if (!saleTransDate && saleAmt === null) return [];
+  return [{ saleTransDate, saleAmt, buyerName, sellerName }];
+}
+
+function buildFallbackAssessmentHistory(property: Record<string, unknown>): Array<Record<string, unknown>> {
+  const distressDetails = toRecord(property.distress_details);
+  const assessmentTax = toRecord(distressDetails.assessmentTax);
+  const landValue = toNumber(distressDetails.assessedLandValue);
+  const improvementValue = toNumber(distressDetails.assessedImprValue);
+  const assessedValue = landValue !== null || improvementValue !== null ? (landValue ?? 0) + (improvementValue ?? 0) : null;
+  const marketValue = toNumber(property.estimated_value);
+  const taxYear = toNumber(assessmentTax.taxYear, assessmentTax.taxyear);
+  const taxAmt = toNumber(assessmentTax.taxAmt, assessmentTax.taxamt);
+
+  if (taxYear === null && assessedValue === null && marketValue === null && taxAmt === null) return [];
+  return [{ taxYear, assessedValue, marketValue, taxAmt }];
+}
+
 // ─── Layer 2: Market Heat (Keywords Everywhere) ───────────────────────────────
 
 async function fetchMarketHeat(zip: string, city: string): Promise<{
@@ -167,19 +519,19 @@ async function fetchDealKillers(address: string, city: string, state: string): P
     serperSearch(`"${address}" ${city} ${state} EPA superfund contamination environmental`).catch(() => []),
   ]);
 
-  const floodZone = floodResults.some((r) => {
-    const text = `${r.title} ${r.snippet}`.toLowerCase();
-    return text.includes("flood zone") || text.includes("fema") || text.includes("floodplain");
-  });
+  const floodEvidence = floodResults.find((r) => isHighRiskFloodMention(`${r.title} ${r.snippet}`));
+  const floodZone = !!floodEvidence;
 
   const environmental = envResults.some((r) => {
     const text = `${r.title} ${r.snippet}`.toLowerCase();
     return text.includes("superfund") || text.includes("contamination") || text.includes("hazardous");
   });
 
-  if (floodZone) {
-    const evidence = floodResults.find((r) => `${r.title} ${r.snippet}`.toLowerCase().includes("flood zone"));
-    killSignals.push({ type: "flood_zone", evidence: evidence?.snippet ?? "Flood zone reference found" });
+  if (floodEvidence) {
+    killSignals.push({
+      type: "flood_zone",
+      evidence: floodEvidence.snippet || floodEvidence.title || "High-risk FEMA flood zone reference found",
+    });
   }
 
   if (environmental) {
@@ -325,6 +677,11 @@ async function scoreDealWithGPT(
   hardKillSignals: Array<{ type: string; severity: string; evidence: string }>,
   opportunityType?: string,
   opportunityContext?: string,
+  history?: {
+    sales: Array<Record<string, unknown>>;
+    assessments: Array<Record<string, unknown>>;
+    listing: Array<Record<string, unknown>>;
+  },
 ): Promise<{
   deal_score: number;
   deal_verdict: "Strong Deal" | "Investigate" | "Pass";
@@ -335,6 +692,9 @@ async function scoreDealWithGPT(
   risks: string[];
   opportunities: string[];
   opportunity_analysis?: string;
+  history_summary?: string;
+  urgency_summary?: string;
+  next_step?: string;
 }> {
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) throw new Error("OPENAI_API_KEY not set");
@@ -344,7 +704,7 @@ async function scoreDealWithGPT(
   const ownerResearch = intelligence.ownerResearch as Record<string, unknown> ?? {};
   const publicRecords = intelligence.publicRecordsConfirm as Record<string, unknown> ?? {};
 
-  const systemPrompt = `You are a professional real estate investment analyst. Score distressed properties as deal opportunities using all provided data. Return only valid JSON.`;
+  const systemPrompt = `You are a professional real estate investment analyst. Write a concise investor brief from the property's verified history, urgency, and opportunity signals. Keep every claim tied to the provided data. Return only valid JSON.`;
 
   const userPrompt = `Score this distressed property as a deal opportunity using ALL provided data.
 
@@ -356,6 +716,11 @@ Last Sale: $${property.last_sale_price ?? "Unknown"} (${property.last_sale_date 
 Equity Position: ${property.equity_pct !== null && property.equity_pct !== undefined ? `${property.equity_pct}%` : "Unknown"}
 Distress Types: ${(property.distress_types as string[])?.join(", ") ?? "None identified"}
 Distress Details: ${JSON.stringify(property.distress_details)}
+
+## History Data
+Sales History: ${JSON.stringify((history?.sales ?? []).slice(0, 6))}
+Tax History: ${JSON.stringify((history?.assessments ?? []).slice(0, 6))}
+Listing Timeline: ${JSON.stringify((history?.listing ?? []).slice(0, 10))}
 
 ## Intelligence Data (Layer 2)
 Market Heat (${property.zip}): Motivated seller search volume = ${marketHeat.motivatedSellerVolume ?? "N/A"}/mo, Investor competition CPC = $${marketHeat.investorCompetitionCpc ?? "N/A"}, Signal = ${marketHeat.signal ?? "Unknown"}
@@ -386,6 +751,9 @@ Return ONLY valid JSON:
   "distress_analysis": "<assessment of each distress signal with ATTOM verification status>",
   "equity_assessment": "<ARV potential, lien burden analysis, equity position>",
   "market_heat_assessment": "<motivated seller supply vs investor competition for this market>",
+  "history_summary": "<2-3 sentences on purchase/listing/default history and what it means for owner motivation>",
+  "urgency_summary": "<1-2 sentences naming the dated trigger or current urgency level in plain English>",
+  "next_step": "<single sentence with the best operator move right now>",
   "risks": ["<specific risk with evidence>"],
   "opportunities": ["<specific opportunity with evidence>"],
   "opportunity_analysis": "<if opportunity context was provided, a 2-3 sentence analysis of that specific opportunity type; otherwise empty string>"
@@ -455,6 +823,39 @@ interface ListingEvent {
   price: number | null;
 }
 
+const REAL_ESTATE_RESULT_HOSTS = [
+  "zillow.com",
+  "realtor.com",
+  "redfin.com",
+  "homes.com",
+];
+
+const PREFERRED_IMAGE_HOSTS = [
+  "photos.zillowstatic.com",
+  "ap.rdcpix.com",
+  "ssl.cdn-redfin.com",
+  "cdn.realtor.com",
+  "cdn.resize.sparkplatform.com",
+  "mlspin.com",
+  "imgix.net",
+];
+
+const isSupportedListingUrl = (url: string) => {
+  const normalized = url.toLowerCase();
+  return REAL_ESTATE_RESULT_HOSTS.some((host) => normalized.includes(host));
+};
+
+const isLikelyPropertyImage = (url: string) => {
+  const normalized = url.toLowerCase();
+  if (!/^https?:\/\//.test(normalized)) return false;
+  if (!/\.(?:jpg|jpeg|png|webp)(?:[?#].*)?$/.test(normalized)) return false;
+  if (/(logo|avatar|icon|favicon|sprite|banner|googleapis|gstatic|gravatar)/.test(normalized)) return false;
+  if (normalized.includes("/profile/")) return false;
+  return true;
+};
+
+const dedupeUrls = (urls: string[]) => Array.from(new Set(urls.filter(Boolean)));
+
 async function fetchZillowData(address: string, city: string, state: string): Promise<{ photos: string[]; listingHistory: ListingEvent[] }> {
   const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!firecrawlKey) return { photos: [], listingHistory: [] };
@@ -467,43 +868,76 @@ async function fetchZillowData(address: string, city: string, state: string): Pr
       fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: `site:zillow.com "${address}" ${city} ${state}`, num: 3 }),
+        body: JSON.stringify({
+          q: `"${address}" ${city} ${state} (site:zillow.com OR site:realtor.com OR site:redfin.com OR site:homes.com)`,
+          num: 5,
+        }),
       }),
       DEFAULT_SOURCE_TIMEOUT,
-      "Serper Zillow URL search"
+      "Serper property image search"
     );
 
     if (!searchResp.ok) return { photos: [], listingHistory: [] };
     const searchData = await searchResp.json();
-    const zillowUrl = (searchData.organic?.[0]?.link as string) ?? "";
-    if (!zillowUrl || !zillowUrl.includes("zillow.com")) return { photos: [], listingHistory: [] };
+    const listingUrl = ((searchData.organic as Array<Record<string, unknown>> | undefined) ?? [])
+      .map((result) => String(result.link ?? ""))
+      .find(isSupportedListingUrl) ?? "";
+    if (!listingUrl) return { photos: [], listingHistory: [] };
 
     const scrapeResp = await withTimeout(
-      fetch("https://api.firecrawl.dev/v0/scrape", {
+      fetch("https://api.firecrawl.dev/v1/scrape", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${firecrawlKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: zillowUrl, pageOptions: { screenshot: false } }),
+        body: JSON.stringify({
+          url: listingUrl,
+          formats: ["markdown", "html", "images"],
+          onlyMainContent: false,
+          waitFor: 2500,
+          timeout: 45000,
+          maxAge: 86400000,
+          blockAds: true,
+          proxy: "auto",
+        }),
       }),
-      15000,
-      "Firecrawl Zillow scrape"
+      20000,
+      "Firecrawl property scrape"
     );
 
     if (!scrapeResp.ok) return { photos: [], listingHistory: [] };
-    const scrapeData = await scrapeResp.json();
-    const markdown = (scrapeData.data?.markdown as string) ?? "";
+    const scrapeData = await scrapeResp.json() as Record<string, unknown>;
+    const scrapePayload = toRecord(scrapeData.data);
+    const markdown = String(scrapePayload.markdown ?? "");
+    const html = String(scrapePayload.html ?? "");
+    const metadata = toRecord(scrapePayload.metadata);
+    const listedImages = Array.isArray(scrapePayload.images)
+      ? scrapePayload.images.map((value) => String(value ?? "").trim())
+      : [];
 
-    // Extract photos
-    const imgMatches = markdown.matchAll(/!\[.*?\]\((https:\/\/.*?\.(?:jpg|jpeg|png|webp).*?)\)/gi);
-    const photos: string[] = [];
-    for (const match of imgMatches) {
-      if (photos.length >= 10) break;
-      photos.push(match[1]);
-    }
+    const markdownMatches = Array.from(markdown.matchAll(/!\[.*?\]\((https:\/\/.*?\.(?:jpg|jpeg|png|webp).*?)\)/gi)).map((match) => match[1]);
+    const htmlMatches = Array.from(html.matchAll(/<img[^>]+src=["'](https:\/\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi)).map((match) => match[1]);
+    const metadataImages = [
+      String(metadata.ogImage ?? ""),
+      String(metadata.image ?? ""),
+    ];
 
-    // Parse price history table — pipe-delimited rows after "Price history" heading
+    const photos = dedupeUrls([
+      ...listedImages,
+      ...markdownMatches,
+      ...htmlMatches,
+      ...metadataImages,
+    ])
+      .filter(isLikelyPropertyImage)
+      .sort((left, right) => {
+        const leftPreferred = PREFERRED_IMAGE_HOSTS.some((host) => left.includes(host)) ? 1 : 0;
+        const rightPreferred = PREFERRED_IMAGE_HOSTS.some((host) => right.includes(host)) ? 1 : 0;
+        return rightPreferred - leftPreferred;
+      })
+      .slice(0, 12);
+
+    // Parse price history table ? pipe-delimited rows after "Price history" heading
     const listingHistory: ListingEvent[] = [];
     const historySection = markdown.match(/price history[\s\S]*?((?:\|[^\n]+\n){1,25})/i);
     if (historySection) {
@@ -527,33 +961,335 @@ async function fetchZillowData(address: string, city: string, state: string): Pr
 // ─── ATTOM history calls ──────────────────────────────────────────────────────
 
 async function fetchAttomSaleHistory(attomId: string): Promise<Array<Record<string, unknown>>> {
-  const attomKey = Deno.env.get("ATTOM_API_KEY");
-  if (!attomKey) return [];
-  const resp = await withTimeout(
-    fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/salehistory/snapshot?attomid=${attomId}`, {
-      headers: { apikey: attomKey, accept: "application/json" },
-    }),
-    DEFAULT_SOURCE_TIMEOUT,
-    "ATTOM sale history"
+  return fetchAttomHistory(
+    [
+      `/saleshistory/detail?attomId=${encodeURIComponent(attomId)}`,
+      `/saleshistory/detail?id=${encodeURIComponent(attomId)}`,
+      `/saleshistory/snapshot?attomId=${encodeURIComponent(attomId)}`,
+      `/salehistory/snapshot?attomid=${encodeURIComponent(attomId)}`,
+    ],
+    "ATTOM sale history",
+    normalizeSaleHistoryPayload,
   );
-  if (!resp.ok) return [];
-  const data = await resp.json();
-  return (data.property?.[0]?.salehistory ?? []) as Array<Record<string, unknown>>;
 }
 
 async function fetchAttomAssessmentHistory(attomId: string): Promise<Array<Record<string, unknown>>> {
-  const attomKey = Deno.env.get("ATTOM_API_KEY");
-  if (!attomKey) return [];
-  const resp = await withTimeout(
-    fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/assessmenthistory/snapshot?attomid=${attomId}`, {
-      headers: { apikey: attomKey, accept: "application/json" },
-    }),
-    DEFAULT_SOURCE_TIMEOUT,
-    "ATTOM assessment history"
+  return fetchAttomHistory(
+    [
+      `/assessmenthistory/detail?attomId=${encodeURIComponent(attomId)}`,
+      `/assessmenthistory/detail?id=${encodeURIComponent(attomId)}`,
+      `/assessmenthistory/snapshot?attomId=${encodeURIComponent(attomId)}`,
+      `/assessmenthistory/snapshot?attomid=${encodeURIComponent(attomId)}`,
+    ],
+    "ATTOM assessment history",
+    normalizeAssessmentHistoryPayload,
   );
-  if (!resp.ok) return [];
-  const data = await resp.json();
-  return (data.property?.[0]?.assessmenthistory ?? []) as Array<Record<string, unknown>>;
+}
+
+type AttomDebtStatus = {
+  statusLabel: string | null;
+  delinquentAmount: number | null;
+  taxLienAmount: number | null;
+  openingBidAmount: number | null;
+  auctionDate: string | null;
+  defaultDate: string | null;
+  recordingDate: string | null;
+  originalLoanDate: string | null;
+  taxDelinquentYear: number | null;
+  estimatedMissedPayments: number | null;
+  estimatedMonthlyPayment: number | null;
+  estimateBasis: string | null;
+  sourceEventType: string | null;
+};
+
+const hasDebtStatus = (value: AttomDebtStatus | null) =>
+  Boolean(
+    value &&
+      (
+        value.delinquentAmount !== null ||
+        value.taxLienAmount !== null ||
+        value.openingBidAmount !== null ||
+        value.auctionDate ||
+        value.defaultDate ||
+        value.recordingDate ||
+        value.taxDelinquentYear !== null
+      ),
+  );
+
+function normalizeAttomDebtStatus(
+  propertyRecord: Record<string, unknown>,
+  fallbackLoanAmount: number | null,
+): AttomDebtStatus | null {
+  const assessment = toRecord(propertyRecord.assessment);
+  const assessmentTax = toRecord(assessment.tax);
+  const foreclosure = toRecord(propertyRecord.foreclosure);
+  const saleHistoryItems = [
+    ...toRecordArray(propertyRecord.saleHistory),
+    ...toRecordArray(propertyRecord.salehistory),
+  ];
+
+  const candidateRecords = [
+    foreclosure,
+    ...saleHistoryItems.flatMap((item) => {
+      const nestedForeclosure = toRecord(item.foreclosure);
+      return Object.keys(nestedForeclosure).length > 0 ? [item, nestedForeclosure] : [item];
+    }),
+    ...toRecordArray(propertyRecord.eventHistory),
+    ...toRecordArray(propertyRecord.events),
+  ].filter((candidate) => Object.keys(candidate).length > 0);
+
+  const relevantCandidates = candidateRecords
+    .filter((candidate) => {
+      const label = pickRecordText(candidate, ["eventType", "type", "eventDescription", "description", "status", "stage"]);
+      const hasDate = pickRecordText(candidate, ATTOM_DISTRESS_DATE_FIELDS);
+      const hasMoney = pickRecordNumber(candidate, [
+        "delinquentAmount",
+        "delinquentamount",
+        "bidAmount",
+        "bidamount",
+        "openingBidAmount",
+        "taxLienAmount",
+        "taxlienamount",
+        "amount",
+        "balance",
+      ]);
+
+      return Boolean(hasDate || hasMoney || (label && /foreclos|default|auction|lien|delinquen|pendens|trustee|sheriff/i.test(label)));
+    })
+    .sort((left, right) => {
+      const leftTime = Date.parse(pickRecordText(left, ATTOM_DISTRESS_DATE_FIELDS) ?? "");
+      const rightTime = Date.parse(pickRecordText(right, ATTOM_DISTRESS_DATE_FIELDS) ?? "");
+      return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+    });
+
+  const foreclosureCandidate = relevantCandidates.find((candidate) => {
+    const label = pickRecordText(candidate, ["eventType", "type", "eventDescription", "description", "status", "stage"]) ?? "";
+    return /foreclos|default|auction|pendens|trustee|sheriff/i.test(label);
+  }) ?? relevantCandidates[0] ?? foreclosure;
+
+  const taxCandidate = relevantCandidates.find((candidate) => {
+    const label = pickRecordText(candidate, ["eventType", "type", "eventDescription", "description", "status", "stage"]) ?? "";
+    return /tax|delinquen/i.test(label);
+  }) ?? null;
+
+  const delinquentAmount = toNumber(
+    pickRecordNumber(foreclosureCandidate, ["delinquentAmount", "delinquentamount"]),
+    pickRecordNumber(foreclosure, ["delinquentAmount", "delinquentamount"]),
+  );
+  const taxLienAmount = toNumber(
+    pickRecordNumber(taxCandidate ?? {}, ["taxLienAmount", "taxlienamount", "delinquentAmount", "delinquentamount", "amount", "balance"]),
+    pickRecordNumber(assessmentTax, ["delinquentAmount", "delinquentamount"]),
+  );
+  const openingBidAmount = toNumber(
+    pickRecordNumber(foreclosureCandidate, ["openingBidAmount", "bidAmount", "bidamount", "auctionBidAmount"]),
+    pickRecordNumber(foreclosure, ["openingBidAmount", "bidAmount", "bidamount", "auctionBidAmount"]),
+  );
+  const auctionDate = toTextValue(
+    pickRecordText(foreclosureCandidate, ["auctionDateTime", "auctiondateTime", "auctionDate", "auctiondate"]),
+    pickRecordText(foreclosure, ["auctionDateTime", "auctiondateTime", "auctionDate", "auctiondate"]),
+  );
+  const defaultDate = toTextValue(
+    pickRecordText(foreclosureCandidate, ["defaultDate", "defaultdate", "filingDate", "filingdate"]),
+    pickRecordText(foreclosure, ["defaultDate", "defaultdate", "filingDate", "filingdate"]),
+  );
+  const recordingDate = toTextValue(
+    pickRecordText(foreclosureCandidate, ["recordingDate", "recordingdate", "statusDate", "statusdate", "eventDate", "eventdate", "date"]),
+    pickRecordText(foreclosure, ["recordingDate", "recordingdate", "statusDate", "statusdate", "eventDate", "eventdate", "date"]),
+  );
+  const originalLoanDate = toTextValue(
+    pickRecordText(foreclosureCandidate, ["originalLoanDate", "originalloandate"]),
+    pickRecordText(foreclosure, ["originalLoanDate", "originalloandate"]),
+  );
+  const taxDelinquentYear = toNumber(
+    assessment.delinquentyear,
+    assessment.delinquentYear,
+    assessmentTax.delinquentyear,
+    assessmentTax.delinquentYear,
+    propertyRecord.delinquentyear,
+    propertyRecord.delinquentYear,
+  );
+  const monthlyPaymentEstimate = estimateMonthlyPrincipalAndInterest(fallbackLoanAmount);
+  const estimatedMissedPayments = delinquentAmount !== null && monthlyPaymentEstimate
+    ? Math.max(1, Math.round(delinquentAmount / monthlyPaymentEstimate))
+    : null;
+
+  const normalized: AttomDebtStatus = {
+    statusLabel: pickRecordText(foreclosureCandidate, ["eventType", "type", "eventDescription", "description", "status", "stage"]),
+    delinquentAmount,
+    taxLienAmount,
+    openingBidAmount,
+    auctionDate,
+    defaultDate,
+    recordingDate,
+    originalLoanDate,
+    taxDelinquentYear,
+    estimatedMissedPayments,
+    estimatedMonthlyPayment: monthlyPaymentEstimate,
+    estimateBasis: estimatedMissedPayments !== null
+      ? "Estimated from delinquent amount against a 30-year fixed loan payment at 7% APR on the recorded mortgage balance."
+      : null,
+    sourceEventType: pickRecordText(foreclosureCandidate, ["eventType", "type", "eventDescription", "description", "status", "stage"]),
+  };
+
+  return hasDebtStatus(normalized) ? normalized : null;
+}
+
+async function fetchAttomDebtStatus(attomId: string, fallbackLoanAmount: number | null): Promise<AttomDebtStatus | null> {
+  const attomKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomKey) return null;
+
+  const paths = [
+    `/saleshistory/expandedhistory?attomId=${encodeURIComponent(attomId)}`,
+    `/saleshistory/expandedhistory?attomid=${encodeURIComponent(attomId)}`,
+    `/saleshistory/expandedhistory?id=${encodeURIComponent(attomId)}`,
+  ];
+
+  let lastHttpError: string | null = null;
+
+  for (const path of paths) {
+    const response = await withTimeout(
+      fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0${path}`, {
+        headers: { apikey: attomKey, accept: "application/json" },
+      }),
+      DEFAULT_SOURCE_TIMEOUT,
+      "ATTOM debt status",
+    );
+
+    if (!response.ok) {
+      lastHttpError = `${path}: ${response.status}`;
+      continue;
+    }
+
+    const payload = await response.json() as Record<string, unknown>;
+    for (const propertyRecord of getAttomPropertyRecords(payload)) {
+      const normalized = normalizeAttomDebtStatus(propertyRecord, fallbackLoanAmount);
+      if (normalized) return normalized;
+    }
+  }
+
+  if (lastHttpError) throw new Error(lastHttpError);
+  return null;
+}
+
+type AttomOwnerMortgageDetails = {
+  attomId: string;
+  ownerName: string | null;
+  ownerMailingAddress: string | null;
+  mortgageLoanAmount: number | null;
+  mortgageLenderName: string | null;
+  mortgageLoanType: string | null;
+};
+
+const buildOwnerDisplayName = (ownerRecord: Record<string, unknown>) => {
+  const owner1 = toRecord(ownerRecord.owner1);
+  const owner2 = toRecord(ownerRecord.owner2);
+
+  const firstOwner = [
+    toTextValue(owner1.firstnameandmi, owner1.firstNameAndMi, owner1.firstname, owner1.firstName),
+    toTextValue(owner1.lastname, owner1.lastName),
+  ].filter(Boolean).join(" ").trim();
+
+  const secondOwner = [
+    toTextValue(owner2.firstnameandmi, owner2.firstNameAndMi, owner2.firstname, owner2.firstName),
+    toTextValue(owner2.lastname, owner2.lastName),
+  ].filter(Boolean).join(" ").trim();
+
+  return toTextValue(
+    firstOwner && secondOwner ? `${firstOwner} & ${secondOwner}` : firstOwner || secondOwner,
+    ownerRecord.name1full,
+    ownerRecord.ownerName,
+  );
+};
+
+const normalizeOwnerMortgageProperty = (propertyRecord: Record<string, unknown>): AttomOwnerMortgageDetails => {
+  const identifier = toRecord(propertyRecord.identifier);
+  const owner = toRecord(propertyRecord.owner);
+  const mortgage = toRecord(propertyRecord.mortgage);
+  const lender = toRecord(mortgage.lender);
+
+  const lenderName = toTextValue(
+    [toTextValue(lender.firstname, lender.firstName), toTextValue(lender.lastname, lender.lastName)].filter(Boolean).join(" ").trim(),
+    lender.companyname,
+    lender.companyName,
+    lender.name,
+  );
+
+  return {
+    attomId: String(identifier.attomId ?? identifier.Id ?? propertyRecord.id ?? "").trim(),
+    ownerName: buildOwnerDisplayName(owner),
+    ownerMailingAddress: toTextValue(owner.mailingaddressoneline, owner.mailingAddressOneLine),
+    mortgageLoanAmount: toNumber(mortgage.amount, toRecord(mortgage.amount).loanamt, toRecord(mortgage.amount).amount),
+    mortgageLenderName: lenderName,
+    mortgageLoanType: toTextValue(
+      mortgage.loantypecode,
+      mortgage.loanTypeCode,
+      mortgage.deedtype,
+      mortgage.deedType,
+      mortgage.interestratetype,
+      mortgage.interestRateType,
+    ),
+  };
+};
+
+async function fetchAttomOwnerMortgageDetails(opts: {
+  attomId?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}): Promise<AttomOwnerMortgageDetails | null> {
+  const attomApiKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomApiKey) throw new Error("ATTOM_API_KEY not configured");
+
+  const params = new URLSearchParams({ page: "1", pagesize: "1" });
+  if (opts.attomId) {
+    params.set("attomId", opts.attomId);
+  } else {
+    const addressLine = toTextValue(opts.address);
+    const localityLine = [toTextValue(opts.city), toTextValue(opts.state), toTextValue(opts.zip)].filter(Boolean).join(", ").replace(", ,", ",");
+
+    if (addressLine) params.set("address1", addressLine);
+    if (localityLine) {
+      params.set("address2", localityLine.replace(/, ([A-Z]{2}), (\d{5}(?:-\d{4})?)/, ", $1 $2"));
+    }
+  }
+
+  if (![...params.keys()].some((key) => key !== "page" && key !== "pagesize")) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_SOURCE_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detailmortgageowner?${params.toString()}`,
+      {
+        headers: {
+          apikey: attomApiKey,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      },
+    );
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`ATTOM owner/mortgage error ${response.status}: ${body.slice(0, 500)}`);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const properties = toRecordArray(data.property).length > 0
+      ? toRecordArray(data.property)
+      : toRecordArray(data.properties);
+
+    if (properties.length === 0) return null;
+    return normalizeOwnerMortgageProperty(properties[0]);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // ─── Opportunity classification ───────────────────────────────────────────────
@@ -589,6 +1325,72 @@ function buildOpportunityContext(opportunityType: string, loanAmount: number, es
 
 // ─── Auto-trace Strong Deals in background ───────────────────────────────────
 
+const TRACERFY_LOOKUP_URL = "https://tracerfy.com/v1/api/trace/lookup/";
+
+const toTracerfyRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const toTracerfyArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && !Array.isArray(item))
+    : [];
+
+const flattenTracerfyPhones = (persons: Record<string, unknown>[]) => {
+  const seen = new Set<string>();
+
+  return persons.flatMap((person) =>
+    toTracerfyArray(person.phones).flatMap((phone) => {
+      const number = String(phone.number ?? "").trim();
+      if (!number || seen.has(number)) return [];
+      seen.add(number);
+      return [{
+        number,
+        type: String(phone.type ?? "").trim() || undefined,
+        rank: typeof phone.rank === "number" ? phone.rank : undefined,
+        dnc: typeof phone.dnc === "boolean" ? phone.dnc : undefined,
+        carrier: String(phone.carrier ?? "").trim() || undefined,
+      }];
+    })
+  );
+};
+
+const flattenTracerfyEmails = (persons: Record<string, unknown>[]) => {
+  const seen = new Set<string>();
+
+  return persons.flatMap((person) =>
+    toTracerfyArray(person.emails).flatMap((email) => {
+      const address = String(email.email ?? email.address ?? "").trim().toLowerCase();
+      if (!address || seen.has(address)) return [];
+      seen.add(address);
+      return [{
+        address,
+        rank: typeof email.rank === "number" ? email.rank : undefined,
+      }];
+    })
+  );
+};
+
+const mapTracerfyLookup = (payload: Record<string, unknown>, fallbackOwnerName: string) => {
+  const persons = toTracerfyArray(payload.persons);
+  const owner =
+    persons.find((person) => person.property_owner === true) ??
+    persons[0] ??
+    {};
+  const splitName = [owner.first_name, owner.last_name]
+    .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+    .join(" ");
+  const splitNameCandidate = splitName || undefined;
+  const payloadName = typeof payload.name === "string" ? payload.name : undefined;
+  const ownerFullName = typeof owner.full_name === "string" ? owner.full_name : undefined;
+
+  return {
+    ownerName: String(ownerFullName ?? splitNameCandidate ?? payloadName ?? fallbackOwnerName).trim() || null,
+    phones: flattenTracerfyPhones(persons),
+    emails: flattenTracerfyEmails(persons),
+    mailingAddress: toTracerfyRecord(owner.mailing_address ?? owner.mailingAddress),
+  };
+};
+
 async function autoTraceStrongDeal(
   supabase: ReturnType<typeof createClient>,
   property: Record<string, unknown>,
@@ -615,15 +1417,15 @@ async function autoTraceStrongDeal(
     const dd = (property.distress_details as Record<string, unknown>) ?? {};
     const ownerName = String((dd.ownerName ?? dd.owner_name) ?? "");
 
-    const tracerfyResp = await fetch("https://api.tracerfy.com/v1/skiptrace", {
+    const tracerfyResp = await fetch(TRACERFY_LOOKUP_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${tracerfyKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: ownerName,
         address: property.address,
         city: property.city,
         state: property.state,
         zip: property.zip,
+        find_owner: true,
       }),
     });
 
@@ -633,13 +1435,14 @@ async function autoTraceStrongDeal(
     }
 
     const td = await tracerfyResp.json() as Record<string, unknown>;
+    const contact = mapTracerfyLookup(td, ownerName);
     await supabase.from("owner_contacts").insert({
       property_id: propertyId,
       user_id: userId,
-      owner_name: (td.name as string) ?? ownerName ?? null,
-      phones: (td.phones as unknown[]) ?? [],
-      emails: (td.emails as unknown[]) ?? [],
-      mailing_address: (td.mailingAddress as Record<string, unknown>) ?? {},
+      owner_name: contact.ownerName,
+      phones: contact.phones,
+      emails: contact.emails,
+      mailing_address: contact.mailingAddress,
       skip_trace_source: "auto_tracerfy",
       traced_at: new Date().toISOString(),
     });
@@ -689,13 +1492,58 @@ Deno.serve(async (req) => {
     const city = property.city ?? "";
     const state = property.state ?? "";
     const address = property.address ?? "";
-    const ownerName = (property.distress_details as Record<string, unknown>)?.ownerName as string | null ?? null;
+    const baseDistressDetails = toRecord(property.distress_details);
 
     const pipelineMetrics: Record<string, { status: string; durationMs: number; error?: string }> = {};
     const currentYear = new Date().getFullYear();
     const attomId = (property.attom_id as string | null) ?? null;
 
     const emptyHistoryResult = { result: [] as Array<Record<string, unknown>>, status: "skip", durationMs: 0 };
+    const ownerMortgageResult = await safeCall(
+      () => fetchAttomOwnerMortgageDetails({ attomId, address, city, state, zip }),
+      "owner_mortgage_details",
+      null,
+    );
+    pipelineMetrics.owner_mortgage_details = {
+      status: ownerMortgageResult.status,
+      durationMs: ownerMortgageResult.durationMs,
+      error: ownerMortgageResult.error,
+    };
+
+    const existingMortgage = toRecord(baseDistressDetails.mortgage);
+    const existingAvmRange = toRecord(baseDistressDetails.avmRange);
+    const existingDebtStatus = toRecord(baseDistressDetails.debtStatus);
+    const mortgageLoanAmount = ownerMortgageResult.result?.mortgageLoanAmount ?? toNumber(existingMortgage.loanAmount);
+    const mortgageLenderName = ownerMortgageResult.result?.mortgageLenderName ?? toTextValue(existingMortgage.lenderName);
+    const mortgageLoanType = ownerMortgageResult.result?.mortgageLoanType ?? toTextValue(existingMortgage.loanType);
+    const ownerName = ownerMortgageResult.result?.ownerName
+      ?? toTextValue(baseDistressDetails.ownerName, baseDistressDetails.owner_name);
+    const ownerMailingAddress = ownerMortgageResult.result?.ownerMailingAddress
+      ?? toTextValue(baseDistressDetails.ownerMailingAddress);
+    const avmHigh = toNumber(existingAvmRange.high);
+    const avmLow = toNumber(existingAvmRange.low);
+    const avmMidpoint = avmLow !== null && avmHigh !== null ? Math.round((avmLow + avmHigh) / 2) : null;
+    const estimatedValue = (() => {
+      const currentEstimatedValue = toNumber(property.estimated_value);
+      if (currentEstimatedValue !== null && currentEstimatedValue >= 1000) {
+        return currentEstimatedValue;
+      }
+      return avmMidpoint ?? currentEstimatedValue;
+    })();
+    const refreshedEquityPct = mortgageLoanAmount !== null
+      ? computeEquityPct(estimatedValue, mortgageLoanAmount)
+      : (typeof property.equity_pct === "number" ? property.equity_pct : null);
+    const baseDistressDetailsWithOwner = {
+      ...baseDistressDetails,
+      ownerName,
+      ownerMailingAddress,
+      mortgage: {
+        ...existingMortgage,
+        loanAmount: mortgageLoanAmount,
+        lenderName: mortgageLenderName,
+        loanType: mortgageLoanType,
+      },
+    };
 
     // ── Run all Layer 2 intelligence calls in parallel ──────────────────────
     const [
@@ -708,6 +1556,7 @@ Deno.serve(async (req) => {
       zillowResult,
       saleHistoryResult,
       assessmentHistoryResult,
+      debtStatusResult,
     ] = await Promise.all([
       safeCall(() => fetchMarketHeat(zip, city), "market_heat", { motivatedSellerVolume: null, investorCompetitionCpc: null, signal: "Unknown" }),
       safeCall(() => fetchNeighborhoodSentiment(city, state, zip), "neighborhood_sentiment", { snippets: [], sentiment: "Unknown" }),
@@ -718,6 +1567,7 @@ Deno.serve(async (req) => {
       safeCall(() => fetchZillowData(address, city, state), "zillow", { photos: [], listingHistory: [] }),
       attomId ? safeCall(() => fetchAttomSaleHistory(attomId), "sale_history", []) : Promise.resolve(emptyHistoryResult),
       attomId ? safeCall(() => fetchAttomAssessmentHistory(attomId), "assessment_history", []) : Promise.resolve(emptyHistoryResult),
+      attomId ? safeCall(() => fetchAttomDebtStatus(attomId, mortgageLoanAmount), "debt_status", null) : Promise.resolve({ result: null as AttomDebtStatus | null, status: "skip", durationMs: 0 }),
     ]);
 
     // Record metrics
@@ -731,6 +1581,7 @@ Deno.serve(async (req) => {
     if (attomId) {
       pipelineMetrics.sale_history = { status: saleHistoryResult.status, durationMs: saleHistoryResult.durationMs };
       pipelineMetrics.assessment_history = { status: assessmentHistoryResult.status, durationMs: assessmentHistoryResult.durationMs };
+      pipelineMetrics.debt_status = { status: debtStatusResult.status, durationMs: debtStatusResult.durationMs, error: debtStatusResult.error };
     }
 
     const intelligence = {
@@ -741,20 +1592,53 @@ Deno.serve(async (req) => {
       publicRecordsConfirm: publicRecordsResult.result,
       marketNarrative: marketNarrativeResult.result,
     };
+    const normalizedSalesHistory = saleHistoryResult.result.length > 0
+      ? saleHistoryResult.result
+      : buildFallbackSaleHistory(property);
+    const normalizedAssessmentHistory = assessmentHistoryResult.result.length > 0
+      ? assessmentHistoryResult.result
+      : buildFallbackAssessmentHistory(property);
+    const mergedDebtStatus = debtStatusResult.result
+      ? {
+          statusLabel: debtStatusResult.result.statusLabel ?? toTextValue(existingDebtStatus.statusLabel),
+          delinquentAmount: debtStatusResult.result.delinquentAmount ?? toNumber(existingDebtStatus.delinquentAmount),
+          taxLienAmount: debtStatusResult.result.taxLienAmount ?? toNumber(existingDebtStatus.taxLienAmount),
+          openingBidAmount: debtStatusResult.result.openingBidAmount ?? toNumber(existingDebtStatus.openingBidAmount, existingDebtStatus.bidAmount),
+          auctionDate: debtStatusResult.result.auctionDate ?? toTextValue(existingDebtStatus.auctionDate, existingDebtStatus.auctionDateTime),
+          defaultDate: debtStatusResult.result.defaultDate ?? toTextValue(existingDebtStatus.defaultDate),
+          recordingDate: debtStatusResult.result.recordingDate ?? toTextValue(existingDebtStatus.recordingDate, existingDebtStatus.filingDate),
+          originalLoanDate: debtStatusResult.result.originalLoanDate ?? toTextValue(existingDebtStatus.originalLoanDate),
+          taxDelinquentYear: debtStatusResult.result.taxDelinquentYear ?? toNumber(existingDebtStatus.taxDelinquentYear),
+          estimatedMissedPayments: debtStatusResult.result.estimatedMissedPayments ?? toNumber(existingDebtStatus.estimatedMissedPayments),
+          estimatedMonthlyPayment: debtStatusResult.result.estimatedMonthlyPayment ?? toNumber(existingDebtStatus.estimatedMonthlyPayment),
+          estimateBasis: debtStatusResult.result.estimateBasis ?? toTextValue(existingDebtStatus.estimateBasis),
+          sourceEventType: debtStatusResult.result.sourceEventType ?? toTextValue(existingDebtStatus.sourceEventType),
+        }
+      : (Object.keys(existingDebtStatus).length > 0 ? existingDebtStatus : null);
+    const distressDetails = {
+      ...baseDistressDetailsWithOwner,
+      ...(mergedDebtStatus ? { debtStatus: mergedDebtStatus } : {}),
+    };
+    const propertyForAnalysis = {
+      ...property,
+      estimated_value: estimatedValue,
+      distress_details: distressDetails,
+      equity_pct: refreshedEquityPct,
+    };
 
-    // ── Classify opportunity type (deterministic, before GPT) ───────────────
-    const dd = (property.distress_details as Record<string, unknown>) ?? {};
-    const mtg = (dd.mortgage as Record<string, unknown>) ?? {};
+    // ?? Classify opportunity type (deterministic, before GPT) ???????????????
+    const dd = toRecord(distressDetails);
+    const mtg = toRecord(dd.mortgage);
     const loanAmt = typeof mtg.loanAmount === "number" ? mtg.loanAmount : 0;
-    const estValue = typeof property.estimated_value === "number" ? property.estimated_value : 0;
-    const equityPct = typeof property.equity_pct === "number" ? property.equity_pct : 0;
+    const estValue = typeof estimatedValue === "number" ? estimatedValue : 0;
+    const equityPct = typeof refreshedEquityPct === "number" ? refreshedEquityPct : 0;
     const distressTypes = (property.distress_types as string[]) ?? [];
     const opportunityType = classifyOpportunity({ loanAmount: loanAmt, estimatedValue: estValue, equityPct, distressTypes });
     const opportunityContext = buildOpportunityContext(opportunityType, loanAmt, estValue);
 
-    // ── Adversarial kill pass (parallel with Layer 2, using deal killer signals) ──
+    // ?? Adversarial kill pass (parallel with Layer 2, using deal killer signals) ??
     const adversarialResult = await safeCall(
-      () => runAdversarialPass(property, dealKillersResult.result, property.equity_pct),
+      () => runAdversarialPass(propertyForAnalysis, dealKillersResult.result, refreshedEquityPct),
       "adversarial_pass",
       []
     );
@@ -774,7 +1658,18 @@ Deno.serve(async (req) => {
     } else {
       // ── Main GPT-4o scoring ──────────────────────────────────────────────
       const claudeCall = await safeCall(
-        () => scoreDealWithGPT(property, intelligence, hardKillSignals, opportunityType, opportunityContext),
+        () => scoreDealWithGPT(
+          propertyForAnalysis,
+          intelligence,
+          hardKillSignals,
+          opportunityType,
+          opportunityContext,
+          {
+            sales: normalizedSalesHistory,
+            assessments: normalizedAssessmentHistory,
+            listing: zillowResult.result.listingHistory,
+          },
+        ),
         "gpt_scoring",
         null
       );
@@ -796,6 +1691,9 @@ Deno.serve(async (req) => {
       distress_analysis: claudeResult?.distress_analysis ?? "",
       equity_assessment: claudeResult?.equity_assessment ?? "",
       market_heat_assessment: claudeResult?.market_heat_assessment ?? "",
+      history_summary: claudeResult?.history_summary ?? "",
+      urgency_summary: claudeResult?.urgency_summary ?? "",
+      next_step: claudeResult?.next_step ?? "",
       risks: claudeResult?.risks ?? hardKills.map((k) => k.evidence),
       opportunities: claudeResult?.opportunities ?? [],
       opportunity_type: opportunityType,
@@ -804,8 +1702,8 @@ Deno.serve(async (req) => {
       intelligence,
       photos: zillowResult.result.photos,
       history: {
-        sales: saleHistoryResult.result,
-        assessments: assessmentHistoryResult.result,
+        sales: normalizedSalesHistory,
+        assessments: normalizedAssessmentHistory,
         listing: zillowResult.result.listingHistory,
       },
       pipelineMetrics: { sources: pipelineMetrics },
@@ -817,6 +1715,9 @@ Deno.serve(async (req) => {
       .update({
         deal_score: finalScore,
         deal_verdict: finalVerdict,
+        estimated_value: estimatedValue,
+        distress_details: distressDetails,
+        equity_pct: refreshedEquityPct,
         report_data: reportData,
         status: "complete",
       })
@@ -835,9 +1736,9 @@ Deno.serve(async (req) => {
     // Fire auto-trace for Strong Deals in background (no credit deduction)
     const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
     if (edgeRuntime?.waitUntil) {
-      edgeRuntime.waitUntil(autoTraceStrongDeal(supabase, property, finalVerdict));
+      edgeRuntime.waitUntil(autoTraceStrongDeal(supabase, propertyForAnalysis, finalVerdict));
     } else {
-      autoTraceStrongDeal(supabase, property, finalVerdict).catch(() => {});
+      autoTraceStrongDeal(supabase, propertyForAnalysis, finalVerdict).catch(() => {});
     }
 
     return new Response(JSON.stringify({ ok: true, deal_score: finalScore, deal_verdict: finalVerdict }), {

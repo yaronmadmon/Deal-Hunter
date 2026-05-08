@@ -10,16 +10,33 @@ export interface SubscriptionInfo {
   subscriptionEnd: string | null;
 }
 
+export interface UserProfile {
+  id: string;
+  credits: number;
+  is_admin: boolean;
+  email: string | null;
+}
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     subscribed: false,
     tier: "free",
     subscriptionEnd: null,
   });
   const [subLoading, setSubLoading] = useState(false);
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, credits, is_admin, email")
+      .eq("id", userId)
+      .maybeSingle();
+    if (data) setProfile(data as UserProfile);
+  }, []);
 
   const checkSubscription = useCallback(async () => {
     try {
@@ -46,8 +63,10 @@ export const useAuth = () => {
         setLoading(false);
 
         if (event === "SIGNED_IN" && session?.user) {
-          // Check subscription after sign in
-          setTimeout(() => checkSubscription(), 500);
+          setTimeout(() => {
+            checkSubscription();
+            fetchProfile(session.user.id);
+          }, 500);
 
           const welcomeKey = `welcome_email_sent_${session.user.id}`;
           const createdAt = new Date(session.user.created_at).getTime();
@@ -67,6 +86,7 @@ export const useAuth = () => {
 
         if (event === "SIGNED_OUT") {
           setSubscription({ subscribed: false, tier: "free", subscriptionEnd: null });
+          setProfile(null);
         }
       }
     );
@@ -77,18 +97,22 @@ export const useAuth = () => {
       setLoading(false);
       if (session?.user) {
         checkSubscription();
+        fetchProfile(session.user.id);
       }
     });
 
     return () => authSub.unsubscribe();
-  }, [checkSubscription]);
+  }, [checkSubscription, fetchProfile]);
 
   // Periodic refresh every 60s
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(checkSubscription, 60_000);
+    const interval = setInterval(() => {
+      checkSubscription();
+      fetchProfile(user.id);
+    }, 60_000);
     return () => clearInterval(interval);
-  }, [user, checkSubscription]);
+  }, [user, checkSubscription, fetchProfile]);
 
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -104,5 +128,5 @@ export const useAuth = () => {
     await supabase.auth.signOut();
   };
 
-  return { user, session, loading, signUp, signIn, signOut, subscription, subLoading, checkSubscription };
+  return { user, session, loading, profile, signUp, signIn, signOut, subscription, subLoading, checkSubscription };
 };

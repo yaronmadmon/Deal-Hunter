@@ -7,6 +7,170 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const TRACERFY_LOOKUP_URL = "https://tracerfy.com/v1/api/trace/lookup/";
+
+type JsonObject = Record<string, unknown>;
+type NormalizedContact = {
+  ownerName: string | null;
+  phones: Array<{ number: string; type?: string; rank?: number; dnc?: boolean; carrier?: string }>;
+  emails: Array<{ address: string; rank?: number }>;
+  mailingAddress: JsonObject;
+  hit: boolean;
+};
+
+const toRecord = (value: unknown): JsonObject =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as JsonObject : {};
+
+const toArray = (value: unknown): JsonObject[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is JsonObject => !!item && typeof item === "object" && !Array.isArray(item))
+    : [];
+
+const normalizePhones = (persons: JsonObject[]) => {
+  const seen = new Set<string>();
+
+  return persons.flatMap((person) =>
+    toArray(person.phones).flatMap((phone) => {
+      const number = String(phone.number ?? "").trim();
+      if (!number || seen.has(number)) return [];
+      seen.add(number);
+      return [{
+        number,
+        type: String(phone.type ?? "").trim() || undefined,
+        rank: typeof phone.rank === "number" ? phone.rank : undefined,
+        dnc: typeof phone.dnc === "boolean" ? phone.dnc : undefined,
+        carrier: String(phone.carrier ?? "").trim() || undefined,
+      }];
+    })
+  );
+};
+
+const normalizeEmails = (persons: JsonObject[]) => {
+  const seen = new Set<string>();
+
+  return persons.flatMap((person) =>
+    toArray(person.emails).flatMap((email) => {
+      const address = String(email.email ?? email.address ?? "").trim().toLowerCase();
+      if (!address || seen.has(address)) return [];
+      seen.add(address);
+      return [{
+        address,
+        rank: typeof email.rank === "number" ? email.rank : undefined,
+      }];
+    })
+  );
+};
+
+const BUSINESS_INDICATORS = [
+  "llc",
+  "inc",
+  "corp",
+  "co",
+  "company",
+  "trust",
+  "holdings",
+  "partners",
+  "properties",
+  "ventures",
+  "estate",
+];
+
+const looksLikeBusinessEntity = (name: string | null) => {
+  if (!name) return false;
+  const normalized = name.toLowerCase();
+  return BUSINESS_INDICATORS.some((token) => normalized.includes(token));
+};
+
+const splitOwnerName = (fullName: string | null) => {
+  if (!fullName || looksLikeBusinessEntity(fullName)) return null;
+
+  const cleaned = fullName
+    .replace(/[,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned || cleaned.includes("&")) return null;
+
+  const parts = cleaned.split(" ").filter(Boolean);
+  if (parts.length < 2 || parts.length > 4) return null;
+
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    lastName: parts[parts.length - 1],
+  };
+};
+
+const isSparseContact = (contact: Pick<NormalizedContact, "phones" | "emails">) =>
+  contact.phones.length < 2 || contact.emails.length === 0;
+
+const mergeContacts = (primary: NormalizedContact, secondary: NormalizedContact): NormalizedContact => {
+  const phoneMap = new Map<string, { number: string; type?: string; rank?: number; dnc?: boolean; carrier?: string }>();
+  for (const phone of [...primary.phones, ...secondary.phones]) {
+    if (!phone.number) continue;
+    if (!phoneMap.has(phone.number)) phoneMap.set(phone.number, phone);
+  }
+
+  const emailMap = new Map<string, { address: string; rank?: number }>();
+  for (const email of [...primary.emails, ...secondary.emails]) {
+    if (!email.address) continue;
+    if (!emailMap.has(email.address)) emailMap.set(email.address, email);
+  }
+
+  return {
+    ownerName: secondary.ownerName ?? primary.ownerName,
+    phones: Array.from(phoneMap.values()).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)),
+    emails: Array.from(emailMap.values()).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)),
+    mailingAddress: Object.keys(primary.mailingAddress).length > 0 ? primary.mailingAddress : secondary.mailingAddress,
+    hit: primary.hit || secondary.hit,
+  };
+};
+
+const extractTracerfyContact = (payload: JsonObject, fallbackOwnerName: string): NormalizedContact => {
+  const persons = toArray(payload.persons);
+  const owner =
+    persons.find((person) => person.property_owner === true) ??
+    persons[0] ??
+    {};
+  const mailingAddress = toRecord(owner.mailing_address ?? owner.mailingAddress);
+  const splitName = [owner.first_name, owner.last_name]
+    .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+    .join(" ");
+  const splitNameCandidate = splitName || undefined;
+  const payloadName = typeof payload.name === "string" ? payload.name : undefined;
+  const ownerFullName = typeof owner.full_name === "string" ? owner.full_name : undefined;
+  const nameCandidate = ownerFullName ?? splitNameCandidate ?? payloadName ?? fallbackOwnerName;
+  const fullName = String(nameCandidate).trim() || null;
+
+  return {
+    ownerName: fullName,
+    phones: normalizePhones(persons),
+    emails: normalizeEmails(persons),
+    mailingAddress,
+    hit: payload.hit !== false && persons.length > 0,
+  };
+};
+
+const callTracerfyLookup = async (
+  tracerfyKey: string,
+  body: Record<string, unknown>,
+): Promise<JsonObject> => {
+  const tracerfyResponse = await fetch(TRACERFY_LOOKUP_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${tracerfyKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!tracerfyResponse.ok) {
+    const responseBody = await tracerfyResponse.text().catch(() => "");
+    throw new Error(`Tracerfy API ${tracerfyResponse.status}: ${responseBody.slice(0, 300)}`);
+  }
+
+  return await tracerfyResponse.json();
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -38,7 +202,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { propertyId } = await req.json();
+    const { propertyId, forceRefresh } = await req.json();
     if (!propertyId) {
       return new Response(JSON.stringify({ error: "propertyId is required" }), {
         status: 400,
@@ -54,9 +218,9 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("property_id", propertyId)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (existing) {
+    if (existing && !forceRefresh) {
       // Return cached result — no credit charge
       return new Response(JSON.stringify({ ok: true, cached: true, contact: existing }), {
         status: 200,
@@ -106,37 +270,42 @@ Deno.serve(async (req) => {
     }
 
     // Call Tracerfy API
-    let tracerfyData: Record<string, unknown> = {};
+    let ownerLookupContact: NormalizedContact | null = null;
+    let targetedLookupContact: NormalizedContact | null = null;
     let tracerfyFailed = false;
 
     try {
-      const tracerfyResponse = await fetch("https://api.tracerfy.com/v1/skiptrace", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${tracerfyKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: ownerName,
+      const ownerLookupPayload = await callTracerfyLookup(tracerfyKey, {
+        address: property.address,
+        city: property.city,
+        state: property.state,
+        zip: property.zip,
+        find_owner: true,
+      });
+      ownerLookupContact = extractTracerfyContact(ownerLookupPayload, ownerName);
+
+      const targetedName = splitOwnerName(ownerLookupContact.ownerName ?? ownerName);
+      if (targetedName && isSparseContact(ownerLookupContact)) {
+        const targetedLookupPayload = await callTracerfyLookup(tracerfyKey, {
           address: property.address,
           city: property.city,
           state: property.state,
           zip: property.zip,
-        }),
-      });
-
-      if (!tracerfyResponse.ok) {
-        const body = await tracerfyResponse.text().catch(() => "");
-        throw new Error(`Tracerfy API ${tracerfyResponse.status}: ${body.slice(0, 300)}`);
+          find_owner: false,
+          first_name: targetedName.firstName,
+          last_name: targetedName.lastName,
+        });
+        targetedLookupContact = extractTracerfyContact(
+          targetedLookupPayload,
+          ownerLookupContact.ownerName ?? ownerName,
+        );
       }
-
-      tracerfyData = await tracerfyResponse.json();
     } catch (tracerfyError) {
       const errMsg = tracerfyError instanceof Error ? tracerfyError.message : String(tracerfyError);
       console.error("[skip-trace] Tracerfy call failed:", errMsg);
       tracerfyFailed = true;
 
-      // Refund the credit — read current balance, add 1 back
+      // Refund the credit -- read current balance, add 1 back
       try {
         const { data: curr } = await supabase
           .from("profiles")
@@ -170,21 +339,39 @@ Deno.serve(async (req) => {
     }
 
     // Map Tracerfy response to our schema
-    // Tracerfy returns: { phones: [{number, type, confidence}], emails: [{address, confidence}], mailingAddress: {...} }
+    // Tracerfy instant lookup returns `persons[]`; we collapse those into one contact row for the property.
+    const freshContact = ownerLookupContact
+      ? (targetedLookupContact ? mergeContacts(ownerLookupContact, targetedLookupContact) : ownerLookupContact)
+      : extractTracerfyContact({}, ownerName);
+    const existingContact = existing
+      ? {
+          ownerName: typeof existing.owner_name === "string" ? existing.owner_name : null,
+          phones: Array.isArray(existing.phones) ? existing.phones as NormalizedContact["phones"] : [],
+          emails: Array.isArray(existing.emails) ? existing.emails as NormalizedContact["emails"] : [],
+          mailingAddress: toRecord(existing.mailing_address),
+          hit: true,
+        }
+      : null;
+    const contact = existingContact ? mergeContacts(existingContact, freshContact) : freshContact;
     const contactRow = {
       property_id: propertyId,
       user_id: user.id,
-      owner_name: (tracerfyData.name as string) ?? ownerName ?? null,
-      phones: (tracerfyData.phones as unknown[]) ?? [],
-      emails: (tracerfyData.emails as unknown[]) ?? [],
-      mailing_address: (tracerfyData.mailingAddress as Record<string, unknown>) ?? {},
-      skip_trace_source: "tracerfy",
+      owner_name: contact.ownerName,
+      phones: contact.phones,
+      emails: contact.emails,
+      mailing_address: contact.mailingAddress,
+      skip_trace_source: targetedLookupContact ? "tracerfy_enriched" : "tracerfy",
       traced_at: new Date().toISOString(),
     };
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("owner_contacts")
-      .insert(contactRow)
+    const contactQuery = existing?.id
+      ? supabase
+          .from("owner_contacts")
+          .update(contactRow)
+          .eq("id", existing.id)
+      : supabase.from("owner_contacts").insert(contactRow);
+
+    const { data: inserted, error: insertError } = await contactQuery
       .select()
       .single();
 

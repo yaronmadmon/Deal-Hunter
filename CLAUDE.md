@@ -64,26 +64,38 @@ TWITTER_BEARER_TOKEN
 ```
 src/
   pages/
-    DealSearch.tsx       # /dashboard — main property search + results grid
-    PropertyDetail.tsx   # /property/:id — AI deal report + owner contact + ROI calc
+    DealSearch.tsx       # /dashboard — campaign-first search hub; sidebar of past searches, results grouped by verdict
+    PropertyDetail.tsx   # /property/:id — AI deal report + quick-action bar + owner contact + ROI calc + SMS + AI coaching
     DealPipeline.tsx     # /pipeline — kanban CRM (7 stages, dropdown-based)
     Processing.tsx       # /processing/:id — realtime batch progress (watches properties table)
+    Inbox.tsx            # /inbox — SMS inbox: all threads, unread counts, AI draft approval
+    FollowUpQueue.tsx    # /follow-ups — AI-scheduled follow-up queue (overdue/today/upcoming)
+    Meetings.tsx         # /meetings — booked meetings from SMS conversations; calendar export
+    TodayView.tsx        # /today — daily operational summary: replies waiting, follow-ups due, meetings today
+    MonitoredAreas.tsx   # /monitored — monitored-search schedule management
     AuctionCalendar.tsx  # /auctions — upcoming foreclosure/sheriff/tax deed auctions
     BuyCredits.tsx       # /buy-credits — skip trace credit packs
     Pricing.tsx          # /pricing — Free / Starter $29 / Pro $79
     Index.tsx            # / — Deal Hunter landing page
     # Legacy Gold Rush pages kept: SampleReport, Auth, Settings, etc.
   components/
-    deal/                # 16 Deal Hunter components (see list below)
+    deal/                # 20 Deal Hunter components (see list below)
     report/              # Gold Rush report components — ScoreRing + CollapsibleSection reused
     admin/               # Admin dashboard components
     ui/                  # shadcn-ui primitives (45 components, unchanged)
-  hooks/                 # useAuth, useAdmin, usePageTracking
+  hooks/
+    useAuth.ts           # { user, loading, profile, subscription }
+    useAdmin.ts          # admin guard
+    useInboxCount.ts     # live unread SMS thread count (realtime subscription)
+    useFollowUpCount.ts  # overdue follow-up count
+    usePageTracking.ts   # analytics
   integrations/supabase/
     client.ts            # Supabase singleton
     types.ts             # Auto-generated DB types (regen after migrations)
   lib/
     subscriptionTiers.ts # Tier config — Starter $29, Pro $79, legacy IDs kept
+    monitoring.ts        # Monitoring helpers
+    property-history.ts  # Property history helpers
 supabase/
   config.toml            # verify_jwt = false for all functions
   functions/             # 25+ edge functions
@@ -94,21 +106,23 @@ supabase/
 | Component | Purpose |
 |-----------|---------|
 | `DealScoreBadge.tsx` | Score badge — green ≥70 / yellow 40-69 / red <40 |
-| `DistressTypeBadge.tsx` | Distress type tags — amber/red/purple/orange by type |
+| `DistressTypeBadge.tsx` | Distress type tags — calmer palette: violet=tax lien, blue=foreclosure |
 | `DealKillerBadge.tsx` | Hard kill signal display with evidence text |
 | `PropertyCard.tsx` | Card in DealSearch grid — Zillow photo header, owner name, LTV color, opportunity badge, contact buttons (phone/SMS/email when traced), "Get Owner Info" skip-trace button, Street View link, AI Outreach button |
-| `SearchFilters.tsx` | Left sidebar — location, distress types, price/equity/type filters + saved searches with Monitor toggle and last-checked timestamp |
+| `SearchFilters.tsx` | Filter panel — location, distress types, price/equity/type filters + saved searches with Monitor toggle and last-checked timestamp |
 | `PropertyInfoSection.tsx` | Beds/baths/sqft/value grid + photo carousel (if available) |
 | `DistressDetailsSection.tsx` | Renders `distress_details` JSONB as human-readable grid |
 | `AIAnalysisSection.tsx` | score_rationale, distress_analysis, equity_assessment, opportunity_analysis, opps/risks; handles mixed string/object Serper items via `toStr()` |
 | `IntelligenceSection.tsx` | Market heat, neighborhood sentiment, owner research, public records; handles mixed string/object snippets via `toText()` |
 | `OwnerContactSection.tsx` | Skip trace CTA or revealed phone/email/address with copy buttons |
-| `ContactLogSection.tsx` | Contact history timeline + add-contact form |
+| `ContactLogSection.tsx` | Contact history timeline + add-contact form; triggers `schedule-followup` after each log entry |
 | `ROICalculator.tsx` | 70%-rule pre-filled calculator; net profit, ROI%, max allowable offer |
-| `PipelineCard.tsx` | Kanban card with stage dropdown |
+| `PipelineCard.tsx` | Kanban card — stage dropdown, notes display + inline edit |
 | `KanbanColumn.tsx` | One kanban column with header + card list |
-| `OutreachSection.tsx` | AI-generated email/SMS outreach drafts — Tabs UI, calls `generate-outreach`, Copy button, mailto/sms deep links |
+| `OutreachSection.tsx` | AI-generated email/SMS outreach drafts — Tabs UI, calls `generate-outreach`, Copy button, mailto/sms deep links; SMS gets Twilio compliance footer |
 | `PropertyHistorySection.tsx` | Transaction, tax assessment, and listing price history from `report_data.history` |
+| `SMSConversationSection.tsx` | Full SMS thread — message bubbles, AI draft approval (send/dismiss/edit), Summarize button (calls generate-outreach summary type), manual reply input |
+| `AISalesCoachingSection.tsx` | Collapsible coaching panel — seller motivation, hesitation signals, recommended tone, next best action, equity-based negotiation tip (4 tiers by equity %), objection handling |
 
 ---
 
@@ -177,12 +191,17 @@ Processing page (/processing/:searchBatchId):
 ### Key Deal Hunter edge functions
 | Function | Purpose |
 |----------|---------|
-| `start-property-search` | Validates quota, generates searchBatchId, triggers fetch async |
-| `run-property-fetch` | ATTOM Layer 1 → bulk upsert → triggers analyze per property |
+| `start-property-search` | Validates quota, generates searchBatchId, creates `search_campaigns` row, triggers fetch async |
+| `run-property-fetch` | ATTOM Layer 1 → bulk upsert → stamps `campaign_id` on each property → triggers analyze per property |
 | `run-deal-analyze` | Layer 2 intelligence + adversarial pass + Claude scoring + opportunity classification + history fetch + auto-trace Strong Deals |
-| `skip-trace` | Checks cache → deducts credit → Tracerfy API → stores in owner_contacts |
-| `generate-outreach` | GPT-4o email/SMS draft from deal data — free, no credits. Input: `{propertyId, outreachType}` |
-| `run-monitored-searches` | Cron-triggered (hourly): re-runs due monitored saved searches, finds new ATTOM properties, triggers analyze, emails alert |
+| `skip-trace` | Checks cache → deducts credit → Tracerfy API (`tracerfy.com/v1/api/trace/lookup/`) → stores in owner_contacts |
+| `generate-outreach` | GPT-4o email/SMS/summary drafts — free, no credits. Input: `{propertyId, outreachType, messages?}`. SMS gets Twilio A2P compliance footer. `outreachType="summary"` returns 2-3 sentence CRM summary of a conversation. |
+| `receive-sms` | Twilio inbound webhook — stores AI draft in `sms_threads.ai_draft`, increments `unread_count`, does NOT auto-send; books meetings automatically when homeowner confirms a time |
+| `send-sms` | Sends via Twilio, clears `ai_draft`, resets `unread_count` to 0 |
+| `schedule-followup` | AI follow-up scheduling — reads contact history + SMS message/reply counts → sets `next_action`, `follow_up_at`, `next_step_brief`, `urgency_flag` on `pipeline_deals` |
+| `refresh-owner-basics` | Lightweight ATTOM re-fetch for missing owner/mortgage fields |
+| `run-followup-agent` | Processes follow-up queue automation |
+| `run-monitored-searches` | Cron-triggered (every 15 min): re-runs due monitored saved searches, finds new ATTOM properties, triggers analyze, emails alert |
 | `refresh-auction-feed` | Serper auction queries → parses with GPT-4o-mini → live_feed_snapshots |
 | `timeout-watchdog` | Marks stuck properties (searching/scoring >5min) as failed |
 
@@ -217,11 +236,15 @@ Processing page (/processing/:searchBatchId):
 ### Deal Hunter tables (added 2026-04-22)
 | Table | Purpose |
 |-------|---------|
-| `properties` | Core deal record — ATTOM data + AI score + report_data JSONB |
-| `pipeline_deals` | CRM tracking — stage (new/contacted/negotiating/won/dead), priority |
+| `properties` | Core deal record — ATTOM data + AI score + report_data JSONB. Added: `campaign_id` FK → `search_campaigns` |
+| `search_campaigns` | Named search batches — `name` (e.g. "Ocean County NJ — May 8"), `filters` JSONB, `property_count`. One row per search run. |
+| `pipeline_deals` | CRM tracking — stage, priority, notes. Added: `follow_up_at`, `follow_up_status`, `next_action`, `next_step_brief`, `urgency_flag`, `tags` |
 | `owner_contacts` | Skip trace results — phones, emails, mailing address (UNIQUE per property+user) |
 | `contact_log` | Immutable contact history — call/email/sms/visit/note + outcome |
-| `saved_searches` | Saved filter presets for email alerts |
+| `saved_searches` | Saved filter presets for email alerts + monitoring schedule |
+| `sms_threads` | One row per property+user SMS conversation — `homeowner_phone`, `status`, `ai_draft` (pending AI reply awaiting approval), `unread_count`, `last_inbound_at` |
+| `sms_messages` | Individual SMS messages — `thread_id`, `direction` (inbound/outbound), `body`, `created_at` |
+| `meetings` | Booked meetings detected from SMS conversations — `property_id`, `homeowner_name`, `scheduled_at`, `status` (pending/confirmed/cancelled) |
 
 ### Legacy Gold Rush tables (unchanged — keep for existing users)
 | Table | Purpose |
@@ -264,10 +287,15 @@ Skip trace credit packs (one-time, never expire):
 |-------|------|-------|
 | `/` | `Index.tsx` | Deal Hunter landing page |
 | `/auth` | `Auth.tsx` | Login/signup (unchanged) |
-| `/dashboard` | `DealSearch.tsx` | Main search + property grid |
+| `/dashboard` | `DealSearch.tsx` | Campaign-first search hub — sidebar of named search batches, results grouped by verdict |
 | `/processing/:id` | `Processing.tsx` | Batch progress (watches `properties` by `search_batch_id`) |
-| `/property/:id` | `PropertyDetail.tsx` | Full deal report + skip trace + ROI calc |
+| `/property/:id` | `PropertyDetail.tsx` | Full deal report + quick-action bar + skip trace + ROI calc + SMS conversation + AI coaching |
 | `/pipeline` | `DealPipeline.tsx` | Kanban CRM |
+| `/inbox` | `Inbox.tsx` | SMS inbox — all threads with unread counts and AI draft approval |
+| `/follow-ups` | `FollowUpQueue.tsx` | AI-scheduled follow-up queue — overdue / due today / upcoming |
+| `/meetings` | `Meetings.tsx` | Booked meetings from SMS conversations — Google Calendar + .ics export |
+| `/today` | `TodayView.tsx` | Daily operational summary — replies waiting, follow-ups due, meetings today |
+| `/monitored` | `MonitoredAreas.tsx` | Monitored-search schedule management |
 | `/auctions` | `AuctionCalendar.tsx` | Foreclosure/sheriff/tax deed auctions |
 | `/buy-credits` | `BuyCredits.tsx` | Skip trace credit packs |
 | `/pricing` | `Pricing.tsx` | Subscription plans |
@@ -425,6 +453,42 @@ For full Gold Rush pipeline documentation (scoring gates, source list, adversari
 ---
 
 ## Changelog
+
+### 2026-05-08 — CRM Workflow, SMS Inbox, Campaign-First Search
+
+**New tables/columns:**
+- `search_campaigns` — named search batches; `properties.campaign_id` FK added
+- `pipeline_deals` — added `follow_up_at`, `follow_up_status`, `next_action`, `next_step_brief`, `urgency_flag`, `tags`, `notes` columns
+- `sms_threads` — added `ai_draft`, `unread_count`, `last_inbound_at`
+- `sms_messages`, `meetings` — new tables for SMS thread messages and booked meetings
+
+**New edge functions:**
+- `receive-sms` — Twilio inbound; stores AI draft (does NOT auto-send), increments unread, detects + books meetings
+- `send-sms` — sends via Twilio, clears ai_draft + unread_count
+- `schedule-followup` — AI follow-up scheduling with SMS escalation rules
+- `refresh-owner-basics` — lightweight ATTOM re-fetch for owner/mortgage fields
+- `run-followup-agent` — follow-up queue automation
+
+**Updated edge functions:**
+- `start-property-search` — creates `search_campaigns` row, returns `campaignId`
+- `run-property-fetch` — stamps `campaign_id` on each property
+- `generate-outreach` — added `summary` type (2-3 sentence CRM summary from conversation); SMS gets Twilio A2P compliance footer
+
+**New frontend pages:** `Inbox`, `FollowUpQueue`, `Meetings`, `TodayView`, `MonitoredAreas`
+
+**New components:** `SMSConversationSection` (AI draft approval, Summarize), `AISalesCoachingSection` (equity-based tips, 4 tiers)
+
+**DealSearch redesign:** Campaign-first layout — left sidebar lists named past searches, main area shows results grouped by verdict (Analyzing → Strong Deal → Investigate → Pass). Pass collapsed by default. Engagement filter pills, text search, sort controls.
+
+**PropertyDetail improvements:** Quick-action bar (stage selector + scroll-to Log Contact/SMS/AI Draft), overdue follow-up alert banner, meeting prep card with distress-type talking points, AI sales coaching panel after first contact.
+
+**FollowUpQueue:** Summary header chips showing overdue/due today/upcoming counts.
+
+**AppNav:** Inbox nav item with live unread badge (`useInboxCount` realtime hook).
+
+**Design:** Monochrome primary palette — black/white CTAs, calmer distress badges (violet=tax lien, blue=foreclosure).
+
+---
 
 ### 2026-04-22 — Gold Rush → Deal Hunter Conversion
 

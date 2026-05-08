@@ -1,5 +1,7 @@
 import { Bed, Bath, Maximize2, Home, Calendar, DollarSign } from "lucide-react";
 
+import { formatLotSize } from "@/lib/property-history";
+
 interface Props {
   property: {
     property_type?: string | null;
@@ -14,6 +16,7 @@ interface Props {
     city?: string | null;
     state?: string | null;
     zip?: string | null;
+    distress_details?: Record<string, any> | null;
     report_data?: { photos?: string[] } | null;
   };
 }
@@ -23,7 +26,7 @@ const fmt = (n: number) =>
 
 const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: string }) => (
   <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3">
-    <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
     <div>
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="text-sm font-medium text-foreground">{value}</p>
@@ -33,36 +36,26 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value
 
 export const PropertyInfoSection = ({ property }: Props) => {
   const photos = property.report_data?.photos;
+  const lotSize = formatLotSize(property.distress_details);
 
   return (
     <div className="space-y-4">
       {photos && photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {photos.slice(0, 6).map((url, i) => (
-            <img key={i} src={url} alt={`Property photo ${i + 1}`} className="rounded-lg object-cover aspect-video w-full" />
+            <img key={i} src={url} alt={`Property photo ${i + 1}`} className="aspect-video w-full rounded-lg object-cover" />
           ))}
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {property.property_type && (
-          <InfoRow icon={Home} label="Type" value={property.property_type} />
-        )}
-        {property.beds && (
-          <InfoRow icon={Bed} label="Bedrooms" value={String(property.beds)} />
-        )}
-        {property.baths && (
-          <InfoRow icon={Bath} label="Bathrooms" value={String(property.baths)} />
-        )}
-        {property.sqft && (
-          <InfoRow icon={Maximize2} label="Sq Ft" value={property.sqft.toLocaleString()} />
-        )}
-        {property.estimated_value && (
-          <InfoRow icon={DollarSign} label="Est. Value" value={fmt(property.estimated_value)} />
-        )}
-        {property.last_sale_price && (
-          <InfoRow icon={DollarSign} label="Last Sale" value={fmt(property.last_sale_price)} />
-        )}
+        {property.property_type && <InfoRow icon={Home} label="Type" value={property.property_type} />}
+        {property.beds && <InfoRow icon={Bed} label="Bedrooms" value={String(property.beds)} />}
+        {property.baths && <InfoRow icon={Bath} label="Bathrooms" value={String(property.baths)} />}
+        {property.sqft && <InfoRow icon={Maximize2} label="Sq Ft" value={property.sqft.toLocaleString()} />}
+        {lotSize !== "Unavailable" && <InfoRow icon={Maximize2} label="Lot Size" value={lotSize} />}
+        {property.estimated_value && <InfoRow icon={DollarSign} label="Est. Value" value={fmt(property.estimated_value)} />}
+        {property.last_sale_price && <InfoRow icon={DollarSign} label="Last Sale" value={fmt(property.last_sale_price)} />}
         {property.last_sale_date && (
           <InfoRow icon={Calendar} label="Sale Date" value={new Date(property.last_sale_date).toLocaleDateString()} />
         )}

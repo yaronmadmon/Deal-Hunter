@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type EmailType = "welcome" | "analysis_complete" | "payment_confirmation" | "subscription_activated" | "new_deal_alert";
+type EmailType = "welcome" | "analysis_complete" | "payment_confirmation" | "subscription_activated" | "new_deal_alert" | "follow_up_digest";
 interface EmailRequest { type: EmailType; to: string; data?: Record<string, unknown>; }
 
 const toPlain = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/s+/g, " ").trim();
@@ -39,6 +39,25 @@ const templates: Record<EmailType, (d: Record<string, unknown>) => { subject: st
     return {
       subject: `New deals found in ${city}${state ? ", " + state : ""} — ${count} propert${count === 1 ? "y" : "ies"} match your search`,
       html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px"><h1>New Deals Found!</h1><p>${count} new propert${count === 1 ? "y" : "ies"} matched your saved search for <strong>${city}${state ? ", " + state : ""}</strong>.</p><table style="width:100%;border-collapse:collapse;margin:16px 0">${propHtml}</table><a href="${appUrl}/dashboard" style="display:inline-block;background:#d4af37;color:#000;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;margin-top:8px">View All Deals</a><p style="color:#999;font-size:12px;margin-top:32px"><a href="${appUrl}/dashboard" style="color:#999">Manage saved searches</a> &mdash; Deal Hunter</p></div>`,
+    };
+  },
+  follow_up_digest: (d) => {
+    const appUrl = (d?.appUrl as string|undefined) ?? "https://deal-hunter-beta.vercel.app";
+    const overdueDeals = (d?.overdueDeals as Array<{ id: string; address: string; next_action: string; next_step_brief: string }>|undefined) ?? [];
+    const dueTodayDeals = (d?.dueTodayDeals as Array<{ id: string; address: string; next_action: string }>|undefined) ?? [];
+    const actionLabel: Record<string, string> = { call: "Call", text: "Text", email: "Email", letter: "Send Letter", pause: "Pause" };
+    const rowHtml = (items: typeof overdueDeals, label: string) =>
+      items.map((p) =>
+        `<tr><td style="padding:10px 8px;border-bottom:1px solid #eee"><strong>${p.address}</strong><br/><span style="font-size:12px;color:#888">${label} &bull; Next: <strong>${actionLabel[p.next_action] ?? p.next_action}</strong></span>${p.next_step_brief ? `<br/><span style="font-size:12px;color:#555;font-style:italic">${p.next_step_brief}</span>` : ""}</td></tr>`
+      ).join("");
+    const overdueHtml = overdueDeals.length > 0
+      ? `<h2 style="color:#ef4444;margin:20px 0 8px">Overdue (${overdueDeals.length})</h2><table style="width:100%;border-collapse:collapse">${rowHtml(overdueDeals,"OVERDUE")}</table>` : "";
+    const todayHtml = dueTodayDeals.length > 0
+      ? `<h2 style="color:#f59e0b;margin:20px 0 8px">Due Today (${dueTodayDeals.length})</h2><table style="width:100%;border-collapse:collapse">${rowHtml(dueTodayDeals as typeof overdueDeals,"Today")}</table>` : "";
+    const total = overdueDeals.length + dueTodayDeals.length;
+    return {
+      subject: `Follow-Up Queue: ${overdueDeals.length} overdue, ${dueTodayDeals.length} due today`,
+      html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px"><h1 style="margin-bottom:4px">Your Follow-Up Queue</h1><p style="color:#666;margin-top:0">${total} deal${total !== 1 ? "s" : ""} need your attention today.</p>${overdueHtml}${todayHtml}<a href="${appUrl}/follow-up" style="display:inline-block;background:#000;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;margin-top:20px">Open Follow-Up Queue</a><p style="color:#999;font-size:12px;margin-top:32px">Deal Hunter &mdash; AI-powered follow-up coaching</p></div>`,
     };
   },
 };
