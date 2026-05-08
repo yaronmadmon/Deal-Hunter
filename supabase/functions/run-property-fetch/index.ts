@@ -7,10 +7,222 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const DEFAULT_SOURCE_TIMEOUT = 20000; // 20s for ATTOM
+const DEFAULT_SOURCE_TIMEOUT = 20000;
 
-// ─── ATTOM distress type mapping ─────────────────────────────────────────────
-// Maps ATTOM event type codes to our internal distress type strings
+type SearchMode = "market" | "property";
+
+interface SearchFilters {
+  searchMode: SearchMode;
+  location: string;
+  distressTypes: string[];
+  priceMin?: number;
+  priceMax?: number;
+  propertyTypes?: string[];
+  equityMin?: number;
+}
+
+type InsertedProperty = {
+  id: string;
+  zip: string;
+  city: string;
+  state: string;
+  distress_types: string[];
+  estimated_value: number | null;
+  equity_pct: number | null;
+  deal_score: number | null;
+  deal_verdict: string | null;
+  address: string;
+};
+
+const ZIP_CODE_REGEX = /^\d{5}(?:-\d{4})?$/;
+const STREET_HINTS = [
+  " st",
+  " street",
+  " ave",
+  " avenue",
+  " rd",
+  " road",
+  " dr",
+  " drive",
+  " ln",
+  " lane",
+  " ct",
+  " court",
+  " blvd",
+  " boulevard",
+  " cir",
+  " circle",
+  " hwy",
+  " highway",
+  " pkwy",
+  " parkway",
+  " pl",
+  " place",
+  " ter",
+  " terrace",
+  " way",
+];
+
+const inferSearchMode = (location: string): SearchMode => {
+  const query = location.trim().toLowerCase();
+  if (!query || ZIP_CODE_REGEX.test(query)) return "market";
+
+  const hasNumber = /\d/.test(query);
+  const hasLetter = /[a-z]/.test(query);
+  const hasStreetHint = STREET_HINTS.some((token) => query.includes(token)) || query.includes(",");
+
+  return hasNumber && hasLetter && hasStreetHint ? "property" : "market";
+};
+
+const normalizeFilters = (raw: Record<string, unknown>): SearchFilters => {
+  const location = typeof raw.location === "string" ? raw.location.trim() : "";
+
+  return {
+    searchMode: inferSearchMode(location),
+    location,
+    distressTypes: Array.isArray(raw.distressTypes)
+      ? raw.distressTypes.filter((value): value is string => typeof value === "string")
+      : [],
+    priceMin: typeof raw.priceMin === "number" ? raw.priceMin : undefined,
+    priceMax: typeof raw.priceMax === "number" ? raw.priceMax : undefined,
+    propertyTypes: Array.isArray(raw.propertyTypes)
+      ? raw.propertyTypes.filter((value): value is string => typeof value === "string")
+      : undefined,
+    equityMin: typeof raw.equityMin === "number" ? raw.equityMin : undefined,
+  };
+};
+
+const normalizeText = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const toRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const toText = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return null;
+};
+
+const toNumber = (...values: unknown[]): number | null => {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const normalized = value.replace(/[$,\s]/g, "");
+      if (!normalized) continue;
+      const parsed = Number(normalized);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+};
+
+const getLotSizeSqft = (size: Record<string, unknown>) => {
+  const lotSizeSqft = toNumber(
+    size.lotSizeSqFt,
+    size.lotsizesqft,
+    size.lotSizeSqft,
+    size.lotsize1,
+    size.lotSize1,
+    size.lotsize,
+    size.lotSize,
+  );
+
+  if (lotSizeSqft !== null) return lotSizeSqft;
+
+  const lotSizeAcres = toNumber(
+    size.lotSizeAcres,
+    size.lotsizeacres,
+    size.lotacres,
+    size.lotAcres,
+  );
+
+  return lotSizeAcres !== null ? Math.round(lotSizeAcres * 43560) : null;
+};
+
+type AttomOwnerMortgageDetails = {
+  attomId: string;
+  ownerName: string | null;
+  ownerMailingAddress: string | null;
+  mortgageLoanAmount: number | null;
+  mortgageLenderName: string | null;
+  mortgageLoanType: string | null;
+  deedBuyerName: string | null;
+  deedSellerName: string | null;
+  rawDeed: Record<string, unknown> | null;
+};
+
+const buildOwnerDisplayName = (ownerRecord: Record<string, unknown>) => {
+  const owner1 = toRecord(ownerRecord.owner1);
+  const owner2 = toRecord(ownerRecord.owner2);
+  const firstOwner = [
+    toText(owner1.firstnameandmi, owner1.firstNameAndMi, owner1.firstname, owner1.firstName),
+    toText(owner1.lastname, owner1.lastName),
+  ].filter(Boolean).join(" ").trim();
+  const secondOwner = [
+    toText(owner2.firstnameandmi, owner2.firstNameAndMi, owner2.firstname, owner2.firstName),
+    toText(owner2.lastname, owner2.lastName),
+  ].filter(Boolean).join(" ").trim();
+
+  return toText(
+    firstOwner && secondOwner ? `${firstOwner} & ${secondOwner}` : firstOwner || secondOwner,
+    ownerRecord.name1full,
+    ownerRecord.ownerName,
+  );
+};
+
+const buildPartyDisplayName = (partyRecord: Record<string, unknown>) => {
+  const party1 = toRecord(partyRecord.party1);
+  const party2 = toRecord(partyRecord.party2);
+  const firstParty = [
+    toText(party1.firstnameandmi, party1.firstNameAndMi, party1.firstname, party1.firstName),
+    toText(party1.lastname, party1.lastName),
+  ].filter(Boolean).join(" ").trim();
+  const secondParty = [
+    toText(party2.firstnameandmi, party2.firstNameAndMi, party2.firstname, party2.firstName),
+    toText(party2.lastname, party2.lastName),
+  ].filter(Boolean).join(" ").trim();
+
+  return toText(
+    firstParty && secondParty ? `${firstParty} & ${secondParty}` : firstParty || secondParty,
+    partyRecord.name1full,
+    partyRecord.name,
+    partyRecord.ownerName,
+  );
+};
+
+const normalizeOwnerMortgageProperty = (attomProp: Record<string, unknown>): AttomOwnerMortgageDetails => {
+  const identifier = toRecord(attomProp.identifier);
+  const owner = toRecord(attomProp.owner);
+  const mortgage = toRecord(attomProp.mortgage);
+  const lender = toRecord(mortgage.lender);
+  const deed = toRecord(attomProp.deed);
+  const deedBuyer = toRecord(deed.buyer);
+  const deedSeller = toRecord(deed.seller);
+
+  const lenderName = toText(
+    [toText(lender.firstname, lender.firstName), toText(lender.lastname, lender.lastName)].filter(Boolean).join(" ").trim(),
+    lender.companyname,
+    lender.companyName,
+    lender.name,
+  );
+
+  return {
+    attomId: String(identifier.attomId ?? identifier.Id ?? attomProp.id ?? ""),
+    ownerName: buildOwnerDisplayName(owner),
+    ownerMailingAddress: toText(owner.mailingaddressoneline, owner.mailingAddressOneLine),
+    mortgageLoanAmount: toNumber(mortgage.amount, toRecord(mortgage.amount).loanamt, toRecord(mortgage.amount).amount),
+    mortgageLenderName: lenderName,
+    mortgageLoanType: toText(mortgage.loantypecode, mortgage.loanTypeCode, mortgage.deedtype, mortgage.deedType, mortgage.interestratetype, mortgage.interestRateType),
+    deedBuyerName: buildPartyDisplayName(deedBuyer),
+    deedSellerName: buildPartyDisplayName(deedSeller),
+    rawDeed: Object.keys(deed).length > 0 ? deed : null,
+  };
+};
+
 function mapAttomDistressType(eventType: string): string | null {
   const type = (eventType || "").toUpperCase();
   if (type.includes("TAXLIEN") || type.includes("TAX_LIEN") || type.includes("DELINQUENT")) return "tax_lien";
@@ -20,138 +232,126 @@ function mapAttomDistressType(eventType: string): string | null {
   return null;
 }
 
-// ─── Equity calculation (defensive) ──────────────────────────────────────────
 function computeEquityPct(estimatedValue: number | null, lienAmount: number | null): number | null {
   if (!estimatedValue || estimatedValue <= 0) return null;
   if (lienAmount === null || lienAmount === undefined) return null;
   return Math.round(((estimatedValue - lienAmount) / estimatedValue) * 100);
 }
 
-// ─── Map ATTOM property to our schema ────────────────────────────────────────
-// Field names use ATTOM's actual casing from allevents/detail responses
-function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<string, unknown>, searchBatchId: string, userId: string) {
+function mapAttomProperty(
+  attomProp: Record<string, unknown>,
+  ownerMortgageDetails: AttomOwnerMortgageDetails | null,
+  filters: SearchFilters,
+  searchBatchId: string,
+  userId: string,
+) {
   const identifier = (attomProp.identifier as Record<string, unknown>) ?? {};
-  const address    = (attomProp.address   as Record<string, unknown>) ?? {};
-  const building   = (attomProp.building  as Record<string, unknown>) ?? {};
-  const rooms      = (building.rooms      as Record<string, unknown>) ?? {};
-  const size       = (building.size       as Record<string, unknown>) ?? {};
-  const summary    = (attomProp.summary   as Record<string, unknown>) ?? {};
-  const avm        = (attomProp.avm       as Record<string, unknown>) ?? {};
-  const avmAmount  = (avm.amount          as Record<string, unknown>) ?? {};
-  const avmHigh    = (avmAmount.high      as number) ?? null;
-  const avmLow     = (avmAmount.low       as number) ?? null;
-  const sale       = (attomProp.sale      as Record<string, unknown>) ?? {};
-  const saleAmount = (sale.amount         as Record<string, unknown>) ?? {};
+  const address = (attomProp.address as Record<string, unknown>) ?? {};
+  const building = (attomProp.building as Record<string, unknown>) ?? {};
+  const rooms = (building.rooms as Record<string, unknown>) ?? {};
+  const size = (building.size as Record<string, unknown>) ?? {};
+  const summary = (attomProp.summary as Record<string, unknown>) ?? {};
+  const avm = (attomProp.avm as Record<string, unknown>) ?? {};
+  const avmAmount = (avm.amount as Record<string, unknown>) ?? {};
+  const avmHigh = (avmAmount.high as number) ?? null;
+  const avmLow = (avmAmount.low as number) ?? null;
+  const avmMidpoint = avmLow !== null && avmHigh !== null ? Math.round((avmLow + avmHigh) / 2) : null;
+  const sale = (attomProp.sale as Record<string, unknown>) ?? {};
+  const saleAmount = (sale.amount as Record<string, unknown>) ?? {};
   const assessment = (attomProp.assessment as Record<string, unknown>) ?? {};
-  const assessmentCalc   = (assessment.calculations as Record<string, unknown>) ?? {};
-  const assessmentMarket = (assessment.market       as Record<string, unknown>) ?? {};
-  const assessmentTax    = (assessment.tax          as Record<string, unknown>) ?? {};
-  const assessmentLand   = (assessment.market       as Record<string, unknown>) ?? {};
+  const assessmentCalc = (assessment.calculations as Record<string, unknown>) ?? {};
+  const assessmentMarket = (assessment.market as Record<string, unknown>) ?? {};
+  const assessmentTax = (assessment.tax as Record<string, unknown>) ?? {};
+  const assessmentLand = (assessment.market as Record<string, unknown>) ?? {};
 
-  // ── Mortgage / deed (ATTOM includes these on allevents/detail)
-  const mortgage       = (attomProp.mortgage as Record<string, unknown>) ?? {};
-  const mortgageAmount = (mortgage.amount    as Record<string, unknown>) ?? {};
-  const mortgageLender = (mortgage.lender    as Record<string, unknown>) ?? {};
-  const mortgageTerm   = (mortgage.term      as Record<string, unknown>) ?? {};
-  const deed           = (attomProp.deed     as Record<string, unknown>) ?? {};
-  const deedAmount     = (deed.amount        as Record<string, unknown>) ?? {};
+  const mortgage = (attomProp.mortgage as Record<string, unknown>) ?? {};
+  const mortgageAmount = (mortgage.amount as Record<string, unknown>) ?? {};
+  const mortgageLender = (mortgage.lender as Record<string, unknown>) ?? {};
+  const mortgageTerm = (mortgage.term as Record<string, unknown>) ?? {};
+  const deed = (attomProp.deed as Record<string, unknown>) ?? {};
+  const deedAmount = (deed.amount as Record<string, unknown>) ?? {};
 
-  const loanAmount: number | null = (mortgageAmount.loanamt as number) > 0 ? (mortgageAmount.loanamt as number) : null;
-  const lenderName: string | null = String(mortgageLender.name ?? mortgageLender.lendername ?? "").trim() || null;
-  const loanType: string | null   = String(mortgageTerm.termtype ?? mortgage.loantype ?? "").trim() || null;
+  const loanAmount: number | null =
+    ownerMortgageDetails?.mortgageLoanAmount ??
+    ((mortgageAmount.loanamt as number) > 0 ? (mortgageAmount.loanamt as number) : null);
+  const lenderName: string | null =
+    ownerMortgageDetails?.mortgageLenderName ??
+    (String(mortgageLender.name ?? mortgageLender.lendername ?? "").trim() || null);
+  const loanType: string | null =
+    ownerMortgageDetails?.mortgageLoanType ??
+    (String(mortgageTerm.termtype ?? mortgage.loantype ?? "").trim() || null);
   const deedSaleAmt: number | null = (deedAmount.saleamt as number) > 0 ? (deedAmount.saleamt as number) : null;
-  // Cash purchase: last sale had no associated mortgage, or ATTOM flags it
-  const isCashPurchase: boolean =
+  const isCashPurchase =
     String(saleAmount.saledisclosuretype ?? "").toUpperCase().includes("CASH") ||
     String(saleAmount.cashpurchase ?? "").toUpperCase() === "TRUE" ||
     (!loanAmount && !!(saleAmount.saleamt as number));
 
   const yearBuiltRaw = summary.yearbuilt ?? summary.yearBuilt ?? null;
   const yearBuilt: number | null = yearBuiltRaw !== null ? Number(yearBuiltRaw) || null : null;
-  const ownerName: string | null = String(
+  const fallbackOwnerName: string | null = String(
     (deed as Record<string, unknown>).buyer
       ? ((deed.buyer as Record<string, unknown>).name1full ?? "")
       : (summary.owner1fullname ?? summary.ownerfullname ?? "")
   ).trim() || null;
+  const ownerName = ownerMortgageDetails?.ownerName ?? fallbackOwnerName;
 
-  // ── Estimated value: prefer AVM, fall back to assessment market / assessed value
   const estimatedValue: number | null =
-    (typeof avmAmount.scr === "number" && (avmAmount.scr as number) > 0 ? avmAmount.scr as number : null) ??
+    toNumber(avmAmount.value, avm.value, avmAmount.amount) ??
+    avmMidpoint ??
     (typeof assessmentMarket.mktttlvalue === "number" && (assessmentMarket.mktttlvalue as number) > 0 ? assessmentMarket.mktttlvalue as number : null) ??
     (typeof assessmentCalc.calcttlvalue === "number" && (assessmentCalc.calcttlvalue as number) > 0 ? assessmentCalc.calcttlvalue as number : null) ??
     (typeof saleAmount.saleamt === "number" && (saleAmount.saleamt as number) > 0 ? saleAmount.saleamt as number : null) ??
     null;
 
-  // ── Lien amount for equity calc: prefer actual mortgage loan amount over tax proxy
-  const taxAmt: number | null = (typeof assessmentTax.taxamt === "number" && (assessmentTax.taxamt as number) > 0)
-    ? assessmentTax.taxamt as number : null;
-  const lienAmount: number | null =
-    loanAmount ??
-    (taxAmt !== null ? taxAmt * 10 : null); // fallback: annual tax × 10
+  const taxAmt: number | null = typeof assessmentTax.taxamt === "number" && (assessmentTax.taxamt as number) > 0
+    ? assessmentTax.taxamt as number
+    : null;
+  const lienAmount: number | null = loanAmount ?? (taxAmt !== null ? taxAmt * 10 : null);
 
-  // ── Distress type detection from available ATTOM fields
   const distressTypes: string[] = [];
-
-  // Foreclosure: sale.foreclosure = "O" (Open), "F" (Filed), "P" (Pending), etc.
   const foreclosureStatus = String(sale.foreclosure ?? "").trim().toUpperCase();
-  if (foreclosureStatus && foreclosureStatus !== "N" && foreclosureStatus !== "0" && foreclosureStatus !== "") {
+  if (foreclosureStatus && foreclosureStatus !== "N" && foreclosureStatus !== "0") {
     distressTypes.push("foreclosure");
   }
 
-  // Tax delinquency: property with non-zero tax and absentee owner is a candidate
   const absenteeInd = String(summary.absenteeInd ?? "").toUpperCase();
-  if (absenteeInd.includes("ABSENTEE") && assessmentTax.taxamt) {
-    distressTypes.push("delinquency");
-  }
 
-  // Also check legacy eventHistory if present (some ATTOM plans include it)
   const events = (attomProp.eventHistory as unknown[]) ?? [];
   for (const event of events) {
-    const ev = event as Record<string, unknown>;
-    const mapped = mapAttomDistressType(String(ev.eventType ?? ev.type ?? ""));
-    if (mapped && !distressTypes.includes(mapped)) distressTypes.push(mapped);
-  }
-
-  // Fallback: if no distress type detected but user is searching for them,
-  // include property with a generic indicator so the AI can evaluate it.
-  if (distressTypes.length === 0) {
-    const filterTypes = (filters.distressTypes as string[]) ?? [];
-    if (filterTypes.length > 0) {
-      distressTypes.push(filterTypes[0]);   // tag with first requested type; AI will verify
+    const mapped = mapAttomDistressType(String((event as Record<string, unknown>).eventType ?? (event as Record<string, unknown>).type ?? ""));
+    if (mapped && !distressTypes.includes(mapped)) {
+      distressTypes.push(mapped);
     }
   }
 
-  // ── Property type from summary
   const propType = String(summary.proptype ?? summary.propsubtype ?? summary.propertyType ?? "SFR");
-
-  // ── Beds/baths: ATTOM uses lowercase keys
-  const beds  = (rooms.beds as number) ?? (rooms.bedscount as number) ?? (rooms.bedsTotal as number) ?? null;
+  const beds = (rooms.beds as number) ?? (rooms.bedscount as number) ?? (rooms.bedsTotal as number) ?? null;
   const baths = (rooms.bathstotal as number) ?? (rooms.bathsfull as number) ?? null;
-  const sqft  = (size.universalsize as number) ?? (size.livingsize as number) ?? (size.bldgsize as number) ?? null;
+  const sqft = (size.universalsize as number) ?? (size.livingsize as number) ?? (size.bldgsize as number) ?? null;
+  const lotSizeSqft = getLotSizeSqft(size);
 
   return {
     user_id: userId,
     search_batch_id: searchBatchId,
     attom_id: String(identifier.attomId ?? identifier.Id ?? attomProp.id ?? ""),
-    address:  String(address.line1 ?? address.oneLine ?? ""),
-    city:     String(address.locality ?? address.cityName ?? ""),
-    state:    String(address.countrySubd ?? address.stateName ?? address.state ?? ""),
-    zip:      String(address.postal1 ?? address.zipCode ?? ""),
+    address: String(address.line1 ?? address.oneLine ?? ""),
+    city: String(address.locality ?? address.cityName ?? ""),
+    state: String(address.countrySubd ?? address.stateName ?? address.state ?? ""),
+    zip: String(address.postal1 ?? address.zipCode ?? ""),
     property_type: propType,
     beds,
     baths,
     sqft,
     estimated_value: estimatedValue,
     last_sale_price: (saleAmount.saleamt as number) ?? null,
-    last_sale_date:  (sale.saleTransDate as string) ?? null,
-    distress_types:  distressTypes,
+    last_sale_date: (sale.saleTransDate as string) ?? null,
+    distress_types: distressTypes,
     distress_details: {
       foreclosureStatus,
       absenteeInd,
       events,
       assessmentTax,
       rawSale: sale,
-      // Financial intelligence fields
       mortgage: {
         loanAmount,
         lenderName,
@@ -160,7 +360,12 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
       },
       avmRange: { high: avmHigh, low: avmLow },
       yearBuilt,
+      lotSizeSqft,
       ownerName,
+      ownerMailingAddress: ownerMortgageDetails?.ownerMailingAddress ?? null,
+      rawDeed: ownerMortgageDetails?.rawDeed ?? deed,
+      deedBuyerName: ownerMortgageDetails?.deedBuyerName ?? null,
+      deedSellerName: ownerMortgageDetails?.deedSellerName ?? null,
       deedSaleAmt,
       assessedLandValue: (assessmentLand as Record<string, unknown>).mktlandvalue ?? null,
       assessedImprValue: (assessmentMarket as Record<string, unknown>).mktimprvalue ?? null,
@@ -171,53 +376,45 @@ function mapAttomProperty(attomProp: Record<string, unknown>, filters: Record<st
   };
 }
 
-// ─── Fetch from ATTOM API ─────────────────────────────────────────────────────
-async function fetchAttomProperties(filters: {
-  location: string;
-  distressTypes: string[];
-  priceMin?: number;
-  priceMax?: number;
-  propertyTypes?: string[];
-  equityMin?: number;
-}): Promise<Record<string, unknown>[]> {
+async function fetchAttomProperties(filters: SearchFilters): Promise<Record<string, unknown>[]> {
   const attomApiKey = Deno.env.get("ATTOM_API_KEY");
   if (!attomApiKey) throw new Error("ATTOM_API_KEY not configured");
 
-  // Determine if location is a zip code or city
-  const isZip = /^\d{5}$/.test(filters.location.trim());
-
-  // Build query params
   const params = new URLSearchParams({
-    pagesize: "50",
+    pagesize: filters.searchMode === "property" ? "1" : "50",
     page: "1",
   });
 
-  if (isZip) {
-    params.set("postalcode", filters.location.trim());
+  if (filters.searchMode === "property") {
+    params.set("address", filters.location);
   } else {
-    // Assume "City, ST" format
-    const [city, state] = filters.location.split(",").map((s) => s.trim());
-    if (city) params.set("address2", city);
-    if (state) params.set("state", state);
+    const isZip = ZIP_CODE_REGEX.test(filters.location);
+    if (isZip) {
+      params.set("postalcode", filters.location.slice(0, 5));
+    } else {
+      const [city, state] = filters.location.split(",").map((segment) => segment.trim());
+      if (city) params.set("address2", city);
+      if (state) params.set("state", state);
+    }
+
+    if (filters.priceMin) params.set("minSaleAmt", String(filters.priceMin));
+    if (filters.priceMax) params.set("maxSaleAmt", String(filters.priceMax));
   }
-
-  if (filters.priceMin) params.set("minSaleAmt", String(filters.priceMin));
-  if (filters.priceMax) params.set("maxSaleAmt", String(filters.priceMax));
-
-  // ATTOM allevents endpoint returns distress events for properties
-  const url = `https://api.gateway.attomdata.com/propertyapi/v1.0.0/allevents/detail?${params}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_SOURCE_TIMEOUT);
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        apikey: attomApiKey,
-        Accept: "application/json",
+    const response = await fetch(
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/allevents/detail?${params}`,
+      {
+        headers: {
+          apikey: attomApiKey,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
       },
-      signal: controller.signal,
-    });
+    );
 
     clearTimeout(timeout);
 
@@ -227,29 +424,89 @@ async function fetchAttomProperties(filters: {
     }
 
     const data = await response.json();
+    const properties = (data.property ?? data.properties ?? data.eventHistory ?? []) as Record<string, unknown>[];
 
-    // ATTOM wraps results in property[] or eventHistory[]
-    const properties: Record<string, unknown>[] =
-      data.property ??
-      data.properties ??
-      data.eventHistory ??
-      [];
-
-    return properties;
+    return filters.searchMode === "property" ? properties.slice(0, 1) : properties;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-// ─── Post-insert: check saved searches and queue deal alert emails ─────────────
+async function fetchAttomOwnerMortgageDetails(filters: SearchFilters): Promise<Record<string, AttomOwnerMortgageDetails>> {
+  const attomApiKey = Deno.env.get("ATTOM_API_KEY");
+  if (!attomApiKey) throw new Error("ATTOM_API_KEY not configured");
+
+  const params = new URLSearchParams({
+    pagesize: filters.searchMode === "property" ? "1" : "100",
+    page: "1",
+  });
+
+  if (filters.searchMode === "property") {
+    params.set("address", filters.location);
+  } else if (ZIP_CODE_REGEX.test(filters.location)) {
+    params.set("postalcode", filters.location.slice(0, 5));
+  } else {
+    return {};
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_SOURCE_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detailmortgageowner?${params}`,
+      {
+        headers: {
+          apikey: attomApiKey,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      },
+    );
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`ATTOM detailmortgageowner error ${response.status}: ${body.slice(0, 500)}`);
+    }
+
+    const data = await response.json();
+    const properties = (data.property ?? data.properties ?? []) as Record<string, unknown>[];
+
+    return Object.fromEntries(
+      properties
+        .map(normalizeOwnerMortgageProperty)
+        .filter((property) => property.attomId)
+        .map((property) => [property.attomId, property]),
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const matchesSavedSearchLocation = (
+  searchFilters: { searchMode?: string; location?: string },
+  property: InsertedProperty,
+) => {
+  if (!searchFilters.location) return true;
+
+  const location = searchFilters.location.trim();
+  if (inferSearchMode(location) === "property") {
+    const propertyAddress = normalizeText(`${property.address} ${property.city} ${property.state} ${property.zip}`);
+    const query = normalizeText(location);
+    return propertyAddress.includes(query) || query.includes(normalizeText(property.address));
+  }
+
+  const zipMatch = location.match(/^\d{5}/)?.[0];
+  return property.zip === zipMatch || property.city.toLowerCase().includes(location.toLowerCase());
+};
+
 async function checkSavedSearchAlerts(
   supabase: ReturnType<typeof createClient>,
-  insertedProperties: Array<{ id: string; zip: string; city: string; state: string; distress_types: string[]; estimated_value: number | null; equity_pct: number | null; deal_score: number | null; deal_verdict: string | null; address: string }>,
-  supabaseUrl: string,
-  anonKey: string,
+  insertedProperties: InsertedProperty[],
 ) {
   try {
-    // Fetch all saved searches — we check against new properties across all users
     const { data: savedSearches } = await supabase
       .from("saved_searches")
       .select("id, user_id, name, filters");
@@ -258,6 +515,7 @@ async function checkSavedSearchAlerts(
 
     for (const search of savedSearches) {
       const f = search.filters as {
+        searchMode?: string;
         location?: string;
         distressTypes?: string[];
         priceMin?: number;
@@ -265,30 +523,22 @@ async function checkSavedSearchAlerts(
         equityMin?: number;
       };
 
-      // Match properties against this saved search's filters
-      const matches = insertedProperties.filter((prop) => {
-        const locationMatch =
-          !f.location ||
-          prop.zip === f.location.trim() ||
-          prop.city.toLowerCase().includes(f.location.toLowerCase());
-
+      const matches = insertedProperties.filter((property) => {
+        const locationMatch = matchesSavedSearchLocation(f, property);
         const distressMatch =
           !f.distressTypes ||
           f.distressTypes.length === 0 ||
-          f.distressTypes.some((dt: string) => prop.distress_types.includes(dt));
-
+          f.distressTypes.some((distressType) => property.distress_types.includes(distressType));
         const priceMatch =
-          (!f.priceMin || (prop.estimated_value ?? 0) >= f.priceMin) &&
-          (!f.priceMax || (prop.estimated_value ?? Infinity) <= f.priceMax);
-
-        const equityMatch = !f.equityMin || (prop.equity_pct ?? 0) >= f.equityMin;
+          (!f.priceMin || (property.estimated_value ?? 0) >= f.priceMin) &&
+          (!f.priceMax || (property.estimated_value ?? Infinity) <= f.priceMax);
+        const equityMatch = !f.equityMin || (property.equity_pct ?? 0) >= f.equityMin;
 
         return locationMatch && distressMatch && priceMatch && equityMatch;
       });
 
       if (matches.length === 0) continue;
 
-      // Dedup: check if we already sent a new_deal_alert to this user for this location in the last 24h
       const { data: recentEmail } = await supabase
         .from("email_send_log")
         .select("id")
@@ -299,7 +549,6 @@ async function checkSavedSearchAlerts(
 
       if (recentEmail && recentEmail.length > 0) continue;
 
-      // Queue the alert email via the existing enqueue_email RPC
       await supabase.rpc("enqueue_email", {
         p_queue_name: "transactional_emails",
         p_payload: {
@@ -307,26 +556,24 @@ async function checkSavedSearchAlerts(
           template_type: "new_deal_alert",
           search_name: search.name,
           match_count: matches.length,
-          properties: matches.slice(0, 5).map((p) => ({
-            id: p.id,
-            address: p.address,
-            city: p.city,
-            state: p.state,
-            deal_score: p.deal_score,
-            deal_verdict: p.deal_verdict,
-            distress_types: p.distress_types,
-            equity_pct: p.equity_pct,
+          properties: matches.slice(0, 5).map((property) => ({
+            id: property.id,
+            address: property.address,
+            city: property.city,
+            state: property.state,
+            deal_score: property.deal_score,
+            deal_verdict: property.deal_verdict,
+            distress_types: property.distress_types,
+            equity_pct: property.equity_pct,
           })),
         },
       });
     }
-  } catch (err) {
-    // Non-critical — log and continue
-    console.error("[run-property-fetch] Saved search alert check failed:", err);
+  } catch (error) {
+    console.error("[run-property-fetch] Saved search alert check failed:", error);
   }
 }
 
-// ─── Main handler ─────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -335,13 +582,16 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const { searchBatchId, userId, filters } = await req.json();
+    const body = await req.json();
+    const searchBatchId = typeof body.searchBatchId === "string" ? body.searchBatchId : "";
+    const userId = typeof body.userId === "string" ? body.userId : "";
+    const campaignId = typeof body.campaignId === "string" ? body.campaignId : null;
+    const filters = normalizeFilters((body.filters ?? {}) as Record<string, unknown>);
 
-    if (!searchBatchId || !userId || !filters) {
+    if (!searchBatchId || !userId || !filters.location) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -349,16 +599,19 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[run-property-fetch] Starting batch ${searchBatchId} for user ${userId}`);
-    console.log(`[run-property-fetch] Filters:`, JSON.stringify(filters));
+    console.log("[run-property-fetch] Filters:", JSON.stringify(filters));
 
-    // Fetch properties from ATTOM (Layer 1)
     let attomProperties: Record<string, unknown>[] = [];
+    let ownerMortgageDetailsByAttomId: Record<string, AttomOwnerMortgageDetails> = {};
     try {
       attomProperties = await fetchAttomProperties(filters);
+      ownerMortgageDetailsByAttomId = await fetchAttomOwnerMortgageDetails(filters).catch((error) => {
+        console.error("[run-property-fetch] ATTOM owner/mortgage fetch failed:", error);
+        return {} as Record<string, AttomOwnerMortgageDetails>;
+      });
       console.log(`[run-property-fetch] ATTOM returned ${attomProperties.length} properties`);
     } catch (attomError) {
       console.error("[run-property-fetch] ATTOM fetch failed:", attomError);
-      // Mark batch as failed — insert a sentinel failed property so the Processing page can detect it
       await supabase.from("properties").insert({
         user_id: userId,
         search_batch_id: searchBatchId,
@@ -374,7 +627,6 @@ Deno.serve(async (req) => {
     }
 
     if (attomProperties.length === 0) {
-      // No results — insert a sentinel so the UI shows "no results found"
       await supabase.from("properties").insert({
         user_id: userId,
         search_batch_id: searchBatchId,
@@ -389,21 +641,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filter by requested distress types (ATTOM may return extras)
-    const filteredProperties = attomProperties.filter((prop) => {
-      const mapped = mapAttomProperty(prop, filters, searchBatchId, userId);
+    const toMappedProperty = (property: Record<string, unknown>) => {
+      const identifier = toRecord(property.identifier);
+      const attomId = String(identifier.attomId ?? identifier.Id ?? property.id ?? "");
+      return mapAttomProperty(
+        property,
+        ownerMortgageDetailsByAttomId[attomId] ?? null,
+        filters,
+        searchBatchId,
+        userId,
+      );
+    };
+
+    const filteredProperties = attomProperties.filter((property) => {
+      if (filters.searchMode === "property") return true;
+      const mapped = toMappedProperty(property);
+      if (mapped.distress_types.length === 0) return false;
       return (
         filters.distressTypes.length === 0 ||
-        mapped.distress_types.some((dt: string) => filters.distressTypes.includes(dt))
+        mapped.distress_types.some((distressType: string) => filters.distressTypes.includes(distressType))
       );
     });
 
-    // Map and bulk-insert
-    const rows = filteredProperties.map((prop) =>
-      mapAttomProperty(prop, filters, searchBatchId, userId)
-    );
+    if (filteredProperties.length === 0) {
+      await supabase.from("properties").insert({
+        user_id: userId,
+        search_batch_id: searchBatchId,
+        address: "__no_results__",
+        status: "complete",
+        search_filters: filters,
+        report_data: { noResults: true },
+      });
+      return new Response(JSON.stringify({ queued: true, count: 0 }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Upsert — ON CONFLICT (user_id, attom_id) DO UPDATE keeps fresh data
+    const rows = filteredProperties.map((p) => ({
+      ...toMappedProperty(p),
+      ...(campaignId ? { campaign_id: campaignId } : {}),
+    }));
+
     const { data: insertedRows, error: insertError } = await supabase
       .from("properties")
       .upsert(rows, { onConflict: "user_id,attom_id", ignoreDuplicates: false })
@@ -417,15 +696,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const inserted = insertedRows ?? [];
+    const inserted = (insertedRows ?? []) as InsertedProperty[];
     console.log(`[run-property-fetch] Inserted/updated ${inserted.length} properties`);
 
-    // Trigger run-deal-analyze for each property IN PARALLEL — do NOT await sequentially
-    // (sequential + await caused edge function timeout with >3 properties)
+    // Update campaign property count
+    if (campaignId && inserted.length > 0) {
+      await supabase
+        .from("search_campaigns")
+        .update({ property_count: inserted.length })
+        .eq("id", campaignId);
+    }
+
     const analyzeAll = Promise.all(
-      inserted.map(async (prop, i) => {
-        // Stagger starts by 200ms to avoid hammering APIs simultaneously
-        await new Promise((resolve) => setTimeout(resolve, i * 200));
+      inserted.map(async (property, index) => {
+        await new Promise((resolve) => setTimeout(resolve, index * 200));
         try {
           await fetch(`${supabaseUrl}/functions/v1/run-deal-analyze`, {
             method: "POST",
@@ -434,32 +718,23 @@ Deno.serve(async (req) => {
               Authorization: `Bearer ${serviceRoleKey}`,
               apikey: anonKey,
             },
-            body: JSON.stringify({ propertyId: prop.id }),
+            body: JSON.stringify({ propertyId: property.id }),
           });
         } catch (analyzeError) {
-          console.error(`[run-property-fetch] analyze failed for ${prop.id}:`, analyzeError);
+          console.error(`[run-property-fetch] analyze failed for ${property.id}:`, analyzeError);
           await supabase
             .from("properties")
             .update({ status: "failed", report_data: { error: "Analyze trigger failed" } })
-            .eq("id", prop.id);
+            .eq("id", property.id);
         }
-      })
+      }),
     );
 
-    // Check saved search alerts in parallel with analyzes (non-blocking)
-    const alertsAll = checkSavedSearchAlerts(
-      supabase,
-      inserted as Array<{ id: string; zip: string; city: string; state: string; distress_types: string[]; estimated_value: number | null; equity_pct: number | null; deal_score: number | null; deal_verdict: string | null; address: string }>,
-      supabaseUrl,
-      anonKey,
-    );
-
-    // Return success immediately — use waitUntil to keep function alive for background work
-    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    const alertsAll = checkSavedSearchAlerts(supabase, inserted);
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void } }).EdgeRuntime;
     if (edgeRuntime?.waitUntil) {
       edgeRuntime.waitUntil(Promise.all([analyzeAll, alertsAll]));
     } else {
-      // Fallback: await (slower but safe for local dev)
       await Promise.all([analyzeAll, alertsAll]);
     }
 

@@ -19,6 +19,11 @@ import ResetPassword from "./pages/ResetPassword";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import MonitoredAreas from "./pages/MonitoredAreas";
+import FollowUpQueue from "./pages/FollowUpQueue";
+import Meetings from "./pages/Meetings";
+import Inbox from "./pages/Inbox";
+import TodayView from "./pages/TodayView";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
@@ -46,12 +51,17 @@ const App = () => (
             <Route path="/processing/:id" element={<Processing />} />
             <Route path="/property/:id" element={<PropertyDetail />} />
             <Route path="/pipeline" element={<DealPipeline />} />
+            <Route path="/inbox" element={<Inbox />} />
+            <Route path="/today" element={<TodayView />} />
+            <Route path="/follow-up" element={<FollowUpQueue />} />
             <Route path="/auctions" element={<AuctionCalendar />} />
             <Route path="/buy-credits" element={<BuyCredits />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/meetings" element={<Meetings />} />
+            <Route path="/monitored-areas" element={<MonitoredAreas />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />

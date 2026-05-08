@@ -1,73 +1,261 @@
-# Welcome to your Lovable project
+# Distressed Property Acquisition Platform
 
-## Project info
+# Purpose
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This platform is an AI-assisted distressed property acquisition operating system designed for real estate investors, wholesalers, acquisition teams, and distressed property operators.
 
-## How can I edit this code?
+This is NOT a generic CRM and NOT an AI demo application.
 
-There are several ways of editing your application.
+The purpose of the platform is to help users:
 
-**Use Lovable**
+1. Discover distressed property opportunities
+2. Organize and manage leads cleanly
+3. Automate outreach workflows
+4. Track all communication
+5. Manage follow-ups and appointments
+6. Help users communicate more effectively
+7. Help users convert leads into deals
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+The platform combines:
+- distressed property search
+- property enrichment
+- owner/contact discovery
+- CRM workflows
+- SMS/email outreach
+- AI communication assistance
+- AI sales coaching
+- acquisition workflow management
 
-Changes made via Lovable will be committed automatically to this repo.
+The system should reduce manual work and operational friction while keeping the human operator fully in control.
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Related Documents
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- ARCHITECTURE.md explains the real technical implementation
+- AI_RULES.md defines AI behavior and development rules
+- TASKS.md defines implementation status and priorities
+- agent.md contains the most accurate implementation-level context
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Core Product Philosophy
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+The platform is primarily:
+- a distressed property acquisition platform
+- a lead-generation platform
+- an outreach automation system
+- a CRM workflow system
+- an AI-assisted sales workflow platform
 
-# Step 3: Install the necessary dependencies.
-npm i
+AI is a support layer inside the workflow.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+The AI exists to:
+- reduce manual work
+- help users communicate better
+- help users stay organized
+- improve conversion rates
+- guide inexperienced users
+- assist acquisition teams operationally
 
-**Edit a file directly in GitHub**
+The AI does NOT replace the human operator.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+# Main Workflow
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Step 1 — Search
 
-## What technologies are used for this project?
+The user searches by:
+- zip code
+- city
+- county
+- address
+- radius
+- distress type
 
-This project is built with:
+The system aggregates data from property and public-record APIs.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Potential distress indicators may include:
+- foreclosure filings
+- tax delinquency
+- liens
+- judgments
+- probate
+- absentee ownership
+- mortgage default
+- inherited property
+- code violations
+- pre-foreclosure signals
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Step 2 — Lead Creation
 
-## Can I connect a custom domain to my Lovable project?
+Each property becomes a structured lead record.
 
-Yes, you can!
+A lead may contain:
+- property information
+- owner information
+- mailing address
+- phone numbers
+- emails
+- mortgage information
+- distress indicators
+- estimated equity
+- communication history
+- notes
+- reminders
+- lead stage
+- appointment status
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Step 3 — Lead Organization
+
+The platform must organize leads cleanly and avoid information overload.
+
+Searches should become:
+- campaigns
+- saved searches
+- lead batches
+- pipelines
+
+Users should be able to:
+- filter
+- sort
+- tag
+- assign
+- archive
+- prioritize
+- categorize leads
+
+The platform must support large lead lists while remaining operational and easy to navigate.
+
+---
+
+## Step 4 — Outreach
+
+Users can launch outreach through:
+- SMS
+- email
+- future voice integrations
+
+The system uses Twilio for SMS messaging.
+
+All communication must be:
+- logged
+- timestamped
+- searchable
+- tied to the lead record
+- visible in conversation history
+
+The system should support:
+- message templates
+- AI-generated drafts
+- AI reply suggestions
+- follow-up scheduling
+- campaign management
+- opt-out handling
+
+The human user always remains in control of message approval.
+
+---
+
+## Step 5 — AI Sales Assistant
+
+The AI acts as:
+- a sales coach
+- an acquisition assistant
+- a communication advisor
+- a negotiation helper
+- a workflow assistant
+
+The AI should help users:
+- draft SMS messages
+- draft emails
+- suggest replies
+- identify seller motivation
+- identify urgency signals
+- recommend negotiation approaches
+- suggest follow-up timing
+- summarize conversations
+- improve conversion rates
+- help inexperienced users
+- guide conversations toward appointments
+
+Example AI guidance:
+- “This seller appears financially motivated.”
+- “The owner seems hesitant about timing.”
+- “Recommend softer follow-up messaging.”
+- “This lead has strong engagement signals.”
+- “Suggested response: empathetic tone with low pressure.”
+
+The AI should reduce uncertainty and improve communication quality.
+
+---
+
+## Step 6 — CRM Workflow
+
+The platform tracks:
+- SMS conversations
+- email conversations
+- reminders
+- appointments
+- notes
+- tasks
+- follow-up schedules
+- lead stage progression
+
+The system should help move leads through the acquisition pipeline:
+
+New Lead → Contacted → Responded → Follow-Up → Appointment → Negotiation → Deal
+
+---
+
+# UI/UX Philosophy
+
+The platform must feel:
+- operational
+- simple
+- clean
+- organized
+- scalable
+- professional
+
+Avoid:
+- clutter
+- flashy AI interfaces
+- unnecessary dashboards
+- excessive analytics
+- information overload
+
+The user should never feel buried in data.
+
+The interface should help users focus on actionable workflows.
+
+---
+
+# Non-Goals
+
+Do NOT:
+- overcomplicate workflows
+- create social-media-style interfaces
+- auto-send important communications without approval
+- overload users with unnecessary analytics
+- make AI autonomous
+- replace the human operator
+
+---
+
+# Long-Term Direction
+
+The long-term goal is to create a complete AI-assisted acquisition operating system for distressed property professionals.
+
+The platform should feel:
+- streamlined
+- operational
+- automation-first
+- scalable
+- intelligent
+- human-controlled

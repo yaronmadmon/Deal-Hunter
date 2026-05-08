@@ -55,7 +55,9 @@ TWITTER_BEARER_TOKEN
 
 ## Deployment
 - **Frontend**: Vercel — push to main branch auto-deploys
-- **Edge functions**: `SUPABASE_ACCESS_TOKEN=sbp_... npx supabase functions deploy <name> --project-ref vnileremxagzmlieykgm`
+- **Edge functions**: `npx supabase functions deploy <name> --project-ref vnileremxagzmlieykgm`
+  - If CLI is already logged in (`npx supabase projects list` confirms linked project), no `SUPABASE_ACCESS_TOKEN` env var is needed
+  - If running in a fresh shell: `SUPABASE_ACCESS_TOKEN=sbp_... npx supabase functions deploy <name> --project-ref vnileremxagzmlieykgm`
 - Deploy all functions at once: `npx supabase functions deploy --project-ref vnileremxagzmlieykgm`
 
 ## Project Structure
@@ -72,7 +74,7 @@ src/
     Index.tsx            # / — Deal Hunter landing page
     # Legacy Gold Rush pages kept: SampleReport, Auth, Settings, etc.
   components/
-    deal/                # 14 Deal Hunter components (see list below)
+    deal/                # 16 Deal Hunter components (see list below)
     report/              # Gold Rush report components — ScoreRing + CollapsibleSection reused
     admin/               # Admin dashboard components
     ui/                  # shadcn-ui primitives (45 components, unchanged)
@@ -94,17 +96,19 @@ supabase/
 | `DealScoreBadge.tsx` | Score badge — green ≥70 / yellow 40-69 / red <40 |
 | `DistressTypeBadge.tsx` | Distress type tags — amber/red/purple/orange by type |
 | `DealKillerBadge.tsx` | Hard kill signal display with evidence text |
-| `PropertyCard.tsx` | Card in DealSearch grid; shows skeleton for pending status |
-| `SearchFilters.tsx` | Left sidebar — location, distress types, price/equity/type filters |
+| `PropertyCard.tsx` | Card in DealSearch grid — Zillow photo header, owner name, LTV color, opportunity badge, contact buttons (phone/SMS/email when traced), "Get Owner Info" skip-trace button, Street View link, AI Outreach button |
+| `SearchFilters.tsx` | Left sidebar — location, distress types, price/equity/type filters + saved searches with Monitor toggle and last-checked timestamp |
 | `PropertyInfoSection.tsx` | Beds/baths/sqft/value grid + photo carousel (if available) |
 | `DistressDetailsSection.tsx` | Renders `distress_details` JSONB as human-readable grid |
-| `AIAnalysisSection.tsx` | score_rationale, distress_analysis, equity_assessment, opps/risks |
-| `IntelligenceSection.tsx` | Market heat, neighborhood sentiment, owner research, public records |
+| `AIAnalysisSection.tsx` | score_rationale, distress_analysis, equity_assessment, opportunity_analysis, opps/risks; handles mixed string/object Serper items via `toStr()` |
+| `IntelligenceSection.tsx` | Market heat, neighborhood sentiment, owner research, public records; handles mixed string/object snippets via `toText()` |
 | `OwnerContactSection.tsx` | Skip trace CTA or revealed phone/email/address with copy buttons |
 | `ContactLogSection.tsx` | Contact history timeline + add-contact form |
 | `ROICalculator.tsx` | 70%-rule pre-filled calculator; net profit, ROI%, max allowable offer |
 | `PipelineCard.tsx` | Kanban card with stage dropdown |
 | `KanbanColumn.tsx` | One kanban column with header + card list |
+| `OutreachSection.tsx` | AI-generated email/SMS outreach drafts — Tabs UI, calls `generate-outreach`, Copy button, mailto/sms deep links |
+| `PropertyHistorySection.tsx` | Transaction, tax assessment, and listing price history from `report_data.history` |
 
 ---
 
@@ -124,7 +128,7 @@ LAYER 2 — INTELLIGENCE (existing Gold Rush API keys reused)
   ├── Deal Killers       Serper — flood zone, EPA, HOA lien (adversarial)
   ├── Public Records     Serper — lis pendens, tax lien confirmation
   ├── Market Narrative   Perplexity — "[zip] real estate investment 2026"
-  └── Photos             Firecrawl — Zillow photo carousel scrape → report_data.photos[]
+  └── Photos + History   Firecrawl — Zillow photo carousel + listing price history → report_data.photos[] / report_data.history.listing[]
 
 Claude claude-sonnet-4-6 scores the deal using BOTH layers.
 ```
@@ -151,7 +155,18 @@ User submits search (location + distress types)
                              → triggers run-deal-analyze per property (150ms delay)
                              → checkSavedSearchAlerts() for email notifications
   → run-deal-analyze         Layer 2 intelligence (parallel) + adversarial pass + Claude
-                             → updates property: deal_score, deal_verdict, report_data, status='complete'
+                             → classifyOpportunity() deterministic pre-classification
+                             → updates property: deal_score, deal_verdict, report_data (incl. opportunity_type,
+                               opportunity_analysis, history.sales, history.assessments, history.listing), status='complete'
+                             → EdgeRuntime.waitUntil(autoTraceStrongDeal()) — if verdict = "Strong Deal",
+                               auto-traces via Tracerfy (no credit charge) and inserts into owner_contacts
+
+Area monitoring (automated):
+  → run-monitored-searches   cron-triggered (hourly); processes saved_searches where is_monitored=true
+                             and last_monitored_at is due per monitor_frequency_hours
+                             → ATTOM fetch → filter by seen_attom_ids → upsert new properties
+                             → triggers run-deal-analyze per new property
+                             → updates seen_attom_ids + last_monitored_at
 
 Processing page (/processing/:searchBatchId):
   - Supabase Realtime watches properties table where search_batch_id=eq.${id}
@@ -164,8 +179,10 @@ Processing page (/processing/:searchBatchId):
 |----------|---------|
 | `start-property-search` | Validates quota, generates searchBatchId, triggers fetch async |
 | `run-property-fetch` | ATTOM Layer 1 → bulk upsert → triggers analyze per property |
-| `run-deal-analyze` | Layer 2 intelligence + adversarial pass + Claude scoring |
+| `run-deal-analyze` | Layer 2 intelligence + adversarial pass + Claude scoring + opportunity classification + history fetch + auto-trace Strong Deals |
 | `skip-trace` | Checks cache → deducts credit → Tracerfy API → stores in owner_contacts |
+| `generate-outreach` | GPT-4o email/SMS draft from deal data — free, no credits. Input: `{propertyId, outreachType}` |
+| `run-monitored-searches` | Cron-triggered (hourly): re-runs due monitored saved searches, finds new ATTOM properties, triggers analyze, emails alert |
 | `refresh-auction-feed` | Serper auction queries → parses with GPT-4o-mini → live_feed_snapshots |
 | `timeout-watchdog` | Marks stuck properties (searching/scoring >5min) as failed |
 

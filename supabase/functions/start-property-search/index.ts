@@ -7,14 +7,75 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+type SearchMode = "market" | "property";
+
 interface SearchFilters {
-  location: string;          // zip code or "City, ST"
-  distressTypes: string[];   // ['tax_lien','foreclosure','divorce','delinquency']
+  searchMode: SearchMode;
+  location: string;
+  distressTypes: string[];
   priceMin?: number;
   priceMax?: number;
-  propertyTypes?: string[];  // ['SFR','MFR','Condo','Land','Commercial']
-  equityMin?: number;        // minimum equity percentage
+  propertyTypes?: string[];
+  equityMin?: number;
 }
+
+const ZIP_CODE_REGEX = /^\d{5}(?:-\d{4})?$/;
+const STREET_HINTS = [
+  " st",
+  " street",
+  " ave",
+  " avenue",
+  " rd",
+  " road",
+  " dr",
+  " drive",
+  " ln",
+  " lane",
+  " ct",
+  " court",
+  " blvd",
+  " boulevard",
+  " cir",
+  " circle",
+  " hwy",
+  " highway",
+  " pkwy",
+  " parkway",
+  " pl",
+  " place",
+  " ter",
+  " terrace",
+  " way",
+];
+
+const inferSearchMode = (location: string): SearchMode => {
+  const query = location.trim().toLowerCase();
+  if (!query || ZIP_CODE_REGEX.test(query)) return "market";
+
+  const hasNumber = /\d/.test(query);
+  const hasLetter = /[a-z]/.test(query);
+  const hasStreetHint = STREET_HINTS.some((token) => query.includes(token)) || query.includes(",");
+
+  return hasNumber && hasLetter && hasStreetHint ? "property" : "market";
+};
+
+const normalizeFilters = (body: Record<string, unknown>): SearchFilters => {
+  const location = typeof body.location === "string" ? body.location.trim() : "";
+
+  return {
+    searchMode: inferSearchMode(location),
+    location,
+    distressTypes: Array.isArray(body.distressTypes)
+      ? body.distressTypes.filter((value): value is string => typeof value === "string")
+      : [],
+    priceMin: typeof body.priceMin === "number" ? body.priceMin : undefined,
+    priceMax: typeof body.priceMax === "number" ? body.priceMax : undefined,
+    propertyTypes: Array.isArray(body.propertyTypes)
+      ? body.propertyTypes.filter((value): value is string => typeof value === "string")
+      : undefined,
+    equityMin: typeof body.equityMin === "number" ? body.equityMin : undefined,
+  };
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -41,7 +102,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify the user's JWT
     const supabase = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -54,25 +114,21 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const filters: SearchFilters = body;
+    const filters = normalizeFilters((body ?? {}) as Record<string, unknown>);
 
-    // Validate required fields
-    if (!filters.location || typeof filters.location !== "string" || filters.location.trim().length < 3) {
-      return new Response(JSON.stringify({ error: "location is required (zip code or city)" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!filters.distressTypes || !Array.isArray(filters.distressTypes) || filters.distressTypes.length === 0) {
-      return new Response(JSON.stringify({ error: "At least one distressType is required" }), {
+    if (!filters.location || filters.location.length < (filters.searchMode === "property" ? 6 : 3)) {
+      return new Response(JSON.stringify({
+        error: filters.searchMode === "property"
+          ? "property address is required"
+          : "location is required (zip code or city)",
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate distress types
     const validDistressTypes = ["tax_lien", "foreclosure", "divorce", "delinquency"];
-    const invalidTypes = filters.distressTypes.filter((t) => !validDistressTypes.includes(t));
+    const invalidTypes = filters.distressTypes.filter((type) => !validDistressTypes.includes(type));
     if (invalidTypes.length > 0) {
       return new Response(JSON.stringify({ error: `Invalid distress types: ${invalidTypes.join(", ")}` }), {
         status: 400,
@@ -80,10 +136,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Generate search batch ID — all properties from this search share this ID
     const searchBatchId = crypto.randomUUID();
 
-    // Trigger run-property-fetch asynchronously (fire-and-forget, same pattern as start-pipeline)
+    // Create a named campaign to group these results
+    const serviceClient = createClient(supabaseUrl!, serviceRoleKey!);
+    const campaignMonth = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const campaignName = `${filters.location} — ${campaignMonth}`;
+    const { data: campaign } = await serviceClient
+      .from("search_campaigns")
+      .insert({ user_id: user.id, name: campaignName, filters })
+      .select("id")
+      .single();
+    const campaignId: string | null = campaign?.id ?? null;
+
     const fetchPromise = fetch(`${supabaseUrl}/functions/v1/run-property-fetch`, {
       method: "POST",
       headers: {
@@ -95,13 +160,14 @@ Deno.serve(async (req) => {
         searchBatchId,
         userId: user.id,
         filters,
+        campaignId,
       }),
     })
       .then(async (response) => {
         if (!response.ok) {
-          const body = await response.text().catch(() => "");
+          const responseBody = await response.text().catch(() => "");
           console.error(
-            `[start-property-search] run-property-fetch returned ${response.status}: ${body.slice(0, 500)}`,
+            `[start-property-search] run-property-fetch returned ${response.status}: ${responseBody.slice(0, 500)}`,
           );
         }
       })
@@ -118,7 +184,7 @@ Deno.serve(async (req) => {
       fetchPromise.catch(() => {});
     }
 
-    return new Response(JSON.stringify({ queued: true, searchBatchId }), {
+    return new Response(JSON.stringify({ queued: true, searchBatchId, campaignId }), {
       status: 202,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
