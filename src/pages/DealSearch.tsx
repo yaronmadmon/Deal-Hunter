@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MapPin, Search, FolderOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppNav } from "@/components/AppNav";
 import { PropertyCard } from "@/components/deal/PropertyCard";
 import { Filters, SearchFilters, withInferredSearchMode } from "@/components/deal/SearchFilters";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,35 +23,58 @@ const normalizeFilters = (raw?: Partial<Filters> | null): Filters => {
     searchMode: raw?.searchMode === "property" ? "property" : "market",
     location: typeof raw?.location === "string" ? raw.location : "",
     distressTypes: Array.isArray(raw?.distressTypes)
-      ? raw.distressTypes.filter((value): value is string => typeof value === "string")
+      ? raw.distressTypes.filter((v): v is string => typeof v === "string")
       : [],
     propertyTypes: Array.isArray(raw?.propertyTypes)
-      ? raw.propertyTypes.filter((value): value is string => typeof value === "string")
+      ? raw.propertyTypes.filter((v): v is string => typeof v === "string")
       : [],
     priceMin: typeof raw?.priceMin === "number" ? raw.priceMin : undefined,
     priceMax: typeof raw?.priceMax === "number" ? raw.priceMax : undefined,
     equityMin: typeof raw?.equityMin === "number" ? raw.equityMin : undefined,
   } satisfies Filters;
-
   return withInferredSearchMode(normalized);
 };
 
 const hasSubstantiatedDistress = (property: any) => {
   const distressTypes = Array.isArray(property.distress_types) ? property.distress_types : [];
   if (distressTypes.length === 0) return false;
-
   if (distressTypes.length === 1 && distressTypes[0] === "delinquency") {
     const events = Array.isArray(property.distress_details?.events) ? property.distress_details.events : [];
     return events.length > 0;
   }
-
   return true;
 };
+
+const relativeDate = (iso: string) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+const VERDICT_GROUPS = [
+  { key: "analyzing", label: "Analyzing",   colorClass: "text-yellow-400",        defaultExpanded: true  },
+  { key: "strong",    label: "Strong Deal",  colorClass: "text-emerald-400",       defaultExpanded: true  },
+  { key: "invest",    label: "Investigate",  colorClass: "text-amber-400",         defaultExpanded: true  },
+  { key: "pass",      label: "Pass",         colorClass: "text-muted-foreground",  defaultExpanded: false },
+];
+
+const ENGAGEMENT_FILTERS = [
+  { key: "all",           label: "All"           },
+  { key: "phone",         label: "Phone"         },
+  { key: "email",         label: "Email"         },
+  { key: "in_pipeline",   label: "In pipeline"   },
+  { key: "not_contacted", label: "Not contacted" },
+];
 
 const DealSearch = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading, profile } = useAuth();
+
+  // Core data
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [properties, setProperties] = useState<any[]>([]);
   const [ownerContacts, setOwnerContacts] = useState<Record<string, any>>({});
@@ -59,14 +84,25 @@ const DealSearch = () => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [pipelineStageMap, setPipelineStageMap] = useState<Record<string, string>>({});
-  const [engagementFilter, setEngagementFilter] = useState<string>("all");
-  const [campaignsExpanded, setCampaignsExpanded] = useState(true);
+
+  // UI state
+  const [textSearch, setTextSearch] = useState("");
+  const [sort, setSort] = useState<"score" | "equity" | "date">("score");
+  const [engagementFilter, setEngagementFilter] = useState("all");
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
+    Object.fromEntries(VERDICT_GROUPS.map(g => [g.key, g.defaultExpanded]))
+  );
+
+  const autoSelectedRef = useRef(false);
   const ownerRefreshRequestedRef = useRef<Set<string>>(new Set());
 
+  // Auth guard
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
 
+  // Load properties
   useEffect(() => {
     if (!user) return;
     setLoadingProps(true);
@@ -81,23 +117,20 @@ const DealSearch = () => {
         const props = data ?? [];
         setProperties(props);
         setLoadingProps(false);
-
-        const ids = props.map((property: any) => property.id);
+        const ids = props.map((p: any) => p.id);
         if (ids.length === 0) return;
-
         supabase
           .from("owner_contacts" as any)
           .select("property_id, owner_name, phones, emails, traced_at")
           .eq("user_id", user.id)
           .in("property_id", ids)
           .then(({ data: contacts }) => {
-            setOwnerContacts(
-              Object.fromEntries((contacts ?? []).map((contact: any) => [contact.property_id, contact]))
-            );
+            setOwnerContacts(Object.fromEntries((contacts ?? []).map((c: any) => [c.property_id, c])));
           });
       });
   }, [user]);
 
+  // Load saved searches
   useEffect(() => {
     if (!user) return;
     supabase
@@ -108,6 +141,7 @@ const DealSearch = () => {
       .then(({ data }) => setSavedSearches(data ?? []));
   }, [user]);
 
+  // Load campaigns — auto-select most recent
   useEffect(() => {
     if (!user) return;
     (supabase as any)
@@ -116,9 +150,21 @@ const DealSearch = () => {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20)
-      .then(({ data }: any) => setCampaigns(data ?? []));
+      .then(({ data }: any) => {
+        const list = data ?? [];
+        setCampaigns(list);
+        if (!autoSelectedRef.current) {
+          autoSelectedRef.current = true;
+          if (list.length > 0) {
+            setSelectedCampaignId(list[0].id);
+          } else {
+            setShowSearchPanel(true);
+          }
+        }
+      });
   }, [user]);
 
+  // Load pipeline stage map
   useEffect(() => {
     if (!user) return;
     (supabase as any)
@@ -127,41 +173,34 @@ const DealSearch = () => {
       .eq("user_id", user.id)
       .then(({ data }: any) => {
         const map: Record<string, string> = {};
-        for (const deal of data ?? []) {
-          map[deal.property_id] = deal.stage;
-        }
+        for (const deal of data ?? []) map[deal.property_id] = deal.stage;
         setPipelineStageMap(map);
       });
   }, [user]);
 
+  // Apply saved search from URL param
   useEffect(() => {
     const savedSearchId = searchParams.get("savedSearch");
     if (!savedSearchId || savedSearches.length === 0) return;
-
-    const savedSearch = savedSearches.find((search) => search.id === savedSearchId);
-    if (!savedSearch?.filters) return;
-
-    setFilters(normalizeFilters(savedSearch.filters));
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("savedSearch");
-    setSearchParams(nextParams, { replace: true });
+    const saved = savedSearches.find(s => s.id === savedSearchId);
+    if (!saved?.filters) return;
+    setFilters(normalizeFilters(saved.filters));
+    setShowSearchPanel(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("savedSearch");
+    setSearchParams(next, { replace: true });
   }, [savedSearches, searchParams, setSearchParams]);
 
+  // Realtime property updates
   useEffect(() => {
     if (!user) return;
     const channel = supabase
       .channel("properties-user")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "properties",
-        filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "properties", filter: `user_id=eq.${user.id}` }, (payload) => {
         if (payload.eventType === "INSERT") {
-          setProperties((prev) => [payload.new as any, ...prev]);
+          setProperties(prev => [payload.new as any, ...prev]);
         } else if (payload.eventType === "UPDATE") {
-          setProperties((prev) => [payload.new as any, ...prev.filter((property) => property.id !== (payload.new as any).id)]);
-
+          setProperties(prev => [payload.new as any, ...prev.filter(p => p.id !== (payload.new as any).id)]);
           if ((payload.new as any).status === "complete") {
             const propertyId = (payload.new as any).id;
             supabase
@@ -171,19 +210,37 @@ const DealSearch = () => {
               .eq("property_id", propertyId)
               .maybeSingle()
               .then(({ data: contact }) => {
-                if (contact) {
-                  setOwnerContacts((prev) => ({ ...prev, [propertyId]: contact }));
-                }
+                if (contact) setOwnerContacts(prev => ({ ...prev, [propertyId]: contact }));
               });
           }
         }
       })
       .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
+  // Auto-refresh missing owner basics
+  useEffect(() => {
+    if (!user || properties.length === 0) return;
+    const missing = properties
+      .filter(p => {
+        if (p.address === "__no_results__" || p.address === "Search failed") return false;
+        if (p.status === "searching" || p.status === "scoring") return false;
+        const ownerName = ownerContacts[p.id]?.owner_name || p.distress_details?.ownerName || p.distress_details?.owner_name;
+        const mortgageAmount = p.distress_details?.mortgage?.loanAmount;
+        return (!ownerName || mortgageAmount === null || mortgageAmount === undefined) && !ownerRefreshRequestedRef.current.has(p.id);
+      })
+      .slice(0, 24)
+      .map(p => p.id);
+    if (missing.length === 0) return;
+    for (const id of missing) ownerRefreshRequestedRef.current.add(id);
+    void supabase.functions.invoke("refresh-owner-basics", { body: { propertyIds: missing } })
+      .then(({ error }) => {
+        if (error) for (const id of missing) ownerRefreshRequestedRef.current.delete(id);
+      });
+  }, [user, properties, ownerContacts]);
+
+  // Derived data
   const campaignStats = useMemo(() => {
     const stats: Record<string, { total: number; contacted: number }> = {};
     for (const p of properties) {
@@ -197,82 +254,75 @@ const DealSearch = () => {
   }, [properties, pipelineStageMap]);
 
   const resolvedFilters = useMemo(() => withInferredSearchMode(filters), [filters]);
-  const isPropertySearch = resolvedFilters.searchMode === "property";
 
-  useEffect(() => {
-    if (!user || properties.length === 0) return;
-
-    const missingOwnerPropertyIds = properties
-      .filter((property) => {
-        if (property.address === "__no_results__" || property.address === "Search failed") return false;
-        if (property.status === "searching" || property.status === "scoring") return false;
-
-        const ownerName =
-          ownerContacts[property.id]?.owner_name ||
-          property.distress_details?.ownerName ||
-          property.distress_details?.owner_name;
-        const mortgageAmount = property.distress_details?.mortgage?.loanAmount;
-        const deedBuyerName = property.distress_details?.deedBuyerName;
-        const deedSellerName = property.distress_details?.deedSellerName;
-
-        return (!ownerName || mortgageAmount === null || mortgageAmount === undefined || (property.last_sale_date && (!deedBuyerName || !deedSellerName))) &&
-          !ownerRefreshRequestedRef.current.has(property.id);
-      })
-      .slice(0, 24)
-      .map((property) => property.id);
-
-    if (missingOwnerPropertyIds.length === 0) return;
-
-    for (const propertyId of missingOwnerPropertyIds) {
-      ownerRefreshRequestedRef.current.add(propertyId);
-    }
-
-    void supabase.functions.invoke("refresh-owner-basics", {
-      body: { propertyIds: missingOwnerPropertyIds },
-    }).then(({ error }) => {
-      if (error) {
-        for (const propertyId of missingOwnerPropertyIds) {
-          ownerRefreshRequestedRef.current.delete(propertyId);
+  const filteredAndSortedProperties = useMemo(() => {
+    const q = textSearch.toLowerCase();
+    return properties
+      .filter(p => {
+        if (p.address === "__no_results__") return false;
+        const mode = p.search_filters?.searchMode === "property" ? "property" : "market";
+        if (mode !== "property" && !hasSubstantiatedDistress(p)) return false;
+        if (selectedCampaignId && p.campaign_id !== selectedCampaignId) return false;
+        if (engagementFilter === "phone" && !ownerContacts[p.id]?.phones?.length) return false;
+        if (engagementFilter === "email" && !ownerContacts[p.id]?.emails?.length) return false;
+        if (engagementFilter === "in_pipeline" && !pipelineStageMap[p.id]) return false;
+        if (engagementFilter === "not_contacted") {
+          const stage = pipelineStageMap[p.id];
+          if (stage && stage !== "new") return false;
         }
-        console.error("Failed to refresh owner basics:", error);
-      }
-    });
-  }, [user, properties, ownerContacts]);
+        if (q) {
+          const ownerName = (ownerContacts[p.id]?.owner_name || p.distress_details?.ownerName || p.distress_details?.owner_name || "").toLowerCase();
+          const addr = `${p.address ?? ""} ${p.city ?? ""} ${p.state ?? ""} ${p.zip ?? ""}`.toLowerCase();
+          if (!addr.includes(q) && !ownerName.includes(q)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sort === "score") return (b.deal_score ?? -1) - (a.deal_score ?? -1);
+        if (sort === "equity") return (b.equity_pct ?? -1) - (a.equity_pct ?? -1);
+        return new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime();
+      });
+  }, [properties, selectedCampaignId, engagementFilter, textSearch, sort, ownerContacts, pipelineStageMap]);
 
+  const verdictGroups = useMemo(() => {
+    const analyzing = filteredAndSortedProperties.filter(p => ["searching", "scoring"].includes(p.status));
+    const strong     = filteredAndSortedProperties.filter(p => p.deal_verdict === "Strong Deal");
+    const invest     = filteredAndSortedProperties.filter(p => p.deal_verdict === "Investigate");
+    const pass       = filteredAndSortedProperties.filter(p => p.deal_verdict === "Pass");
+    return [
+      analyzing.length > 0 ? { key: "analyzing", props: analyzing } : null,
+      strong.length > 0    ? { key: "strong",    props: strong    } : null,
+      invest.length > 0    ? { key: "invest",    props: invest    } : null,
+      pass.length > 0      ? { key: "pass",      props: pass      } : null,
+    ].filter(Boolean) as Array<{ key: string; props: any[] }>;
+  }, [filteredAndSortedProperties]);
+
+  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) ?? null;
+  const pendingCount = filteredAndSortedProperties.filter(p => ["searching", "scoring"].includes(p.status)).length;
+
+  // Handlers
   const handleSearch = async () => {
-    const nextFilters = withInferredSearchMode(filters);
-    const nextIsPropertySearch = nextFilters.searchMode === "property";
-
-    if (!nextFilters.location.trim()) {
-      toast.error("Enter a ZIP code or exact property address.");
-      return false;
-    }
-
-    setFilters(nextFilters);
+    const next = withInferredSearchMode(filters);
+    if (!next.location.trim()) { toast.error("Enter a ZIP code or exact property address."); return false; }
+    setFilters(next);
     setSearching(true);
-
     try {
       const { data, error } = await supabase.functions.invoke("start-property-search", {
         body: {
-          searchMode: nextFilters.searchMode,
-          location: nextFilters.location,
-          distressTypes: nextFilters.distressTypes,
-          priceMin: nextFilters.priceMin,
-          priceMax: nextFilters.priceMax,
-          propertyTypes: nextFilters.propertyTypes.length > 0 ? nextFilters.propertyTypes : undefined,
-          equityMin: nextFilters.equityMin,
+          searchMode: next.searchMode,
+          location: next.location,
+          distressTypes: next.distressTypes,
+          priceMin: next.priceMin,
+          priceMax: next.priceMax,
+          propertyTypes: next.propertyTypes.length > 0 ? next.propertyTypes : undefined,
+          equityMin: next.equityMin,
         },
       });
-
-      if (error || !data?.searchBatchId) {
-        toast.error("Search failed. Please try again.");
-        return false;
-      }
-
+      if (error || !data?.searchBatchId) { toast.error("Search failed. Please try again."); return false; }
       navigate(`/processing/${data.searchBatchId}`);
       return true;
     } catch {
-      toast.error(nextIsPropertySearch ? "Property analysis failed. Please try again." : "Search failed. Please try again.");
+      toast.error(next.searchMode === "property" ? "Property analysis failed." : "Search failed. Please try again.");
       return false;
     } finally {
       setSearching(false);
@@ -280,246 +330,302 @@ const DealSearch = () => {
   };
 
   const handleSaveSearch = async () => {
-    const nextFilters = withInferredSearchMode(filters);
-    const nextIsPropertySearch = nextFilters.searchMode === "property";
-
-    if (!user || !nextFilters.location.trim()) {
-      toast.error("Set a ZIP code or exact address before saving.");
-      return;
-    }
-
-    setFilters(nextFilters);
-
-    const searchScopeLabel = nextIsPropertySearch
-      ? "Exact Property"
-      : nextFilters.distressTypes.join(", ") || "All Distress";
-    const name = `${nextFilters.location} - ${searchScopeLabel}`;
-
+    const next = withInferredSearchMode(filters);
+    if (!user || !next.location.trim()) { toast.error("Set a location before saving."); return; }
+    setFilters(next);
+    const name = `${next.location} — ${next.distressTypes.join(", ") || "All Distress"}`;
     const { data, error } = await supabase
       .from("saved_searches" as any)
-      .insert({ user_id: user.id, name, filters: nextFilters })
+      .insert({ user_id: user.id, name, filters: next })
       .select()
       .single();
-
-    if (error) {
-      toast.error("Failed to save search.");
-      return;
-    }
-
-    setSavedSearches((prev) => [data, ...prev]);
+    if (error) { toast.error("Failed to save search."); return; }
+    setSavedSearches(prev => [data, ...prev]);
     toast.success("Search saved.");
   };
 
   const handleSkipTrace = async (propertyId: string, forceRefresh = false) => {
-    const { data, error } = await supabase.functions.invoke("skip-trace", {
-      body: { propertyId, forceRefresh },
-    });
+    const { data, error } = await supabase.functions.invoke("skip-trace", { body: { propertyId, forceRefresh } });
     if (error || !data?.ok) {
-      const message = data?.code === "NO_CREDITS" ? "No skip trace credits remaining." : "Skip trace failed. Try again.";
-      toast.error(message);
+      toast.error(data?.code === "NO_CREDITS" ? "No skip trace credits remaining." : "Skip trace failed. Try again.");
       return;
     }
-    setOwnerContacts((prev) => ({ ...prev, [propertyId]: data.contact }));
+    setOwnerContacts(prev => ({ ...prev, [propertyId]: data.contact }));
     toast.success(data.cached ? "Contact info loaded." : "Owner contact found.");
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+  const handleSignOut = async () => { await supabase.auth.signOut(); navigate("/"); };
+
+  const toggleSection = (key: string) =>
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const selectCampaign = (id: string) => {
+    setSelectedCampaignId(id);
+    setShowSearchPanel(false);
+    setTextSearch("");
   };
 
   if (loading) return null;
 
-  const visibleProperties = properties.filter((property) => {
-    if (property.address === "__no_results__") return false;
-    const propertySearchMode = property.search_filters?.searchMode === "property" ? "property" : "market";
-    if (propertySearchMode !== "property" && !hasSubstantiatedDistress(property)) return false;
-    if (selectedCampaignId && property.campaign_id !== selectedCampaignId) return false;
-    if (engagementFilter === "phone") {
-      const contact = ownerContacts[property.id];
-      if (!contact?.phones?.length) return false;
-    } else if (engagementFilter === "email") {
-      const contact = ownerContacts[property.id];
-      if (!contact?.emails?.length) return false;
-    } else if (engagementFilter === "in_pipeline") {
-      if (!pipelineStageMap[property.id]) return false;
-    } else if (engagementFilter === "not_contacted") {
-      const stage = pipelineStageMap[property.id];
-      if (stage && stage !== "new") return false;
-    }
-    return true;
-  });
-  const pendingCount = visibleProperties.filter((property) => property.status === "searching" || property.status === "scoring").length;
-  const searchModeLabel = resolvedFilters.location.trim()
-    ? isPropertySearch
-      ? "Exact property"
-      : "Market scan"
-    : "Ready to search";
-  const searchSummary = resolvedFilters.location.trim() || "ZIP code or exact address";
-  const distressSummary = resolvedFilters.distressTypes.length > 0
-    ? `${resolvedFilters.distressTypes.length} distress filter${resolvedFilters.distressTypes.length > 1 ? "s" : ""}`
-    : isPropertySearch
-    ? "Optional distress tags"
-    : "All distress types";
-  const propertyTypeSummary = resolvedFilters.propertyTypes.length > 0
-    ? `${resolvedFilters.propertyTypes.length} property type${resolvedFilters.propertyTypes.length > 1 ? "s" : ""}`
-    : "All property types";
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <AppNav credits={profile?.credits} onSignOut={handleSignOut} />
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-4 sm:py-6">
-        <SearchFilters
-          filters={resolvedFilters}
-          onChange={(nextFilters) => setFilters(withInferredSearchMode(nextFilters))}
-          onSearch={handleSearch}
-          searching={searching}
-          savedSearches={savedSearches}
-          onSaveSearch={handleSaveSearch}
-          onLoadSavedSearch={(saved) => setFilters(normalizeFilters(saved))}
-          onSearchesChange={setSavedSearches}
-        />
+      <div className="flex flex-1 min-h-0">
 
-        {/* Campaign selector */}
-        {campaigns.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card/70 p-4">
+        {/* ── Sidebar (desktop) ── */}
+        <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-border bg-card/30">
+          {/* New Search button */}
+          <div className="p-3 border-b border-border shrink-0">
             <button
-              className="flex items-center gap-2 text-sm font-medium text-foreground w-full"
-              onClick={() => setCampaignsExpanded((v) => !v)}
+              onClick={() => setShowSearchPanel(v => !v)}
+              className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                showSearchPanel
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-dashed border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+              }`}
             >
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-              Search Campaigns
-              <span className="ml-auto text-muted-foreground">
-                {campaignsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </span>
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              New Search
             </button>
-            {campaignsExpanded && (
-              <div className="mt-3 flex flex-wrap gap-2">
+          </div>
+
+          {/* Campaign list */}
+          <div className="flex-1 overflow-y-auto">
+            <p className="px-4 pt-4 pb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+              Searches
+            </p>
+            {campaigns.map(c => {
+              const stats = campaignStats[c.id];
+              const total = stats?.total ?? c.property_count;
+              const contacted = stats?.contacted ?? 0;
+              return (
                 <button
-                  onClick={() => setSelectedCampaignId(null)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                    selectedCampaignId === null
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                  key={c.id}
+                  onClick={() => selectCampaign(c.id)}
+                  className={`w-full text-left px-4 py-3 border-l-2 transition-colors hover:bg-secondary/40 ${
+                    selectedCampaignId === c.id && !showSearchPanel
+                      ? "border-primary bg-secondary/30"
+                      : "border-transparent"
                   }`}
                 >
-                  All Results
+                  <p className="text-sm font-medium text-foreground truncate leading-snug">{c.name}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <span>{total} props</span>
+                    {contacted > 0 && (
+                      <span className="text-emerald-400">· {contacted} contacted</span>
+                    )}
+                  </p>
                 </button>
-                {campaigns.map((c) => {
-                  const stats = campaignStats[c.id];
-                  return (
+              );
+            })}
+            {campaigns.length === 0 && (
+              <p className="px-4 py-8 text-xs text-muted-foreground text-center leading-relaxed">
+                No searches yet.<br />Run your first search above.
+              </p>
+            )}
+          </div>
+        </aside>
+
+        {/* ── Main content ── */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+
+          {/* Mobile: campaign scroll + new button */}
+          <div className="lg:hidden overflow-x-auto border-b border-border bg-card/40 py-3 px-4 flex gap-2 shrink-0 items-center">
+            <button
+              onClick={() => setShowSearchPanel(v => !v)}
+              className={`shrink-0 h-7 rounded-full border px-3 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                showSearchPanel ? "border-primary bg-primary/10 text-primary" : "border-dashed border-border text-muted-foreground"
+              }`}
+            >
+              <Plus className="h-3 w-3" />New
+            </button>
+            {campaigns.map(c => (
+              <button
+                key={c.id}
+                onClick={() => selectCampaign(c.id)}
+                className={`shrink-0 h-7 rounded-full border px-3 text-xs font-medium transition-colors ${
+                  selectedCampaignId === c.id && !showSearchPanel
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-secondary text-muted-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Search panel */}
+          {showSearchPanel && (
+            <div className="border-b border-border bg-card/60 shrink-0 overflow-y-auto max-h-[55vh]">
+              <div className="p-4 lg:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-semibold text-foreground">New Search</p>
+                  {campaigns.length > 0 && (
                     <button
-                      key={c.id}
-                      onClick={() => setSelectedCampaignId(c.id === selectedCampaignId ? null : c.id)}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                        selectedCampaignId === c.id
-                          ? "border-primary bg-primary text-primary-foreground"
+                      onClick={() => setShowSearchPanel(false)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />Close
+                    </button>
+                  )}
+                </div>
+                <SearchFilters
+                  filters={resolvedFilters}
+                  onChange={next => setFilters(withInferredSearchMode(next))}
+                  onSearch={handleSearch}
+                  searching={searching}
+                  savedSearches={savedSearches}
+                  onSaveSearch={handleSaveSearch}
+                  onLoadSavedSearch={saved => setFilters(normalizeFilters(saved))}
+                  onSearchesChange={setSavedSearches}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {selectedCampaign ? (
+              <div className="p-4 lg:p-6 space-y-5 max-w-4xl">
+
+                {/* Campaign header */}
+                <div>
+                  <h1 className="text-xl font-semibold text-foreground leading-tight">{selectedCampaign.name}</h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {relativeDate(selectedCampaign.created_at)} · {filteredAndSortedProperties.length} properties
+                  </p>
+                </div>
+
+                {/* Controls row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Text search */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      className="pl-8 pr-8 h-8 text-sm bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary w-48 placeholder:text-muted-foreground text-foreground"
+                      placeholder="Search address, owner…"
+                      value={textSearch}
+                      onChange={e => setTextSearch(e.target.value)}
+                    />
+                    {textSearch && (
+                      <button onClick={() => setTextSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sort */}
+                  <Select value={sort} onValueChange={v => setSort(v as any)}>
+                    <SelectTrigger className="h-8 text-xs w-32 bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="score">Best Score</SelectItem>
+                      <SelectItem value="equity">Most Equity</SelectItem>
+                      <SelectItem value="date">Newest</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="h-5 w-px bg-border" />
+
+                  {/* Engagement filters */}
+                  {ENGAGEMENT_FILTERS.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setEngagementFilter(f.key)}
+                      className={`h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
+                        engagementFilter === f.key
+                          ? "border-primary bg-primary/15 text-primary"
                           : "border-border bg-secondary text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      {c.name}
-                      {(stats?.total ?? c.property_count) > 0 && (
-                        <span className="ml-1.5 opacity-60">{stats?.total ?? c.property_count}</span>
-                      )}
-                      {stats?.contacted > 0 && (
-                        <span className="ml-1 text-emerald-400 opacity-80">· {stats.contacted} contacted</span>
-                      )}
+                      {f.label}
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
 
-        {/* Engagement filters */}
-        <div className="flex flex-wrap gap-2 items-center">
-          {[
-            { key: "all", label: "All" },
-            { key: "phone", label: "Phone available" },
-            { key: "email", label: "Email available" },
-            { key: "in_pipeline", label: "In pipeline" },
-            { key: "not_contacted", label: "Not yet contacted" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setEngagementFilter(key)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                engagementFilter === key
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+                {/* Analyzing badge */}
+                {pendingCount > 0 && (
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    {pendingCount} still analyzing…
+                  </div>
+                )}
 
-        <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Deal Pipeline</p>
-              <h2 className="mt-1 font-heading text-xl font-semibold text-foreground sm:text-2xl">
-                {visibleProperties.length > 0 ? `${visibleProperties.length} Properties` : "No deals yet"}
-              </h2>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5" />
-                  <span className="truncate max-w-[20rem]">{searchSummary}</span>
-                </span>
-                <span className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[11px]">
-                  {searchModeLabel}
-                </span>
-                <span className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[11px]">
-                  {distressSummary}
-                </span>
-                {!isPropertySearch && (
-                  <span className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[11px]">
-                    {propertyTypeSummary}
-                  </span>
+                {/* Results */}
+                {loadingProps ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-32 rounded-xl border border-border bg-card animate-pulse" />
+                    ))}
+                  </div>
+                ) : filteredAndSortedProperties.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 py-16 text-center">
+                    <Search className="h-8 w-8 text-muted-foreground mb-3 opacity-40" />
+                    <p className="text-sm font-medium text-foreground">No properties match your filters</p>
+                    {textSearch && (
+                      <button onClick={() => setTextSearch("")} className="mt-2 text-xs text-primary hover:underline">
+                        Clear search
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {verdictGroups.map(({ key, props: groupProps }) => {
+                      const meta = VERDICT_GROUPS.find(g => g.key === key)!;
+                      const expanded = expandedSections[key] ?? meta.defaultExpanded;
+                      return (
+                        <div key={key}>
+                          <button
+                            className="flex items-center gap-2 w-full py-1.5 mb-2 group"
+                            onClick={() => toggleSection(key)}
+                          >
+                            <span className={`text-sm font-semibold ${meta.colorClass}`}>{meta.label}</span>
+                            <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary ${meta.colorClass}`}>
+                              {groupProps.length}
+                            </span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 ml-auto text-muted-foreground transition-transform duration-150 ${
+                                expanded ? "" : "-rotate-90"
+                              }`}
+                            />
+                          </button>
+                          {expanded && (
+                            <div className="grid grid-cols-1 gap-3">
+                              {groupProps.map(property => (
+                                <PropertyCard
+                                  key={property.id}
+                                  property={property}
+                                  ownerContact={ownerContacts[property.id] ?? null}
+                                  onSkipTrace={handleSkipTrace}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-            </div>
-
-            {pendingCount > 0 && (
-              <span className="inline-flex w-fit items-center rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400">
-                {pendingCount} analyzing...
-              </span>
-            )}
+            ) : !showSearchPanel ? (
+              /* Empty state — no campaign selected */
+              <div className="flex flex-col items-center justify-center h-full py-24 text-center px-6">
+                <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center mb-5">
+                  <Search className="h-6 w-6 text-muted-foreground opacity-60" />
+                </div>
+                <h2 className="text-base font-semibold text-foreground">Start your first search</h2>
+                <p className="text-sm text-muted-foreground mt-1.5 max-w-xs">
+                  Enter a ZIP code or city to find distressed properties in any market.
+                </p>
+                <Button className="mt-5" onClick={() => setShowSearchPanel(true)}>
+                  <Plus className="h-4 w-4 mr-2" />New Search
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
-
-        {loadingProps ? (
-          <div className="grid grid-cols-1 gap-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="space-y-3 rounded-xl border border-border bg-card p-5 animate-pulse">
-                <div className="h-4 w-3/4 rounded bg-secondary" />
-                <div className="h-3 w-1/2 rounded bg-secondary" />
-                <div className="h-8 rounded bg-secondary" />
-              </div>
-            ))}
-          </div>
-        ) : visibleProperties.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-20 text-center">
-            <Search className="mb-4 h-10 w-10 text-muted-foreground" />
-            <h2 className="mb-2 font-heading text-xl font-semibold text-foreground">Start from the search bar above</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Enter a ZIP code for a market scan or paste a full address for a one-property analysis.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {visibleProperties.map((property) => (
-              <PropertyCard
-                key={property.id}
-                property={property}
-                ownerContact={ownerContacts[property.id] ?? null}
-                onSkipTrace={handleSkipTrace}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
