@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
+import { ChevronDown, Loader2, Mail, Phone, Plus, Search, UserSearch, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppNav } from "@/components/AppNav";
@@ -96,6 +96,11 @@ const DealSearch = () => {
 
   const autoSelectedRef = useRef(false);
   const ownerRefreshRequestedRef = useRef<Set<string>>(new Set());
+
+  // Direct skip-trace (no property in DB required)
+  const [quickLookup, setQuickLookup] = useState({ address: "", city: "", state: "", zip: "" });
+  const [quickLookupLoading, setQuickLookupLoading] = useState(false);
+  const [quickLookupResult, setQuickLookupResult] = useState<any>(null);
 
   // Auth guard
   useEffect(() => {
@@ -354,6 +359,21 @@ const DealSearch = () => {
     toast.success(data.cached ? "Contact info loaded." : "Owner contact found.");
   };
 
+  const handleQuickSkipTrace = async () => {
+    if (!quickLookup.address.trim()) { toast.error("Enter an address."); return; }
+    setQuickLookupLoading(true);
+    setQuickLookupResult(null);
+    const { data, error } = await supabase.functions.invoke("skip-trace", {
+      body: { address: quickLookup.address, city: quickLookup.city, state: quickLookup.state, zip: quickLookup.zip },
+    });
+    setQuickLookupLoading(false);
+    if (error || !data?.ok) {
+      toast.error(data?.code === "NO_CREDITS" ? "No skip trace credits remaining." : "Skip trace failed. Try again.");
+      return;
+    }
+    setQuickLookupResult(data.contact);
+  };
+
   const handleSignOut = async () => { await supabase.auth.signOut(); navigate("/"); };
 
   const toggleSection = (key: string) =>
@@ -423,6 +443,73 @@ const DealSearch = () => {
               <p className="px-4 py-8 text-xs text-muted-foreground text-center leading-relaxed">
                 No searches yet.<br />Run your first search above.
               </p>
+            )}
+          </div>
+
+          {/* Quick Owner Lookup */}
+          <div className="border-t border-border p-3 shrink-0">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+              <UserSearch className="h-3 w-3" />Quick Owner Lookup
+            </p>
+            <div className="space-y-1.5">
+              <input
+                className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Address"
+                value={quickLookup.address}
+                onChange={e => setQuickLookup(p => ({ ...p, address: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && handleQuickSkipTrace()}
+              />
+              <div className="flex gap-1.5">
+                <input
+                  className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="City"
+                  value={quickLookup.city}
+                  onChange={e => setQuickLookup(p => ({ ...p, city: e.target.value }))}
+                />
+                <input
+                  className="w-16 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="State"
+                  value={quickLookup.state}
+                  onChange={e => setQuickLookup(p => ({ ...p, state: e.target.value }))}
+                />
+              </div>
+              <input
+                className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="ZIP (optional)"
+                value={quickLookup.zip}
+                onChange={e => setQuickLookup(p => ({ ...p, zip: e.target.value }))}
+              />
+              <button
+                onClick={handleQuickSkipTrace}
+                disabled={quickLookupLoading}
+                className="w-full flex items-center justify-center gap-1.5 rounded-md bg-foreground text-background text-xs font-medium py-1.5 hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {quickLookupLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                {quickLookupLoading ? "Looking up…" : "Find Owner"}
+              </button>
+            </div>
+
+            {/* Result */}
+            {quickLookupResult && (
+              <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-2.5 space-y-1.5">
+                {quickLookupResult.ownerName && (
+                  <p className="text-xs font-semibold text-foreground">{quickLookupResult.ownerName}</p>
+                )}
+                {(quickLookupResult.phones ?? []).slice(0, 3).map((ph: any, i: number) => (
+                  <a key={i} href={`tel:${ph.number}`} className="flex items-center gap-1.5 text-xs text-foreground hover:text-primary">
+                    <Phone className="h-3 w-3 text-muted-foreground" />{ph.number}{ph.type ? ` · ${ph.type}` : ""}
+                  </a>
+                ))}
+                {(quickLookupResult.emails ?? []).slice(0, 2).map((em: any, i: number) => (
+                  <a key={i} href={`mailto:${em.address}`} className="flex items-center gap-1.5 text-xs text-foreground hover:text-primary truncate">
+                    <Mail className="h-3 w-3 text-muted-foreground" />{em.address}
+                  </a>
+                ))}
+                {!quickLookupResult.hit && (
+                  <p className="text-xs text-muted-foreground">No contact info found.</p>
+                )}
+                <button onClick={() => setQuickLookupResult(null)} className="text-[10px] text-muted-foreground hover:text-foreground">Clear</button>
+              </div>
             )}
           </div>
         </aside>

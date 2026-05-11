@@ -202,16 +202,81 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { propertyId, forceRefresh } = await req.json();
-    if (!propertyId) {
-      return new Response(JSON.stringify({ error: "propertyId is required" }), {
+    const { propertyId, forceRefresh, address: directAddress, city: directCity, state: directState, zip: directZip } = await req.json();
+
+    if (!propertyId && !directAddress) {
+      return new Response(JSON.stringify({ error: "propertyId or address is required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!tracerfyKey) {
+      return new Response(JSON.stringify({ error: "Skip tracing service not configured" }), {
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // --- Direct address lookup mode (no property in DB required) ---
+    if (!propertyId && directAddress) {
+      // Deduct 1 credit directly
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("credits")
+        .eq("id", user.id)
+        .single();
+      const currentCredits = typeof profile?.credits === "number" ? profile.credits : 0;
+      if (currentCredits < 1) {
+        return new Response(JSON.stringify({ error: "Insufficient skip trace credits", code: "NO_CREDITS" }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await supabase.from("profiles").update({ credits: currentCredits - 1 }).eq("id", user.id);
+
+      try {
+        const ownerLookupPayload = await callTracerfyLookup(tracerfyKey, {
+          address: directAddress,
+          city: directCity ?? "",
+          state: directState ?? "",
+          zip: directZip ?? "",
+          find_owner: true,
+        });
+        let contact = extractTracerfyContact(ownerLookupPayload, "");
+
+        const targetedName = splitOwnerName(contact.ownerName);
+        if (targetedName && isSparseContact(contact)) {
+          const enriched = await callTracerfyLookup(tracerfyKey, {
+            address: directAddress,
+            city: directCity ?? "",
+            state: directState ?? "",
+            zip: directZip ?? "",
+            find_owner: false,
+            first_name: targetedName.firstName,
+            last_name: targetedName.lastName,
+          });
+          contact = mergeContacts(contact, extractTracerfyContact(enriched, contact.ownerName ?? ""));
+        }
+
+        return new Response(JSON.stringify({ ok: true, cached: false, direct: true, contact }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        // Refund credit on failure
+        await supabase.from("profiles").update({ credits: currentCredits }).eq("id", user.id);
+        const msg = err instanceof Error ? err.message : String(err);
+        return new Response(JSON.stringify({ error: `Skip trace failed: ${msg}` }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // --- Property ID mode (existing flow) ---
     // Check if we already have a cached skip trace for this (property, user) pair
     const { data: existing } = await supabase
       .from("owner_contacts")
@@ -244,13 +309,6 @@ Deno.serve(async (req) => {
 
     const distressDetails = property.distress_details as Record<string, unknown> ?? {};
     const ownerName = (distressDetails.ownerName ?? distressDetails.owner_name ?? "") as string;
-
-    if (!tracerfyKey) {
-      return new Response(JSON.stringify({ error: "Skip tracing service not configured" }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // Deduct 1 credit atomically BEFORE calling Tracerfy
     // Uses userClient so auth.uid() resolves correctly in the RPC
